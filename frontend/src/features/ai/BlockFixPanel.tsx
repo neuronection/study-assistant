@@ -32,7 +32,7 @@ export function BlockFixPanel({
   kind: BlockFixKind
   source: string
   diagnostic: string
-  courseId?: number
+  courseId?: string
   validate: (text: string) => Promise<BlockFixGateResult>
   tier0Repair?: (source: string) => Promise<string | null>
   transport?: AiTextTransformTransport

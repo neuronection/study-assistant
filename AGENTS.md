@@ -42,6 +42,8 @@ SQLite-in-Docker; the FTS5/sqlite-vec stack gains Postgres dialect twins.
    blocks, or the DB. Tests must never touch the real OS keyring — `backend/tests/conftest.py`
    installs an in-memory keyring backend for the whole suite; keep it that way (new secret
    reads/writes go through `app/core/secrets.py`, which is isolated by that conftest).
+7. **Capability showcase stays truthful.** A shipped feature updates `docs/capabilities.json`
+   (family contract: `contracts/product-capabilities.schema.json`) in the same change.
 
 ## Verification suite (all must pass before commit)
 

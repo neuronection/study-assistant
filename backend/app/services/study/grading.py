@@ -1,4 +1,5 @@
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -9,6 +10,7 @@ from ...math.equivalence import equivalent
 from ...math.graphs import grade_graph_read
 from ...math.regions import grade_regions
 from ...math.tables import grade_table_fill
+from .exercise_structs import check_structural
 
 _WHITESPACE_RE = re.compile(r"\s+")
 
@@ -37,7 +39,7 @@ def _normalize_text(value: str) -> str:
     return _WHITESPACE_RE.sub(" ", lowered)
 
 
-def grade_single(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_single(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     try:
         chosen = int(response)
     except (TypeError, ValueError):
@@ -47,7 +49,7 @@ def grade_single(response: Any, answer: dict[str, Any]) -> GradeResult:
     return _text_result(ok, "correct" if ok else "incorrect", "deterministic")
 
 
-def grade_truefalse(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_truefalse(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     truthy = response in (True, 1, "1", "true", "True", "TRUE")
     falsy = response in (False, 0, "0", "false", "False", "FALSE")
     if not truthy and not falsy:
@@ -56,7 +58,7 @@ def grade_truefalse(response: Any, answer: dict[str, Any]) -> GradeResult:
     return _text_result(ok, "correct" if ok else "incorrect", "deterministic")
 
 
-def grade_multi(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_multi(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     if not isinstance(response, list):
         return _text_result(False, "no options selected", "deterministic")
     chosen = {int(item) for item in response}
@@ -82,7 +84,7 @@ def grade_multi(response: Any, answer: dict[str, Any]) -> GradeResult:
     )
 
 
-def grade_text(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_text(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     if not isinstance(response, str):
         return _text_result(False, "empty answer", "deterministic")
     accepted = [answer.get("value", "")]
@@ -94,7 +96,7 @@ def grade_text(response: Any, answer: dict[str, Any]) -> GradeResult:
     return _text_result(False, "incorrect", "deterministic")
 
 
-def grade_numeric(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_numeric(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     try:
         value = float(str(response).replace(",", ".").strip())
     except (TypeError, ValueError):
@@ -109,7 +111,7 @@ def grade_numeric(response: Any, answer: dict[str, Any]) -> GradeResult:
 
 
 def grade_equation(
-    response: Any, answer: dict[str, Any], sympy_check: dict[str, Any] | None
+    response: Any, answer: Mapping[str, Any], sympy_check: Mapping[str, Any] | None
 ) -> GradeResult:
     if not isinstance(response, str) or not response.strip():
         return _text_result(False, "empty answer", "deterministic")
@@ -125,7 +127,7 @@ def grade_equation(
     return _text_result(result.equivalent, detail, "symPy")
 
 
-def grade_numberline(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_numberline(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     result = grade_regions(answer, response)
     return GradeResult(
         correct=result.correct,
@@ -136,7 +138,7 @@ def grade_numberline(response: Any, answer: dict[str, Any]) -> GradeResult:
     )
 
 
-def grade_table(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_table(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     result = grade_table_fill(answer, response)
     return GradeResult(
         correct=result["correct"],
@@ -147,7 +149,7 @@ def grade_table(response: Any, answer: dict[str, Any]) -> GradeResult:
     )
 
 
-def grade_composite_question(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_composite_question(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     result = grade_composite(answer, response)
     return GradeResult(
         correct=result["correct"],
@@ -158,7 +160,7 @@ def grade_composite_question(response: Any, answer: dict[str, Any]) -> GradeResu
     )
 
 
-def grade_graph(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_graph(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     result = grade_graph_read(answer, response)
     return GradeResult(
         correct=result["correct"],
@@ -169,7 +171,7 @@ def grade_graph(response: Any, answer: dict[str, Any]) -> GradeResult:
     )
 
 
-def grade_code_question(response: Any, answer: dict[str, Any]) -> GradeResult:
+def grade_code_question(response: Any, answer: Mapping[str, Any]) -> GradeResult:
     result = grade_code(answer, response)
     return GradeResult(
         correct=result["correct"],
@@ -178,6 +180,19 @@ def grade_code_question(response: Any, answer: dict[str, Any]) -> GradeResult:
         feedback=[{"type": "text", "md": line} for line in result["feedback"]],
         error_tags=list(result["error_tags"]),
     )
+
+
+STRUCTURAL_GRADERS = {
+    "matching": "matching",
+    "ordering": "ordering",
+    "cloze": "fill_blank",
+}
+
+
+def grade_structural(question_type: str, response: Any, answer: Mapping[str, Any]) -> GradeResult:
+    kind = STRUCTURAL_GRADERS[question_type]
+    correct, detail = check_structural(kind, answer, response)
+    return _text_result(correct, detail, "deterministic")
 
 
 def grade(question: Question, response: Any) -> GradeResult:
@@ -194,6 +209,9 @@ def grade(question: Question, response: Any) -> GradeResult:
         "composite": lambda: grade_composite_question(response, answer),
         "graph_read": lambda: grade_graph(response, answer),
         "code": lambda: grade_code_question(response, answer),
+        "matching": lambda: grade_structural("matching", response, answer),
+        "ordering": lambda: grade_structural("ordering", response, answer),
+        "cloze": lambda: grade_structural("cloze", response, answer),
     }
     grader = graders.get(question.type)
     if grader is None:

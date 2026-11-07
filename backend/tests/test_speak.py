@@ -30,10 +30,10 @@ class SpeechGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="tts-1",
@@ -49,7 +49,7 @@ class SpeechGateway(LLMGateway):
         voice: str | None = None,
         task: str = "tts",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         del voice, task, model, course_id
         if self.error is not None:
@@ -75,9 +75,7 @@ def speak_client(tmp_path: Any) -> Iterator[tuple[TestClient, SpeechGateway]]:
 
 def test_speak_returns_audio(speak_client: tuple[TestClient, SpeechGateway]) -> None:
     test_client, gateway = speak_client
-    response = test_client.post(
-        "/api/v1/ai/speak", json={"text": "Read this aloud please."}
-    )
+    response = test_client.post("/api/v1/ai/speak", json={"text": "Read this aloud please."})
     assert response.status_code == 200, response.text
     assert response.content == AUDIO_BYTES
     assert response.headers["content-type"].startswith("audio/mpeg")
@@ -89,9 +87,7 @@ def test_speak_rejects_oversized_text(
     speak_client: tuple[TestClient, SpeechGateway],
 ) -> None:
     test_client, _gateway = speak_client
-    response = test_client.post(
-        "/api/v1/ai/speak", json={"text": "x" * (MAX_TTS_CHARS + 1)}
-    )
+    response = test_client.post("/api/v1/ai/speak", json={"text": "x" * (MAX_TTS_CHARS + 1)})
     assert response.status_code == 422
 
 
@@ -122,7 +118,7 @@ def test_speak_maps_budget_and_provider_errors(
 
 def test_speak_with_openai_compatible() -> None:
     resolved = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="tts-1",
@@ -149,7 +145,7 @@ def test_speak_with_google_pcm_wrapped_as_wav() -> None:
     import base64
 
     resolved = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="google",
         base_url="http://localhost",
         external_id="gemini-2.5-flash-preview-tts",
@@ -196,7 +192,7 @@ def test_speak_with_google_pcm_wrapped_as_wav() -> None:
 
 def test_speak_with_anthropic_unsupported() -> None:
     resolved = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="anthropic",
         base_url="http://localhost",
         external_id="claude-sonnet",
@@ -204,9 +200,7 @@ def test_speak_with_anthropic_unsupported() -> None:
         caps=["text"],
         api_key=None,
     )
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(500, text="nope")
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(500, text="nope"))
     with httpx.Client(transport=transport) as client, pytest.raises(SpeechUnsupported):
         speak_with(client, resolved, "hello", None)
 

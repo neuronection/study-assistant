@@ -17,7 +17,7 @@ class UnassignedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -26,7 +26,7 @@ class UnassignedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         raise TaskUnassigned(task)
 
@@ -51,7 +51,7 @@ class FakeDescriber:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         self.called = True
         return {
@@ -62,13 +62,11 @@ class FakeDescriber:
         }
 
 
-def make_client(
-    embedder: Any | None = None, describer: Any | None = None
-) -> TestClient:
+def make_client(embedder: Any | None = None, describer: Any | None = None) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-edit-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-edit-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(
         settings,
@@ -89,33 +87,32 @@ def wait_until(
         if predicate():
             return
         time.sleep(0.05)
-    raise AssertionError(
-        f"condition never met within {timeout}s; last state: {describe()!r}"
-    )
+    raise AssertionError(f"condition never met within {timeout}s; last state: {describe()!r}")
 
 
-_COURSES: WeakKeyDictionary[TestClient, int] = WeakKeyDictionary()
+_COURSES: WeakKeyDictionary[TestClient, str] = WeakKeyDictionary()
 
 
-def course_for(client: TestClient) -> int:
+def course_for(client: TestClient) -> str:
     if client not in _COURSES:
         created = client.post("/api/v1/courses", json={"title": "Edits"})
         assert created.status_code == 201
-        _COURSES[client] = int(created.json()["id"])
+        _COURSES[client] = str(created.json()["id"])
     return _COURSES[client]
 
 
-def upload_txt(client: TestClient, content: bytes, filename: str) -> int:
+def upload_txt(client: TestClient, content: bytes, filename: str) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_for(client)},
         files={"file": (filename, content, "text/plain")},
     )
     assert upload.status_code == 200
-    material_id: int = upload.json()["material"]["id"]
+    material_id: str = upload.json()["material"]["id"]
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready",
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        ),
         lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"],
     )
     return material_id
@@ -148,9 +145,7 @@ def test_edit_extraction_creates_version_and_updates_search(client: TestClient) 
     found_old = client.get("/api/v1/search", params={"q": "substitution"}).json()
     assert found_old["hits"] == []
 
-    empty = client.patch(
-        f"/api/v1/materials/{material_id}/extraction", json={"markdown": "  "}
-    )
+    empty = client.patch(f"/api/v1/materials/{material_id}/extraction", json={"markdown": "  "})
     assert empty.status_code == 422
 
 
@@ -196,9 +191,11 @@ def test_postprocess_fills_index_card_via_describer() -> None:
         material_id = upload_txt(client, CONTENT.encode(), "integr.txt")
         wait_until(
             lambda: (
-                client.get(f"/api/v1/materials/{material_id}").json()["index_card"] or {}
-            ).get("summary")
-            is not None,
+                (client.get(f"/api/v1/materials/{material_id}").json()["index_card"] or {}).get(
+                    "summary"
+                )
+                is not None
+            ),
             lambda: client.get(f"/api/v1/materials/{material_id}").json()["index_card"],
         )
         card = client.get(f"/api/v1/materials/{material_id}").json()["index_card"]

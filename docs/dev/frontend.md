@@ -78,6 +78,12 @@ Request and response types come from the generated schema:
 
 Regenerate with `pnpm api:types` after any endpoint change and commit both
 files; CI drift-guards them. Hand-write types only for client-side-only shapes.
+Entity ids are opaque strings end to end — the generated schema is the wire
+truth (`PlanItem.id`, `course_id`, `job_id`, … are `string`); never coerce them
+with `Number(...)` or parse them. Client-local numeric ids (exercise-ordering
+position ids, pending-drawing placeholder refs) are the only exceptions,
+registered in `frontend/src/lib/api/hand-types.ts`; DOM pointer ids are not API
+shapes.
 The WebSocket client lives in `lib/` and subscribes to the same topics the
 backend publishes (see [api.md](api.md) and [jobs.md](jobs.md)).
 
@@ -91,6 +97,23 @@ re-implementing locally. Styling uses `--as-*` tokens and `data-as-*`
 attributes; app identity (brand colors, fonts) lives in
 `frontend/src/theme.css`.
 
+**No app file may shadow a library export** (plan 82 A, ADR-202): the library's
+`audit-usage.mjs` scans `frontend/src` for filenames matching a library
+component and fails on a local copy that does not import from
+`@neuronection/assistant-ui`. Mermaid diagrams render through the library
+`MermaidDiagram` (`components/ui/chat-markdown.ts`); `normalizeMathFences`
+stays app-side in `components/editor/markdownFidelity.ts`, and the editor node
+view (`CaMermaid`) owns its own diagnostic via `validateMermaidSource` (the
+library renderer is presentational). App **hosts** that compose library chat
+surfaces carry a `Study` prefix (`features/chat/StudyChatPanel.tsx`,
+`StudyChatSessionList.tsx`) precisely so the detector keeps firing only on real
+copies.
+
+`vite.config.ts` sets `test.server.deps.inline: ['@neuronection/assistant-ui']`
+so vitest transforms the library graph: without it, `vi.mock('mermaid')` and
+friends cannot intercept dynamic imports made inside a published library chunk
+(the renderer ran for real in jsdom and every mermaid test timed out).
+
 ## Feature layout
 
 ```
@@ -99,6 +122,9 @@ frontend/src/
 ├── features/     home, library, courses, chat, quiz, practice, exercises,
 │                 review, scores, planner, settings, onboarding, jobs,
 │                 discovery, study-session, ai, about
+│   └── courses/workspace/   NodeWorkspace tab components (MaterialsTab,
+│                            OverviewTab, NotesTab, CoverageTab, TutorTab,
+│                            tabs.ts, navigation.ts, shared.tsx)
 ├── components/   block renderers, widgets, editor, canvas, materials,
 │                 layout (AppShell, FileDock), ui shims
 └── lib/          api client, stores, i18n, constants, formatting
@@ -108,6 +134,28 @@ Feature folders own their components and hooks; `components/` holds renderers
 and primitives shared across features. The block renderers (text+KaTeX, math,
 mermaid, table, code, drawing, chart, geo) render the one structured content
 format described in [architecture.md](architecture.md).
+
+## Lazy loading
+
+Heavy renderers never sit in the initial route chunk. The rule (plan 84 D,
+ADR-210) is **the component wrapper may be static; the heavy library must be
+dynamically imported at the point of use**:
+
+- **Plotly** (`plotly.js-dist-min`), **JSXGraph**, **mermaid** (via the library
+  `MermaidDiagram`), **markmap** and **MathLive** already load through
+  `import(...)` inside their renderer components.
+- **Pyodide** (the 9.6 MB Python runtime behind code questions) is imported
+  only when a code answer runs (`CodeAnswer` → `import('@/lib/pyodideRunner')`).
+  Note: a type-only import written as `import { type X } from '…'` is still a
+  static import to the bundler and defeats the split — use `import type { X }`
+  (`vite build` warns `INEFFECTIVE_DYNAMIC_IMPORT` when this regresses).
+- Add `manualChunks`/`codeSplitting.groups` only when a lazy seam leaves a
+  bloated vendor chunk; the current groups are `react-vendor`,
+  `framer-motion` and `katex`.
+
+**Test suite split:** `NodeWorkspace`'s colocated block is split 1:1 into
+`features/courses/workspace/__tests__/*` over one shared `harness.tsx`; each
+file runs in its own vitest worker (`pnpm vitest workspace/__tests__/MaterialsTab`).
 
 ## i18n
 

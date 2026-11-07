@@ -40,6 +40,7 @@ COPY pyproject.toml uv.lock ./
 COPY backend/pyproject.toml backend/pyproject.toml
 COPY backend/app backend/app
 COPY backend/studyassistant backend/studyassistant
+COPY contracts contracts
 COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 # Web mode never imports pywebview/PyGObject (desktop shell) — skip them and
 # their GTK system dependencies (pycairo would need a source build). git is

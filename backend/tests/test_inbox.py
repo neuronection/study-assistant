@@ -9,7 +9,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 GOOD_QUIZ = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Inbox quiz",
     "questions": [
         {
@@ -30,9 +30,7 @@ GOOD_QUIZ = {
 
 BAD_QUIZ = {
     "title": "Broken",
-    "questions": [
-        {"id": "q1", "type": "single", "stem_md": "", "answer": {"index": 0}}
-    ],
+    "questions": [{"id": "q1", "type": "single", "stem_md": "", "answer": {"index": 0}}],
 }
 
 
@@ -44,7 +42,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -56,10 +54,10 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiet",
@@ -73,7 +71,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -81,7 +79,7 @@ class QuietGateway(LLMGateway):
 def make_client() -> TestClient:
     import tempfile
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-inbox-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-inbox-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),
@@ -91,8 +89,8 @@ def make_client() -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_inbox_scan_stages_and_authoring_kit_written(tmp_path: Path) -> None:

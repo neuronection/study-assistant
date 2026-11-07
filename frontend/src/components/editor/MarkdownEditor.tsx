@@ -45,7 +45,7 @@ import {
 } from '@/components/editor/DrawingImage'
 
 export type { DrawingMeta }
-import { CaMath } from '@/components/editor/CaMath'
+import { SaMath } from '@/components/editor/SaMath'
 import { CaMermaid } from '@/components/editor/CaMermaid'
 import { MarkdownTable } from '@/components/editor/MarkdownTable'
 import { StudyToolbarButtons } from '@/components/editor/StudyToolbarButtons'
@@ -60,17 +60,17 @@ import { useConfirm } from '@/lib/use-confirm'
 import type { AiHelperContext } from '@/features/ai/AiHelperPopover'
 
 export interface MarkdownEditorApi {
-  insertDrawing: (id: number) => void
-  removeDrawing: (id: number) => void
-  insertQuote: (text: string, source: { title: string; materialId: number } | null) => void
+  insertDrawing: (id: string) => void
+  removeDrawing: (id: string) => void
+  insertQuote: (text: string, source: { title: string; materialId: string } | null) => void
   insertMarkdown: (markdown: string, mode: InsertMarkdownMode) => void
 }
 
 export interface DrawingAdapter {
-  create: (strokes: Stroke[], pngBase64: string, ocr: boolean, view?: ViewBox) => Promise<number | null>
-  update: (drawingId: number, strokes: Stroke[], pngBase64: string, ocr: boolean, view?: ViewBox) => Promise<void>
-  reocr: (drawingId: number) => Promise<void>
-  remove: (drawingId: number) => Promise<void>
+  create: (strokes: Stroke[], pngBase64: string, ocr: boolean, view?: ViewBox) => Promise<string | null>
+  update: (drawingId: string, strokes: Stroke[], pngBase64: string, ocr: boolean, view?: ViewBox) => Promise<void>
+  reocr: (drawingId: string) => Promise<void>
+  remove: (drawingId: string) => Promise<void>
 }
 
 const EDITOR_CONTENT_CLASS =
@@ -116,7 +116,7 @@ export function MarkdownEditor({
       }
     },
   })
-  const [canvas, setCanvas] = useState<{ open: boolean; editingId: number | null }>({
+  const [canvas, setCanvas] = useState<{ open: boolean; editingId: string | null }>({
     open: false,
     editingId: null,
   })
@@ -126,14 +126,14 @@ export function MarkdownEditor({
   const [ocrOn, setOcrOn] = useState(true)
   const [savingCanvas, setSavingCanvas] = useState(false)
   const [canvasError, setCanvasError] = useState<string | null>(null)
-  const [ocrBaselines, setOcrBaselines] = useState<Map<number, { before: string; sawJob: boolean }>>(
+  const [ocrBaselines, setOcrBaselines] = useState<Map<string, { before: string; sawJob: boolean }>>(
     new Map()
   )
-  const [ocrDiffs, setOcrDiffs] = useState<Map<number, DrawingOcrDiff>>(new Map())
+  const [ocrDiffs, setOcrDiffs] = useState<Map<string, DrawingOcrDiff>>(new Map())
   const [confirm, confirmElement] = useConfirm()
 
   const handleDrawingAction = useRef<DrawingActionHandler>(
-    (id: number, action: DrawingAction) => {
+    (id: string, action: DrawingAction) => {
       if (action === 'copy') {
         const meta = drawingsRef.current.find((entry) => entry.id === id)
         if (meta?.ocr_markdown && navigator.clipboard) {
@@ -177,7 +177,7 @@ export function MarkdownEditor({
   const drawingImage = useMemo(
     () =>
       createDrawingImage(
-        (id: number) => drawingsRef.current.find((drawing) => drawing.id === id),
+        (id: string) => drawingsRef.current.find((drawing) => drawing.id === id),
         handleDrawingAction.current
       ),
     []
@@ -188,11 +188,11 @@ export function MarkdownEditor({
       StarterKit.configure({
         paragraph: false,
         link: {
-          protocols: ['http', 'https', 'mailto', 'ca-material', 'ca-drawing', 'mention'],
+          protocols: ['http', 'https', 'mailto', 'sa-material', 'sa-drawing', 'mention'],
         },
       }),
       BlankLineParagraph,
-      CaMath,
+      SaMath,
       CaMermaid,
       MarkdownTable,
       TableRow,
@@ -235,7 +235,7 @@ export function MarkdownEditor({
     setAiCloseSignal((signal) => signal + 1)
   }, [])
 
-  const insertDrawingAtCursor = (id: number) => {
+  const insertDrawingAtCursor = (id: string) => {
     const current = editorRef.current
     if (current === null || current.isDestroyed) {
       return
@@ -250,7 +250,7 @@ export function MarkdownEditor({
       .run()
   }
 
-  const removeDrawingNodes = (current: Editor | null, drawingId: number) => {
+  const removeDrawingNodes = (current: Editor | null, drawingId: string) => {
     if (current === null || current.isDestroyed) {
       return
     }
@@ -275,7 +275,7 @@ export function MarkdownEditor({
     if (apiRef) {
       apiRef.current = {
         insertDrawing: insertDrawingAtCursor,
-        removeDrawing: (id: number) => {
+        removeDrawing: (id: string) => {
           removeDrawingNodes(editorRef.current, id)
         },
         insertMarkdown: (markdown: string, mode: InsertMarkdownMode) => {
@@ -309,7 +309,7 @@ export function MarkdownEditor({
                 {
                   type: 'text',
                   marks: [
-                    { type: 'link', attrs: { href: `ca-material://${source.materialId}` } },
+                    { type: 'link', attrs: { href: `sa-material://${source.materialId}` } },
                   ],
                   text: source.title,
                 },
@@ -360,9 +360,9 @@ export function MarkdownEditor({
     if (ocrBaselines.size === 0) {
       return
     }
-    const settled: { id: number; before: string; after: string }[] = []
-    const dropped: number[] = []
-    const started: number[] = []
+    const settled: { id: string; before: string; after: string }[] = []
+    const dropped: string[] = []
+    const started: string[] = []
     for (const [id, baseline] of ocrBaselines) {
       const meta = (drawings ?? []).find((entry) => entry.id === id)
       if (meta === undefined) {
@@ -417,7 +417,7 @@ export function MarkdownEditor({
     }
   }, [drawings, ocrBaselines])
 
-  const dismissOcrDiff = useCallback((drawingId: number) => {
+  const dismissOcrDiff = useCallback((drawingId: string) => {
     setOcrDiffs((current) => {
       if (!current.has(drawingId)) {
         return current
@@ -476,7 +476,7 @@ export function MarkdownEditor({
   }
 
   const referencedIds = new Set(
-    [...value.matchAll(/\(ca-drawing:\/\/(-?\d+)\)/g)].map((match) => Number(match[1]))
+    [...value.matchAll(/\(sa-drawing:\/\/([^)]+)\)/g)].map((match) => match[1])
   )
   const unreferencedDrawings = (drawings ?? []).filter(
     (drawing) => !referencedIds.has(drawing.id)

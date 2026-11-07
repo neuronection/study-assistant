@@ -109,8 +109,8 @@ describe('BlockRenderer', () => {
             type: 'text',
             md: 'Review [M12] before [Q3], not [M999].',
             mentions: [
-              { ref: 'M12', kind: 'material', id: 12, title: 'Lecture 3', course_id: 1 },
-              { ref: 'Q3', kind: 'quiz', id: 3, title: 'Limits quiz', course_id: 1 },
+              { ref: 'M12', kind: 'material', id: '12', title: 'Lecture 3', course_id: '1' },
+              { ref: 'Q3', kind: 'quiz', id: '3', title: 'Limits quiz', course_id: '1' },
             ],
           },
         ]}
@@ -130,9 +130,9 @@ describe('BlockRenderer', () => {
             type: 'mention',
             ref: 'N7',
             kind: 'note',
-            id: 7,
+            id: '7',
             title: 'Derivatives note',
-            course_id: 2,
+            course_id: '2',
           },
         ]}
       />,
@@ -148,9 +148,9 @@ describe('BlockRenderer', () => {
   test('renders image_ref blocks through the image resolver', () => {
     render(
       <BlockRenderer
-        blocks={[{ type: 'image_ref', image_id: 7 }]}
+        blocks={[{ type: 'image_ref', image_id: '7' }]}
         resolveImage={(id) =>
-          id === 7 ? { blob_sha: 'cafe1234', ocr_markdown: 'unit circle' } : undefined
+          id === '7' ? { blob_sha: 'cafe1234', ocr_markdown: 'unit circle' } : undefined
         }
       />,
     )
@@ -159,17 +159,16 @@ describe('BlockRenderer', () => {
   })
 
   test('unresolved image_ref blocks fall back to a placeholder', () => {
-    render(<BlockRenderer blocks={[{ type: 'image_ref', image_id: 9 }]} />)
+    render(<BlockRenderer blocks={[{ type: 'image_ref', image_id: '9' }]} />)
     expect(screen.getByText('#9')).toBeInTheDocument()
   })
 
   test('renders drawing blocks with the png and a transcript', () => {
     render(
       <BlockRenderer
-        blocks={[{ type: 'drawing', drawing_id: 5 }]}
+        blocks={[{ type: 'drawing', drawing_id: '5' }]}
         resolveDrawing={(id) =>
-          id === 5
-            ? { id: 5, png_sha: 'deadbeef', ocr_markdown: '$2x$' }
+          id === '5' ? { id: '5', png_sha: 'deadbeef', ocr_markdown: '$2x$' }
             : undefined
         }
       />,
@@ -180,7 +179,7 @@ describe('BlockRenderer', () => {
   })
 
   test('renders drawing blocks as a placeholder without a resolver', () => {
-    render(<BlockRenderer blocks={[{ type: 'drawing', drawing_id: 9 }]} />)
+    render(<BlockRenderer blocks={[{ type: 'drawing', drawing_id: '9' }]} />)
     expect(screen.getByText(/#9/)).toBeInTheDocument()
   })
 
@@ -254,7 +253,7 @@ describe('BlockRenderer', () => {
   test('mention blocks get no copy menu (plan 63-B)', () => {
     renderWithRouter(
       <BlockRenderer
-        blocks={[{ type: 'mention', ref: 'N1', kind: 'note', id: 1, title: 'Note' }]}
+        blocks={[{ type: 'mention', ref: 'N1', kind: 'note', id: '1', title: 'Note' }]}
       />
     )
     expect(screen.queryByRole('button', { name: 'Copy options' })).toBeNull()

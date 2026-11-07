@@ -35,6 +35,9 @@ from sqlalchemy import (
     Integer as Integer,
 )
 from sqlalchemy import (
+    SmallInteger as SmallInteger,
+)
+from sqlalchemy import (
     String as String,
 )
 from sqlalchemy import (
@@ -47,17 +50,32 @@ from sqlalchemy import (
     Uuid as Uuid,
 )
 from sqlalchemy import (
+    false as false,
+)
+from sqlalchemy import (
     text as text,
+)
+from sqlalchemy import (
+    true as true,
 )
 from sqlalchemy.orm import Mapped as Mapped
 from sqlalchemy.orm import mapped_column as mapped_column
 from sqlalchemy.orm import relationship as relationship
+from sqlalchemy.orm import validates as validates
 
+from ...core.vocab import CourseOrigin as CourseOrigin
 from ...storage.db import Base as Base
+from ..payloads import ProfilePreferences, StringList
+from ..schema_contract import vocab_check as vocab_check
 
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def new_uuid() -> str:
+    return str(uuid4())
+
 
 _UUID = Uuid(as_uuid=False)
 
@@ -74,12 +92,13 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String(120))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     color: Mapped[str | None] = mapped_column(String(16))
-    preferences: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    preferences: Mapped[ProfilePreferences | dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class Course(Base):
     __tablename__ = "courses"
@@ -91,9 +110,10 @@ class Course(Base):
             sqlite_where=text("origin = 'scratch'"),
             postgresql_where=text("origin = 'scratch'"),
         ),
+        vocab_check("origin", CourseOrigin),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
@@ -101,39 +121,21 @@ class Course(Base):
     description: Mapped[str | None] = mapped_column(Text)
     subject: Mapped[str | None] = mapped_column(String(120))
     level: Mapped[str | None] = mapped_column(String(120))
-    goals: Mapped[list[str] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    goals: Mapped[StringList | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
     color: Mapped[str | None] = mapped_column(String(16))
     exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    course_type_id: Mapped[int | None] = mapped_column(
-        ForeignKey("course_types.id")
+    course_type_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("course_types.id", ondelete="SET NULL")
     )
-    origin: Mapped[str] = mapped_column(
-        String(20), default="manual", server_default="manual"
-    )
-    hidden: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("0")
-    )
+    origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-class MaterialGroup(Base):
-    __tablename__ = "material_groups"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[str] = mapped_column(
-        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
-    )
-    course_id: Mapped[int | None] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), index=True
-    )
-    title: Mapped[str] = mapped_column(String(300))
-    kind: Mapped[str] = mapped_column(String(30), default="image-set")
-    order_idx: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 class TreeNode(Base):
     __tablename__ = "tree_nodes"
@@ -149,18 +151,21 @@ class TreeNode(Base):
             postgresql_where=text("is_root"),
         ),
         ForeignKeyConstraint(
-            ["parent_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["parent_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
-        CheckConstraint("depth >= 0 AND depth <= 4", name="ck_tree_nodes_depth"),
+        CheckConstraint("depth >= 0 AND depth <= 4", name="depth"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    parent_id: Mapped[int | None] = mapped_column(Integer)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    parent_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str | None] = mapped_column(Text)
-    objectives: Mapped[list[str] | None] = mapped_column(JSON)
+    objectives: Mapped[StringList | None] = mapped_column(JSON)
     ai_hint: Mapped[str | None] = mapped_column(Text)
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     depth: Mapped[int] = mapped_column(Integer, default=1)
@@ -169,11 +174,12 @@ class TreeNode(Base):
     is_root: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class CourseType(Base):
     __tablename__ = "course_types"
     __table_args__ = (Index("uq_course_types_key", "key", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     key: Mapped[str] = mapped_column(String(60))
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)

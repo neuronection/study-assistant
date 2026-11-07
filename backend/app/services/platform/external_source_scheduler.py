@@ -42,7 +42,7 @@ class ExternalSourceScheduler:
         self._stop = threading.Event()
         self._cycle = threading.Event()
         self._thread: threading.Thread | None = None
-        self._in_flight: set[int] = set()
+        self._in_flight: set[str] = set()
 
     def start(self) -> None:
         if self._thread is not None:
@@ -69,32 +69,26 @@ class ExternalSourceScheduler:
                 self.scan_all()
             self._cycle.wait(self._interval)
 
-    def scan_all(self, *, now: datetime | None = None) -> dict[int, dict[str, int]]:
+    def scan_all(self, *, now: datetime | None = None) -> dict[str, dict[str, int]]:
         current = now or _utc_naive()
         with self._session_factory() as session:
             sources = list(
-                session.scalars(
-                    select(ExternalSource).where(
-                        ExternalSource.enabled.is_(True)
-                    )
-                )
+                session.scalars(select(ExternalSource).where(ExternalSource.enabled.is_(True)))
             )
             due = [
                 source.id
                 for source in sources
                 if source.last_scanned_at is None
-                or source.last_scanned_at
-                + timedelta(seconds=effective_interval(source))
-                <= current
+                or source.last_scanned_at + timedelta(seconds=effective_interval(source)) <= current
             ]
-        results: dict[int, dict[str, int]] = {}
+        results: dict[str, dict[str, int]] = {}
         for source_id in due:
             stats = self._scan_one(source_id)
             if stats is not None:
                 results[source_id] = stats
         return results
 
-    def _scan_one(self, source_id: int) -> dict[str, int] | None:
+    def _scan_one(self, source_id: str) -> dict[str, int] | None:
         if source_id in self._in_flight:
             return None
         self._in_flight.add(source_id)
@@ -113,6 +107,7 @@ class ExternalSourceScheduler:
                         if dead is not None:
                             dead.last_scan_error = str(error)[:500]
                             dead.last_scanned_at = utcnow()
+                            dead.consecutive_failures = int(dead.consecutive_failures or 0) + 1
                             session.commit()
                     self._publish(
                         WsTopic.externalsource(source_id),

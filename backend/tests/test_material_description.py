@@ -3,15 +3,15 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 
-def make_course(client: TestClient, title: str = "Descriptions") -> int:
+def make_course(client: TestClient, title: str = "Descriptions") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def create_text(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     *,
     description: str | None = None,
 ) -> dict[str, Any]:
@@ -51,9 +51,7 @@ def test_patch_sets_and_clears_description(client: TestClient) -> None:
     assert set_result.status_code == 200
     assert set_result.json()["description"] == "Chapter 3 recap"
 
-    cleared = client.patch(
-        f"/api/v1/materials/{material_id}", json={"description": None}
-    )
+    cleared = client.patch(f"/api/v1/materials/{material_id}", json={"description": None})
     assert cleared.status_code == 200
     assert cleared.json()["description"] is None
 
@@ -62,9 +60,7 @@ def test_patch_description_normalizes_whitespace(client: TestClient) -> None:
     course_id = make_course(client)
     material_id = create_text(client, course_id)["material"]["id"]
 
-    blank = client.patch(
-        f"/api/v1/materials/{material_id}", json={"description": "   "}
-    )
+    blank = client.patch(f"/api/v1/materials/{material_id}", json={"description": "   "})
     assert blank.status_code == 200
     assert blank.json()["description"] is None
 
@@ -94,7 +90,5 @@ def test_patch_description_rejects_too_long(client: TestClient) -> None:
     course_id = make_course(client)
     material_id = create_text(client, course_id)["material"]["id"]
 
-    long = client.patch(
-        f"/api/v1/materials/{material_id}", json={"description": "x" * 2001}
-    )
+    long = client.patch(f"/api/v1/materials/{material_id}", json={"description": "x" * 2001})
     assert long.status_code == 422

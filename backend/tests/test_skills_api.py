@@ -16,7 +16,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -28,10 +28,10 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiet",
@@ -45,7 +45,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -54,7 +54,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-skills-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-skills-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),
@@ -103,17 +103,18 @@ def test_seed_refresh_updates_seed_name_and_description() -> None:
     app = client.app
     assert isinstance(app, FastAPI)
     with client:
-        renamed = dataclasses.replace(
-            seed, name="Renamed OCR", description="Renamed description."
-        )
-        with unittest.mock.patch.object(
-            services_skills,
-            "SEEDS",
-            [
-                renamed,
-                *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
-            ],
-        ), app.state.session_factory() as session:
+        renamed = dataclasses.replace(seed, name="Renamed OCR", description="Renamed description.")
+        with (
+            unittest.mock.patch.object(
+                services_skills,
+                "SEEDS",
+                [
+                    renamed,
+                    *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
+                ],
+            ),
+            app.state.session_factory() as session,
+        ):
             seed_skills(session)
             session.commit()
 
@@ -126,7 +127,8 @@ def test_resolution_chain_and_course_scoping() -> None:
     client = make_client()
     with client:
         math_type = next(
-            entry for entry in client.get("/api/v1/skills/course-types").json()
+            entry
+            for entry in client.get("/api/v1/skills/course-types").json()
             if entry["key"] == "math"
         )
         course = client.post(
@@ -242,8 +244,8 @@ def test_template_validation_and_course_type_creation() -> None:
         assert dup.status_code == 422
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_skill_version_logged_on_pipeline_calls() -> None:
@@ -254,15 +256,11 @@ def test_skill_version_logged_on_pipeline_calls() -> None:
             json={
                 "title": "Squares",
                 "course_id": make_course(client),
-                "steps": [
-                    {"prompt_md": "Compute $x \\cdot x$.", "expected": {"value": "x^2"}}
-                ],
+                "steps": [{"prompt_md": "Compute $x \\cdot x$.", "expected": {"value": "x^2"}}],
             },
         ).json()
         session_id = client.post(f"/api/v1/exercises/{exercise['id']}/sessions").json()["id"]
-        client.post(
-            f"/api/v1/exercises/sessions/{session_id}/hint", json={"level": 1}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session_id}/hint", json={"level": 1})
 
         app = client.app
         assert isinstance(app, FastAPI)
@@ -309,14 +307,17 @@ def test_seed_refresh_updates_unmodified_system_v1_only() -> None:
 
         mutated = original.replace("ladder", "escalator")
         assert mutated != original
-        with unittest.mock.patch.object(
-            services_skills,
-            "SEEDS",
-            [
-                dataclasses.replace(seed, system_prompt=mutated),
-                *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
-            ],
-        ), app.state.session_factory() as session:
+        with (
+            unittest.mock.patch.object(
+                services_skills,
+                "SEEDS",
+                [
+                    dataclasses.replace(seed, system_prompt=mutated),
+                    *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
+                ],
+            ),
+            app.state.session_factory() as session,
+        ):
             seed_skills(session)
             session.commit()
 

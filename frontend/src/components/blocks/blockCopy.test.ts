@@ -105,10 +105,10 @@ describe('blockActionItems', () => {
 
   test('non-copyable blocks yield no items', () => {
     const blocks: Block[] = [
-      { type: 'mention', ref: 'N1', kind: 'note', id: 1, title: 'Note' },
+      { type: 'mention', ref: 'N1', kind: 'note', id: '1', title: 'Note' },
       { type: 'image' },
-      { type: 'image_ref', image_id: 2 },
-      { type: 'drawing', drawing_id: 3 },
+      { type: 'image_ref', image_id: '2' },
+      { type: 'drawing', drawing_id: '3' },
       { type: 'widget', widget: 'numberline', id: 'w', props: {} },
       { type: 'mystery' },
     ]

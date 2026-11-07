@@ -18,13 +18,13 @@ export function NoteComposeDialog({
   onClose,
   onSuccess,
 }: {
-  courseId: number
-  nodeId: number
-  rootNodeId?: number
+  courseId: string
+  nodeId: string
+  rootNodeId?: string
   initialFocus?: string
   initialHint?: string
   onClose: () => void
-  onSuccess: (noteId: number) => void
+  onSuccess: (noteId: string) => void
 }) {
   useCloseFloatings()
   const { t } = useTranslation()

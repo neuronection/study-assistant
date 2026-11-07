@@ -20,16 +20,16 @@ MAX_WEAK_CELLS = 3
 
 
 class StudyPlanRowOut(BaseModel):
-    item_id: int
+    item_id: str
     title: str
-    course_id: int
+    course_id: str
     course_title: str
     due_date: str
     overdue: bool
 
 
 class StudyWeakCellOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     concept: str
     skill: str
@@ -70,9 +70,9 @@ def _review_course_titles(session: Session, profile_id: str) -> list[str]:
 def _weak_cells(
     session: Session,
     profile_id: str,
-    course: int | None,
+    course: str | None,
 ) -> list[StudyWeakCellOut]:
-    candidates: list[int] = []
+    candidates: list[str] = []
     if course is not None:
         candidates.append(course)
     exam_entries = sorted(
@@ -83,30 +83,26 @@ def _weak_cells(
         ),
     )
     for entry in exam_entries:
-        candidates.append(entry["course_id"])
-    for (course_id,) in session.execute(select(Course.id).order_by(Course.id)).all():
-        candidates.append(course_id)
+        candidates.append(str(entry["course_id"]))
+    for (course_id,) in session.execute(
+        select(Course.id).order_by(Course.created_at, Course.id)
+    ).all():
+        candidates.append(str(course_id))
 
-    seen: set[int] = set()
-    ordered: list[int] = []
+    seen: set[str] = set()
+    ordered: list[str] = []
     for course_id in candidates:
         if course_id not in seen:
             seen.add(course_id)
             ordered.append(course_id)
 
-    titles: dict[int, str] = {}
-    for course_id, title in session.execute(
-        select(Course.id, Course.title)
-    ).all():
+    titles: dict[str, str] = {}
+    for course_id, title in session.execute(select(Course.id, Course.title)).all():
         titles[course_id] = title
     cells: list[StudyWeakCellOut] = []
     for course_id in ordered:
         rows = metrics.answer_rows(session, profile_id, course_id)
-        matrix = [
-            cell
-            for cell in metrics.weakness_matrix(rows)
-            if cell["enough_data"]
-        ]
+        matrix = [cell for cell in metrics.weakness_matrix(rows) if cell["enough_data"]]
         matrix.sort(key=lambda cell: -cell["weakness_score"])
         for cell in matrix:
             cells.append(
@@ -127,7 +123,7 @@ def _weak_cells(
 
 @router.get("/next", response_model=StudyNextOut)
 def study_next(
-    course: int | None = Query(default=None),
+    course: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)

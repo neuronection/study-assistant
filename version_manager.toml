@@ -15,6 +15,14 @@ file = "frontend/package.json"
 type = "json"
 field = "version"
 
+# STATUS is the single source of truth for the current phase and version.
+# ADR-206: the header is auto-derived here so it can never go stale again.
+[[propagate]]
+name = "STATUS phase header"
+file = "docs/STATUS.md"
+type = "regex"
+pattern = '\*\*Current phase: [^\n]*\*\* \(v(?P<version>[^;)]+)'
+
 # CHANGELOG rides the release commit (docs and code change together).
 # The exported OpenAPI schema embeds the app version (info.version), so the
 # regenerated schema is staged with the release commit too (release flow:

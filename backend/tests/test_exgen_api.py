@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Any
 
 from fastapi import FastAPI
@@ -18,10 +19,10 @@ class ExgenGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="exgen-model",
@@ -35,7 +36,7 @@ class ExgenGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -49,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -81,7 +82,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-exgen-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-exgen-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ExgenGateway(responses),
@@ -91,16 +92,15 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
-def make_math_course(client: TestClient) -> int:
+def make_math_course(client: TestClient) -> str:
     types = {
-        entry["key"]: entry["id"]
-        for entry in client.get("/api/v1/skills/course-types").json()
+        entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
-    return int(
+    return str(
         client.post(
             "/api/v1/courses",
             json={"title": "Calculus I", "course_type_id": types.get("math")},
@@ -149,9 +149,7 @@ def test_generate_rejects_unparseable_after_repairs() -> None:
     )
     client = make_client([bad, bad, bad])
     with client:
-        created = client.post(
-            "/api/v1/exercises/generate", json={"course_id": make_course(client)}
-        )
+        created = client.post("/api/v1/exercises/generate", json={"course_id": make_course(client)})
         assert created.status_code == 422
         assert "does not parse" in created.json()["detail"]
         app = client.app
@@ -165,9 +163,7 @@ def test_generate_repair_loop_recovers() -> None:
     bad = exercise_json(steps=[{"prompt_md": "", "expected_kind": "math", "expected_value": "x"}])
     client = make_client([bad, exercise_json()])
     with client:
-        created = client.post(
-            "/api/v1/exercises/generate", json={"course_id": make_course(client)}
-        )
+        created = client.post("/api/v1/exercises/generate", json={"course_id": make_course(client)})
         assert created.status_code == 201, created.text
         app = client.app
         assert isinstance(app, FastAPI)
@@ -181,7 +177,7 @@ def test_generate_repair_loop_recovers() -> None:
         assert "problems" in repair_prompt
 
 
-def _create_manual_exercise(client: TestClient) -> int:
+def _create_manual_exercise(client: TestClient) -> str:
     created = client.post(
         "/api/v1/exercises",
         json={
@@ -194,7 +190,7 @@ def _create_manual_exercise(client: TestClient) -> int:
         },
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_get_single_exercise() -> None:
@@ -229,7 +225,7 @@ def test_similar_generates_isomorphic_variant() -> None:
         source_id = _create_manual_exercise(client)
         similar = client.post(f"/api/v1/exercises/{source_id}/similar")
         assert similar.status_code == 201, similar.text
-        new_id = int(similar.json()["id"])
+        new_id = str(similar.json()["id"])
         assert new_id != source_id
         app = client.app
         assert isinstance(app, FastAPI)
@@ -238,7 +234,7 @@ def test_similar_generates_isomorphic_variant() -> None:
 
             row = db.execute(
                 text("SELECT created_from FROM exercises WHERE id = :id"),
-                {"id": new_id},
+                {"id": uuid.UUID(new_id).hex},
             ).one()
         created_from = json.loads(row[0])
         assert created_from["source"] == "similar"
@@ -286,9 +282,7 @@ def test_drill_patterns_and_start() -> None:
     )
     with client:
         course_id = make_math_course(client)
-        patterns = client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={course_id}"
-        )
+        patterns = client.get(f"/api/v1/exercises/drills/patterns?course_id={course_id}")
         assert patterns.status_code == 200
         entries = {entry["pattern"]: entry for entry in patterns.json()}
         assert "sign_slip" in entries
@@ -336,9 +330,7 @@ def test_transcript_lists_hints_and_answers() -> None:
     with client:
         exercise_id = _create_manual_exercise(client)
         session = client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()
-        client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/answer", json={"response": "5x"}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session['id']}/answer", json={"response": "5x"})
         transcript = client.get(f"/api/v1/exercises/sessions/{session['id']}/transcript")
         assert transcript.status_code == 200
         entries = transcript.json()

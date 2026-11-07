@@ -1,53 +1,59 @@
 import json
+import re
 from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from conftest import uid
 from fastapi.testclient import TestClient
 
 from app.ai.gateway import LLMGateway, Message, ResolvedModel, TaskUnassigned
 from app.core.config import Settings
 from app.main import create_app
 
-OUTLINE_JSON = json.dumps(
-    {
-        "chapters": [
-            {
-                "title": "Limits",
-                "summary": "Foundation of calculus",
-                "sections": [
-                    {
-                        "title": "Limit intuition",
-                        "objectives": ["Explain limits informally"],
-                        "material_ids": [1, 2],
-                        "rationale": "Both cover introductory limits",
-                        "confidence": 0.9,
-                    },
-                    {
-                        "title": "Continuity",
-                        "objectives": [],
-                        "material_ids": [3],
-                        "rationale": "Continuity section",
-                        "confidence": 0.7,
-                    },
-                ],
-            },
-            {
-                "title": "Derivatives",
-                "summary": None,
-                "sections": [
-                    {
-                        "title": "The derivative",
-                        "objectives": ["Compute derivatives"],
-                        "material_ids": [999],
-                        "rationale": "bogus id gets dropped",
-                        "confidence": 2.0,
-                    }
-                ],
-            },
-        ]
-    }
-)
+
+def outline_json(ids: list[str]) -> str:
+    padded = [*ids, "", "", ""]
+    first, second, third = padded[0], padded[1], padded[2]
+    return json.dumps(
+        {
+            "chapters": [
+                {
+                    "title": "Limits",
+                    "summary": "Foundation of calculus",
+                    "sections": [
+                        {
+                            "title": "Limit intuition",
+                            "objectives": ["Explain limits informally"],
+                            "material_ids": [first, second],
+                            "rationale": "Both cover introductory limits",
+                            "confidence": 0.9,
+                        },
+                        {
+                            "title": "Continuity",
+                            "objectives": [],
+                            "material_ids": [third],
+                            "rationale": "Continuity section",
+                            "confidence": 0.7,
+                        },
+                    ],
+                },
+                {
+                    "title": "Derivatives",
+                    "summary": None,
+                    "sections": [
+                        {
+                            "title": "The derivative",
+                            "objectives": ["Compute derivatives"],
+                            "material_ids": ["999"],
+                            "rationale": "bogus id gets dropped",
+                            "confidence": 2.0,
+                        }
+                    ],
+                },
+            ]
+        }
+    )
 
 
 class FakeOutlineGateway(LLMGateway):
@@ -59,7 +65,7 @@ class FakeOutlineGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -68,8 +74,14 @@ class FakeOutlineGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
+        if self.response is None and self.error is None:
+            prompt = "\n".join(
+                str(message.content) for message in messages if isinstance(message.content, str)
+            )
+            ids = re.findall(r"- id=([0-9A-Za-z-]+):", prompt)
+            return outline_json(ids)
         if self.error is not None:
             raise self.error
         assert self.response is not None
@@ -78,18 +90,18 @@ class FakeOutlineGateway(LLMGateway):
 
 @pytest.fixture
 def course_client() -> Iterator[TestClient]:
-    gateway = FakeOutlineGateway(response=OUTLINE_JSON)
+    gateway = FakeOutlineGateway()
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-courses-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-courses-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(settings, gateway=gateway)
     with TestClient(app) as client:
         yield client
 
 
-def add_material(client: TestClient, filename: str, course_id: int) -> int:
+def add_material(client: TestClient, filename: str, course_id: str) -> str:
     body = f"calculus notes {filename} about limits and continuity".encode()
     upload = client.post(
         "/api/v1/materials",
@@ -97,7 +109,7 @@ def add_material(client: TestClient, filename: str, course_id: int) -> int:
         files={"file": (filename, body, "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id: int = upload.json()["material"]["id"]
+    material_id: str = upload.json()["material"]["id"]
     import time
 
     deadline = time.monotonic() + 5
@@ -121,9 +133,7 @@ def test_course_crud(course_client: TestClient) -> None:
     assert [course["title"] for course in listed] == ["Calculus I"]
     assert listed[0]["material_count"] == 0
 
-    renamed = course_client.patch(
-        f"/api/v1/courses/{course_id}", json={"title": "Calculus II"}
-    )
+    renamed = course_client.patch(f"/api/v1/courses/{course_id}", json={"title": "Calculus II"})
     assert renamed.json()["title"] == "Calculus II"
 
     empty_title = course_client.patch(f"/api/v1/courses/{course_id}", json={"title": "  "})
@@ -169,9 +179,9 @@ def test_outline_draft_validates_and_drops_unknown_ids(course_client: TestClient
     chapters = draft["chapters"]
     assert [chapter["title"] for chapter in chapters] == ["Limits", "Derivatives"]
     section = chapters[0]["sections"][0]
-    assert section["material_ids"] == [1, 2]
+    assert len(section["material_ids"]) == 2
     bogus = chapters[1]["sections"][0]
-    assert 999 not in bogus["material_ids"]
+    assert "999" not in bogus["material_ids"]
     assert bogus["confidence"] <= 1.0
 
 
@@ -220,9 +230,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     ).json()
 
     def children() -> list[dict[str, Any]]:
-        tree: list[dict[str, Any]] = course_client.get(
-            f"/api/v1/courses/{course_id}/tree"
-        ).json()
+        tree: list[dict[str, Any]] = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
         return list(tree[0]["children"])
 
     parent = root["id"]
@@ -266,9 +274,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     assert materials[0]["material_id"] == material_id
     assert materials[0]["auto_assigned"] is False
 
-    removed = course_client.delete(
-        f"/api/v1/nodes/{section['id']}/materials/{material_id}"
-    )
+    removed = course_client.delete(f"/api/v1/nodes/{section['id']}/materials/{material_id}")
     assert removed.status_code == 204
 
     course_client.patch(f"/api/v1/nodes/{section['id']}", json={"title": "Basics (renamed)"})
@@ -276,7 +282,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     chapter_one = next(c for c in tree[0]["children"] if c["id"] == chapter["id"])
     assert chapter_one["children"][0]["title"] == "Basics (renamed)"
 
-    deleted = course_client.delete(f"/api/v1/nodes/{chapter["id"]}")
+    deleted = course_client.delete(f"/api/v1/nodes/{chapter['id']}")
     trash_item = deleted.json()["deleted_item_id"]
     assert [entry["title"] for entry in children()] == ["Chapter 2", "L1"]
 
@@ -410,15 +416,15 @@ def test_course_materials_and_workspace_response_shapes(
     assert deleted.json() == {"status": "deleted", "course_id": course_id}
 
 
-def _folder(client: TestClient, name: str, course_id: int, parent_id: int | None = None) -> int:
+def _folder(client: TestClient, name: str, course_id: str, parent_id: str | None = None) -> str:
     created = client.post(
         "/api/v1/folders", json={"name": name, "course_id": course_id, "parent_id": parent_id}
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def _mirror(client: TestClient, node_id: int, folder_id: int) -> dict[str, Any]:
+def _mirror(client: TestClient, node_id: str, folder_id: str) -> dict[str, Any]:
     response = client.post(f"/api/v1/nodes/{node_id}/mirror-folder", json={"folder_id": folder_id})
     assert response.status_code == 201, response.text
     body: dict[str, Any] = response.json()
@@ -433,9 +439,12 @@ def test_mirror_folder_writes_tree_and_folder_links(course_client: TestClient) -
     _folder(course_client, "Week 2", course_id, pack)
     _folder(course_client, "inner", course_id, week1)
     material_id = add_material(course_client, "m.txt", course_id)
-    assert course_client.patch(
-        f"/api/v1/materials/{material_id}/move", json={"folder_id": week1}
-    ).status_code == 200
+    assert (
+        course_client.patch(
+            f"/api/v1/materials/{material_id}/move", json={"folder_id": week1}
+        ).status_code
+        == 200
+    )
 
     result = _mirror(course_client, root["id"], pack)
     assert result["created_nodes"] == 3
@@ -451,9 +460,7 @@ def test_mirror_folder_writes_tree_and_folder_links(course_client: TestClient) -
     workspace = course_client.get(f"/api/v1/nodes/{weeks[0]['id']}/workspace").json()
     assert material_id in workspace["folder_material_ids"]
     links = course_client.get(f"/api/v1/materials/{material_id}/links").json()
-    via_nodes = {
-        entry["node_id"] for entry in links if entry["via_folder"] is not None
-    }
+    via_nodes = {entry["node_id"] for entry in links if entry["via_folder"] is not None}
     assert weeks[0]["id"] in via_nodes
 
 
@@ -493,7 +500,7 @@ def test_mirror_reuses_existing_same_title_nodes(course_client: TestClient) -> N
     assert titles == ["chapter 1", "Section A"]
 
 
-def _node_chain(client: TestClient, course_id: int, root_id: int, levels: list[str]) -> int:
+def _node_chain(client: TestClient, course_id: str, root_id: str, levels: list[str]) -> str:
     parent = root_id
     for title in levels:
         node = client.post(
@@ -501,7 +508,7 @@ def _node_chain(client: TestClient, course_id: int, root_id: int, levels: list[s
             json={"course_id": course_id, "parent_id": parent, "title": title},
         )
         assert node.status_code == 201, node.text
-        parent = int(node.json()["id"])
+        parent = str(node.json()["id"])
     return parent
 
 
@@ -542,9 +549,12 @@ def test_unassigned_endpoint_semantics(course_client: TestClient) -> None:
     loose = add_material(course_client, "loose.txt", course_id)
     placed = add_material(course_client, "placed.txt", course_id)
     other = add_material(course_client, "other.txt", other_id)
-    assert course_client.post(
-        f"/api/v1/nodes/{root['id']}/materials", json={"material_id": placed}
-    ).status_code == 201
+    assert (
+        course_client.post(
+            f"/api/v1/nodes/{root['id']}/materials", json={"material_id": placed}
+        ).status_code
+        == 201
+    )
     folder = _folder(course_client, "Pack", course_id)
     in_folder = add_material(course_client, "infolder.txt", course_id)
     client_move = course_client.patch(
@@ -579,12 +589,12 @@ def test_unassigned_endpoint_excludes_not_ready(course_client: TestClient) -> No
         params={"course_id": course_id},
         files={"file": ("big.mp3", b"x" * 200, "audio/mpeg")},
     )
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
 
     def is_ready() -> bool:
-        status: str = course_client.get(f"/api/v1/materials/{material_id}").json()[
-            "material"
-        ]["status"]
+        status: str = course_client.get(f"/api/v1/materials/{material_id}").json()["material"][
+            "status"
+        ]
         return status == "ready"
 
     deadline = __import__("time").monotonic() + 20
@@ -594,7 +604,7 @@ def test_unassigned_endpoint_excludes_not_ready(course_client: TestClient) -> No
     assert body["count"] >= 1
 
 
-def _index_card_ready(client: TestClient, filename: str, course_id: int) -> int:
+def _index_card_ready(client: TestClient, filename: str, course_id: str) -> str:
     return add_material(client, filename, course_id)
 
 
@@ -649,14 +659,17 @@ def test_placement_suggestions_empty_and_foreign(course_client: TestClient) -> N
 
 def test_placement_suggestions_caps_inputs(course_client: TestClient) -> None:
     course_id = course_client.post("/api/v1/courses", json={"title": "S-C"}).json()["id"]
-    assert course_client.post(
-        f"/api/v1/courses/{course_id}/placement-suggestions",
-        json={"material_ids": list(range(1, 41))},
-    ).status_code == 200
     assert (
         course_client.post(
             f"/api/v1/courses/{course_id}/placement-suggestions",
-            json={"material_ids": list(range(1, 42))},
+            json={"material_ids": [uid(1)] * 40},
+        ).status_code
+        == 200
+    )
+    assert (
+        course_client.post(
+            f"/api/v1/courses/{course_id}/placement-suggestions",
+            json={"material_ids": [uid(1)] * 41},
         ).status_code
         == 422
     )

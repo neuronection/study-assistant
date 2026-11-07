@@ -8,11 +8,7 @@ export type DiscoverySuggestionList = components['schemas']['SuggestionListOut']
 export type DiscoveryKinds = components['schemas']['DiscoverySitePreset']
 export type DiscoveryPrefs = components['schemas']['DiscoveryPrefsOut']
 
-export interface DiscoverySearchRequest {
-  query: string
-  providers?: string[] | null
-  cap?: number
-}
+export type DiscoverySearchRequest = components['schemas']['DiscoverySearchIn']
 
 export async function searchDiscovery(
   body: DiscoverySearchRequest
@@ -26,8 +22,8 @@ export async function searchDiscovery(
 }
 
 export async function listDiscoverySuggestions(params: {
-  course_id?: number | null
-  node_id?: number | null
+  course_id?: string | null
+  node_id?: string | null
   status?: string | null
   kind?: string | null
   limit?: number
@@ -52,8 +48,8 @@ export async function saveDiscoverySuggestion(body: {
   snippet?: string | null
   kind?: string | null
   meta?: Record<string, unknown> | null
-  course_id?: number | null
-  node_id?: number | null
+  course_id?: string | null
+  node_id?: string | null
 }): Promise<{ suggestion: DiscoverySuggestion; created: boolean }> {
   const response = await apiFetch('/api/v1/discovery/suggestions', {
     method: 'POST',
@@ -64,8 +60,8 @@ export async function saveDiscoverySuggestion(body: {
 }
 
 export async function patchDiscoverySuggestion(
-  id: number,
-  body: { status?: string | null; material_id?: number | null; node_id?: number | null }
+  id: string,
+  body: { status?: string | null; material_id?: string | null; node_id?: string | null }
 ): Promise<DiscoverySuggestion> {
   const response = await apiFetch(`/api/v1/discovery/suggestions/${id}`, {
     method: 'PATCH',
@@ -75,7 +71,7 @@ export async function patchDiscoverySuggestion(
   return json<DiscoverySuggestion>(response)
 }
 
-export async function deleteDiscoverySuggestion(id: number): Promise<void> {
+export async function deleteDiscoverySuggestion(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/discovery/suggestions/${id}`, {
     method: 'DELETE',
   })

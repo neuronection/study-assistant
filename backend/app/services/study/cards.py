@@ -4,11 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...domain.models import Exercise, ExerciseStep
-from .exercise_kinds import (
-    LEGACY_CARD_KIND_MAP,
-    is_card_kind,
-    legacy_kind_from_card,
-)
+from .exercise_kinds import is_card_kind
 
 
 def is_card(exercise: Exercise) -> bool:
@@ -23,7 +19,7 @@ def card_parts(exercise: Exercise) -> dict[str, Any] | None:
         return {
             "front": step.prompt,
             "back": expected.get("back", []),
-            "kind": legacy_kind_from_card(exercise.kind),
+            "kind": exercise.kind,
         }
     return None
 
@@ -46,32 +42,33 @@ def create_card_exercise(
     session: Session,
     *,
     profile_id: str,
-    course_id: int,
-    node_id: int | None,
+    course_id: str,
+    node_id: str | None,
     kind: str,
     front: list[dict[str, Any]],
     back: list[dict[str, Any]],
     source: str,
     source_ref: str | None = None,
     deck_ref: str | None = None,
+    external_uid: str | None = None,
 ) -> Exercise:
-    exercise_kind = LEGACY_CARD_KIND_MAP.get(kind)
-    if exercise_kind is None:
+    if not is_card_kind(kind):
         raise ValueError(f"unknown card kind: {kind}")
     exercise = Exercise(
         profile_id=profile_id,
         course_id=course_id,
         node_id=node_id,
         title=front_title(front),
-        kind=exercise_kind,
+        kind=kind,
         deck_ref=deck_ref,
+        external_uid=external_uid,
         created_from={"source": source, "source_ref": source_ref},
     )
     exercise.steps = [
         ExerciseStep(
             order_idx=0,
             prompt=front,
-            expected={"kind": exercise_kind, "back": back},
+            expected={"kind": kind, "back": back},
         )
     ]
     session.add(exercise)
@@ -79,7 +76,7 @@ def create_card_exercise(
     return exercise
 
 
-def load_card_steps(session: Session, exercise_ids: list[int]) -> dict[int, dict[str, Any]]:
+def load_card_steps(session: Session, exercise_ids: list[str]) -> dict[str, dict[str, Any]]:
     if not exercise_ids:
         return {}
     rows = session.execute(
@@ -87,7 +84,7 @@ def load_card_steps(session: Session, exercise_ids: list[int]) -> dict[int, dict
         .where(ExerciseStep.order_idx == 0, ExerciseStep.exercise_id.in_(exercise_ids))
         .order_by(ExerciseStep.order_idx)
     ).scalars()
-    result: dict[int, dict[str, Any]] = {}
+    result: dict[str, dict[str, Any]] = {}
     for step in rows:
         if step.exercise_id not in result:
             expected = step.expected or {}

@@ -118,6 +118,14 @@ cards; entering one scopes everything to it.
   old ones); the version meta shows which engine ran (`pymupdf`, `hybrid`,
   `ocr`, or a `:forced`/`:degraded` variant — degraded = no vision model was
   connected, so weak pages kept their (imperfect) text).
+- **Whiteboard photo enhancement** — PDFs and images get an **Enhance photo
+  quality (auto)** toggle in the re-extract dialog. Auto is deterministic and
+  only engages when the quality score sees a problem: it converts to
+  grayscale, boosts faint contrast, straightens skew and trims dark borders
+  before OCR, then re-encodes within the usual long-edge cap. Turn it off to
+  send the original bytes unchanged. The measured before/after deltas for the
+  synthetic skew and low-contrast fixtures live in the OCR eval manifest
+  (`backend/tests/evals/ocr_thresholds.json`).
 - **Anything else is refused at the door** — uploading an unsupported type
   (`.doc`, `.rtf`, `.pages`, …) shows an instant "unsupported file type"
   message instead of creating a broken file. Legacy binary formats are not
@@ -299,7 +307,9 @@ even when the folder has no materials yet):
 - **New folder**, **New text file** / **New Markdown file** (opens the rich
   markdown editor — the same one notes use, with live math and diagram rendering;
   the file goes through the normal ingest pipeline and is immediately searchable),
-  **Upload files…**, **Add linked folder…** (symlink to a real directory, see below).
+  **Upload files…**, **Add linked folder…** (symlink to a real directory, see below),
+  **Import bibliography…** (a `.bib`/`.ris` file becomes link materials with
+  citation metadata, see below).
 - At the "All courses" root (right-click): **New course**.
 - Inside a linked folder (right-click): **Refresh** only (the app never writes to a
   link's target).
@@ -347,6 +357,28 @@ native-style picker with the **same breadcrumb bar as the Library** (`/ ▸ home
 you ▸ lectures` — click any segment to jump there) plus an Up button, a
 double-click-to-open directory list, and a manual path box with Go. Press
 **Choose** to link the current directory.
+
+## Bibliographies and citations
+
+**Import bibliography…** (the **+** menu inside a course) accepts a BibTeX
+(`.bib`) or RIS (`.ris`) file. Every entry becomes a **link material** with its
+citation metadata — title, authors, year, DOI, container and kind — filled in
+and visible on the material page. Duplicates are matched by **DOI first**, then
+by normalized URL, so re-importing the same file adds nothing and an updated
+entry refreshes the existing material instead of creating a second one.
+Malformed files are rejected whole with the parser's reason; nothing is
+imported partially.
+
+Select one or more materials in the library and click **Export citations
+(.bib)** in the footer to download the selection as a BibTeX file — the same
+metadata, round-tripping back in. Only materials with citation metadata (or at
+least a title) are exported; the generated keys are stable for a given
+selection.
+
+Notes can cite a material with `[[cite:<material-id>]]`; rendered note content
+shows a citation chip in the fixed `Author (Year) — Title` style and clicking
+it opens the material. There is no CSL/citation-style engine — one
+deterministic style this round.
 
 ## Search
 

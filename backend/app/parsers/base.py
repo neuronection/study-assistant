@@ -1,4 +1,9 @@
-"""URL parser registry: deterministic fetch+convert, never user code (ADR-165)."""
+"""URL parser registry: deterministic fetch+convert, never user code (ADR-165).
+
+The registry belongs to the content pipeline (``pipelines/url_import`` and
+the materials API import it); extension adapters (the MCP parse contract)
+register into it at composition time from the extension subsystem home.
+"""
 
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -30,6 +35,14 @@ class URLParser(Protocol):
     def fetch(self, url: str) -> ParsedDocument: ...
 
 
+class ContentParser(Protocol):
+    id: str
+
+    def matches(self, filename: str, text: str) -> bool: ...
+
+    def parse(self, text: str) -> list[Any]: ...
+
+
 DOWNLOADABLE_SUFFIXES: dict[str, str] = {
     **KIND_BY_SUFFIX,
     **CONVERTIBLE_SUFFIXES,
@@ -49,7 +62,7 @@ def build_registry(
 
     registry: list[URLParser] = []
     if session is not None and profile_id is not None:
-        from .mcp_parse import build_mcp_parsers
+        from ..extensions.runtime.mcp_parse import build_mcp_parsers
 
         registry.extend(build_mcp_parsers(session, profile_id))
     registry.extend(
@@ -65,5 +78,20 @@ def build_registry(
 def resolve_parser(registry: list[URLParser], url: str) -> URLParser | None:
     for parser in registry:
         if parser.matches(url):
+            return parser
+    return None
+
+
+def build_content_registry() -> list[ContentParser]:
+    from .bibliography import BibliographyParser
+
+    return [BibliographyParser()]
+
+
+def resolve_content_parser(
+    registry: list[ContentParser], filename: str, text: str
+) -> ContentParser | None:
+    for parser in registry:
+        if parser.matches(filename, text):
             return parser
     return None

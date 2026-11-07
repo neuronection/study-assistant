@@ -52,19 +52,17 @@ class AnswerRow:
     correct: bool
     partial_credit: float
     concept: str
-    concept_id: int | None
+    concept_id: str | None
     skill: str
     time_ms: int | None
     expected_time_sec: int | None
     error_tags: list[str]
     response: dict[str, Any] | None
-    question_id: int
+    question_id: str
     created_at: datetime
 
 
-def answer_rows(
-    session: Session, profile_id: str, course_id: int | None = None
-) -> list[AnswerRow]:
+def answer_rows(session: Session, profile_id: str, course_id: str | None = None) -> list[AnswerRow]:
     statement = (
         select(Answer, Question, Activity)
         .join(Question, Answer.question_id == Question.id)
@@ -78,10 +76,10 @@ def answer_rows(
         statement = statement.join(Course, Activity.course_id == Course.id).where(
             Course.origin != CourseOrigin.SCRATCH.value
         )
-    rows = session.execute(statement.order_by(Answer.id)).all()
-    concept_ids_by_course: dict[int, dict[str, int]] = {}
+    rows = session.execute(statement.order_by(Answer.created_at, Answer.id)).all()
+    concept_ids_by_course: dict[str, dict[str, str]] = {}
 
-    def concept_id_for(course_key: int, name: str) -> int | None:
+    def concept_id_for(course_key: str, name: str) -> str | None:
         if course_key not in concept_ids_by_course:
             concept_ids_by_course[course_key] = {
                 concept.name: concept.id
@@ -96,9 +94,7 @@ def answer_rows(
         tags = question.tags or []
         concept = str(tags[0] if tags else "untagged")
         concept_id = (
-            concept_id_for(activity.course_id, concept)
-            if activity.course_id is not None
-            else None
+            concept_id_for(activity.course_id, concept) if activity.course_id is not None else None
         )
         result.append(
             AnswerRow(
@@ -157,9 +153,7 @@ def _aware(value: datetime) -> datetime:
 
 def _weakness(accuracy: float, n: int, last_seen: datetime) -> float:
     volume = min(1.0, n / 10.0)
-    age_days = (
-        (utcnow() - _aware(last_seen)).total_seconds() / 86400.0 if last_seen else 0.0
-    )
+    age_days = (utcnow() - _aware(last_seen)).total_seconds() / 86400.0 if last_seen else 0.0
     recency = min(1.0, age_days / 14.0)
     return (
         WEAKNESS_WEIGHTS["accuracy"] * (1.0 - accuracy) * volume
@@ -169,7 +163,7 @@ def _weakness(accuracy: float, n: int, last_seen: datetime) -> float:
 
 
 def error_profile(
-    session: Session, profile_id: str, course_id: int | None = None
+    session: Session, profile_id: str, course_id: str | None = None
 ) -> list[dict[str, Any]]:
     now = utcnow()
     week_ago = now - timedelta(days=7)
@@ -182,7 +176,7 @@ def error_profile(
     )
     if course_id is not None:
         statement = statement.where(Activity.course_id == course_id)
-    rows = session.execute(statement.order_by(Answer.id)).all()
+    rows = session.execute(statement.order_by(Answer.created_at, Answer.id)).all()
     totals: dict[str, int] = {}
     recent: dict[str, int] = {}
     previous: dict[str, int] = {}
@@ -259,16 +253,76 @@ def _quadrant(time_ratio: float, accuracy: float) -> SpeedQuadrant:
     return SpeedQuadrant.STRUGGLING
 
 
-def item_analysis(session: Session, profile_id: str) -> list[dict[str, Any]]:
-    rows = session.execute(
+def _point_biserial(pairs: list[tuple[float, float]]) -> float | None:
+    if len(pairs) < 3:
+        return None
+    mean_x = sum(x for x, _ in pairs) / len(pairs)
+    mean_y = sum(y for _, y in pairs) / len(pairs)
+    covariance = sum((x - mean_x) * (y - mean_y) for x, y in pairs)
+    variance_x = sum((x - mean_x) ** 2 for x, _ in pairs)
+    variance_y = sum((y - mean_y) ** 2 for _, y in pairs)
+    if variance_x <= 0 or variance_y <= 0:
+        return None
+    return covariance / math.sqrt(variance_x * variance_y)
+
+
+def _distractor_efficiency(
+    question: Question, entries: list[tuple[Answer, Question]]
+) -> float | None:
+    if question.type not in ("single", "multi") or not question.options:
+        return None
+    answer = question.answer or {}
+    if question.type == "single":
+        correct = {int(answer.get("index", -1))}
+    else:
+        correct = {int(index) for index in answer.get("indices", []) if str(index).isdigit()}
+    distractors = {index for index in range(len(question.options)) if index not in correct}
+    if not distractors:
+        return None
+    selected: set[int] = set()
+    for response, _question in entries:
+        value = (response.response or {}).get("value")
+        if question.type == "single" and isinstance(value, int):
+            selected.add(value)
+        elif question.type == "multi" and isinstance(value, list):
+            selected.update(int(choice) for choice in value if isinstance(choice, int))
+    return round(len(selected & distractors) / len(distractors), 3)
+
+
+def item_analysis(
+    session: Session, profile_id: str, course_id: str | None = None
+) -> list[dict[str, Any]]:
+    statement = (
         select(Answer, Question)
         .join(Question, Answer.question_id == Question.id)
         .join(Attempt, Answer.attempt_id == Attempt.id)
         .join(Activity, Attempt.activity_id == Activity.id)
         .where(Activity.profile_id == profile_id)
-        .order_by(Answer.id)
-    ).all()
-    grouped: dict[int, list[tuple[Answer, Question]]] = {}
+    )
+    if course_id is not None:
+        statement = statement.where(Activity.course_id == course_id)
+    rows = session.execute(statement.order_by(Answer.created_at, Answer.id)).all()
+    attempt_statement = (
+        select(Attempt.id, Attempt.score)
+        .join(Activity, Attempt.activity_id == Activity.id)
+        .where(Activity.profile_id == profile_id)
+    )
+    if course_id is not None:
+        attempt_statement = attempt_statement.where(Activity.course_id == course_id)
+    attempt_scores = {
+        attempt_id: score
+        for attempt_id, score in session.execute(attempt_statement).all()
+        if score is not None
+    }
+    item_stats = {
+        stat.question_id: stat
+        for stat in session.scalars(
+            select(ItemStat).where(
+                ItemStat.question_id.in_([question.id for _answer, question in rows])
+            )
+        )
+    }
+    grouped: dict[str, list[tuple[Answer, Question]]] = {}
     for answer, question in rows:
         grouped.setdefault(question.id, []).append((answer, question))
     stats: list[dict[str, Any]] = []
@@ -276,30 +330,50 @@ def item_analysis(session: Session, profile_id: str) -> list[dict[str, Any]]:
         n = len(entries)
         p_correct = sum(1 for a, _q in entries if a.correct) / n
         times = [a.time_ms for a, _q in entries if a.time_ms]
-        expected = entries[0][1].expected_time_sec
+        question = entries[0][1]
+        expected = question.expected_time_sec
         distractors: dict[str, int] = {}
-        for answer, question in entries:
+        for answer, entry_question in entries:
             value = (answer.response or {}).get("value")
-            if question.type in ("single", "multi") and isinstance(value, (int, list)):
+            if entry_question.type in ("single", "multi") and isinstance(value, (int, list)):
                 choices = value if isinstance(value, list) else [value]
                 for choice in choices:
                     key = str(choice)
                     distractors[key] = distractors.get(key, 0) + 1
         avg_time = sum(times) / len(times) if times else None
         ratio = avg_time / (expected * 1000) if avg_time and expected else None
+        discrimination = _point_biserial(
+            [
+                (1.0 if answer.correct else 0.0, attempt_scores[answer.attempt_id])
+                for answer, _entry_question in entries
+                if answer.attempt_id in attempt_scores
+            ]
+        )
+        stat = item_stats.get(question_id)
+        elo_outlier = stat is not None and is_elo_outlier(
+            stat.rating, stat.rating_count, question.difficulty
+        )
         flag = ItemFlag.OK
         if n >= ITEM_FLAG_MIN_N and not 0.1 <= p_correct <= 0.95:
             flag = ItemFlag.REVIEW
+        if elo_outlier:
+            flag = ItemFlag.ELO_OUTLIER
         stats.append(
             {
                 "question_id": question_id,
+                "activity_id": question.activity_id,
                 "n_attempts": n,
                 "p_correct": round(p_correct, 4),
+                "discrimination": (
+                    round(discrimination, 3) if discrimination is not None else None
+                ),
+                "distractor_efficiency": _distractor_efficiency(question, entries),
                 "avg_time_ms": round(avg_time) if avg_time else None,
                 "avg_time_ratio": round(ratio, 3) if ratio else None,
                 "distractor_selection": distractors or None,
                 "flag": flag,
-                "stem_excerpt": _stem_excerpt(entries[0][1]),
+                "elo_outlier": elo_outlier,
+                "stem_excerpt": _stem_excerpt(question),
             }
         )
     return stats
@@ -315,28 +389,42 @@ def _day_key(moment: datetime) -> str:
     return moment.date().isoformat()
 
 
-def daily_history(session: Session, profile_id: str) -> list[dict[str, Any]]:
-    rows = session.execute(
+def daily_history(
+    session: Session, profile_id: str, course_id: str | None = None
+) -> list[dict[str, Any]]:
+    answer_statement = (
         select(Answer.time_ms, Answer.correct, Answer.created_at)
         .join(Attempt, Answer.attempt_id == Attempt.id)
         .join(Activity, Attempt.activity_id == Activity.id)
         .where(Activity.profile_id == profile_id)
-        .order_by(Answer.id)
-    ).all()
-    cards = session.execute(
+    )
+    if course_id is not None:
+        answer_statement = answer_statement.where(Activity.course_id == course_id)
+    rows = session.execute(answer_statement.order_by(Answer.created_at, Answer.id)).all()
+    card_statement = (
         select(ReviewLog.reviewed_at)
         .join(Exercise, ReviewLog.card_id == Exercise.id)
         .where(Exercise.profile_id == profile_id, Exercise.kind.like("card_%"))
-    ).all()
-    quizme = session.execute(
-        select(QuizmeAnswer.correct, QuizmeAnswer.created_at)
-        .where(QuizmeAnswer.profile_id == profile_id)
-        .order_by(QuizmeAnswer.id)
-    ).all()
+    )
+    if course_id is not None:
+        card_statement = card_statement.where(Exercise.course_id == course_id)
+    cards = session.execute(card_statement).all()
+    quizme = (
+        session.execute(
+            select(QuizmeAnswer.correct, QuizmeAnswer.created_at)
+            .where(QuizmeAnswer.profile_id == profile_id)
+            .order_by(QuizmeAnswer.created_at, QuizmeAnswer.id)
+        ).all()
+        if course_id is None
+        else []
+    )
+    study_statement = select(StudySession.started_at, StudySession.duration_sec).where(
+        StudySession.profile_id == profile_id
+    )
+    if course_id is not None:
+        study_statement = study_statement.where(StudySession.course_id == course_id)
     study = session.execute(
-        select(StudySession.started_at, StudySession.duration_sec)
-        .where(StudySession.profile_id == profile_id)
-        .order_by(StudySession.id)
+        study_statement.order_by(StudySession.started_at, StudySession.id)
     ).all()
     days: dict[str, dict[str, Any]] = {}
     for time_ms, correct, created_at in rows:
@@ -439,9 +527,7 @@ def streak(history: list[dict[str, Any]]) -> int:
     return current
 
 
-def due_cards_count(
-    session: Session, profile_id: str, course_id: int | None = None
-) -> int:
+def due_cards_count(session: Session, profile_id: str, course_id: str | None = None) -> int:
     now = utcnow()
     due_statement = (
         select(FsrsState.card_id)
@@ -463,9 +549,7 @@ def due_cards_count(
     )
     if course_id is not None:
         due_statement = due_statement.where(Exercise.course_id == course_id)
-        unscheduled_statement = unscheduled_statement.where(
-            Exercise.course_id == course_id
-        )
+        unscheduled_statement = unscheduled_statement.where(Exercise.course_id == course_id)
     else:
         due_statement = due_statement.join(Course, Exercise.course_id == Course.id).where(
             Course.origin != CourseOrigin.SCRATCH.value
@@ -529,7 +613,7 @@ TREND_SCORES = {"improving": 1.0, "flat": 0.6, "declining": 0.2}
 def course_readiness(
     session: Session,
     profile_id: str,
-    course_id: int,
+    course_id: str,
     *,
     total_nodes: int,
     engaged_nodes: int,
@@ -544,8 +628,7 @@ def course_readiness(
     coverage = 1.0 if total_nodes == 0 else engaged_nodes / max(1, total_nodes)
     cells = weakness_matrix(rows)
     weakest = [
-        str(cell["concept"])
-        for cell in sorted(cells, key=lambda c: float(c["accuracy"]))[:3]
+        str(cell["concept"]) for cell in sorted(cells, key=lambda c: float(c["accuracy"]))[:3]
     ]
     if n < MIN_ANSWERS_FOR_READINESS:
         return {
@@ -639,11 +722,7 @@ def exam_status(session: Session, profile_id: str) -> list[dict[str, Any]]:
         engaged_count = sum(1 for entry in inner if engaged(entry))
         remaining = total - engaged_count
         behind = next(
-            (
-                {"id": entry["id"], "title": entry["title"]}
-                for entry in inner
-                if not engaged(entry)
-            ),
+            ({"id": entry["id"], "title": entry["title"]} for entry in inner if not engaged(entry)),
             None,
         )
         pace = round(remaining / days_left, 1) if days_left > 0 else None
@@ -695,15 +774,13 @@ def overview(session: Session, profile_id: str) -> dict[str, Any]:
         "total_xp": total_xp,
         "level": level,
         "due_cards": due_cards_count(session, profile_id),
-        "study_seconds_week": sum(
-            entry["study_seconds"] for entry in history[-7:]
-        ),
+        "study_seconds_week": sum(entry["study_seconds"] for entry in history[-7:]),
         "history": history[-90:],
     }
 
 
 def recommendations(
-    session: Session, profile_id: str, course_id: int | None = None
+    session: Session, profile_id: str, course_id: str | None = None
 ) -> list[dict[str, Any]]:
     rows = answer_rows(session, profile_id, course_id)
     matrix = weakness_matrix(rows)
@@ -794,9 +871,7 @@ def materialize(session: Session, profile_id: str) -> None:
     rows = answer_rows(session, profile_id)
     matrix = weakness_matrix(rows)
     matrix = matrix + teach_back_cells(session, profile_id)
-    session.query(ConceptSkillStat).filter(
-        ConceptSkillStat.profile_id == profile_id
-    ).delete()
+    session.query(ConceptSkillStat).filter(ConceptSkillStat.profile_id == profile_id).delete()
     for cell in matrix:
         session.add(
             ConceptSkillStat(
@@ -828,9 +903,7 @@ def materialize(session: Session, profile_id: str) -> None:
         )
     items = item_analysis(session, profile_id)
     for item in items:
-        existing = session.query(ItemStat).filter(
-            ItemStat.question_id == item["question_id"]
-        )
+        existing = session.query(ItemStat).filter(ItemStat.question_id == item["question_id"])
         stat = existing.first()
         if stat is None:
             stat = ItemStat(question_id=item["question_id"])

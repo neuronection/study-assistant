@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { ReviewPage } from './ReviewPage'
-import type { ReviewDue } from '@/lib/api'
+import type { FlashcardInfo, ReviewDue } from '@/lib/api'
 
 const getReviewDue = vi.fn()
 const reviewFlashcard = vi.fn()
@@ -14,7 +14,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     getReviewDue: (perCourse?: number) => getReviewDue(perCourse),
-    reviewFlashcard: (cardId: number, rating: number) =>
+    reviewFlashcard: (cardId: string, rating: number) =>
       reviewFlashcard(cardId, rating),
   }
 })
@@ -34,10 +34,10 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-function makeCard(id: number, frontMd: string) {
+function makeCard(id: string, frontMd: string): FlashcardInfo {
   return {
     id,
-    kind: 'basic',
+    kind: 'card_basic',
     front: [{ type: 'text', md: frontMd }],
     back: [{ type: 'text', md: `back ${id}` }],
     source: 'manual',
@@ -61,18 +61,18 @@ const DUE: ReviewDue = {
   total_due: 3,
   groups: [
     {
-      course_id: 1,
+      course_id: '1',
       course_title: 'Calculus',
       course_color: '#6366f1',
       due_count: 2,
-      cards: [makeCard(11, 'derivative'), makeCard(12, 'integral')],
+      cards: [makeCard('11', 'derivative'), makeCard('12', 'integral')],
     },
     {
-      course_id: 2,
+      course_id: '2',
       course_title: 'Algebra',
       course_color: null,
       due_count: 1,
-      cards: [makeCard(21, 'eigenvalue')],
+      cards: [makeCard('21', 'eigenvalue')],
     },
   ],
 }

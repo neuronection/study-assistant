@@ -11,23 +11,23 @@ import { useCloseFloatings } from '@/lib/ui-overlays'
 
 export interface LinkedLocationsTarget {
   kind: 'material' | 'folder'
-  id: number
+  id: string
   title: string
 }
 
 type LocationRow = {
-  node_id: number
+  node_id: string
   owner_title: string
-  breadcrumb: { id: number; title: string }[]
+  breadcrumb: { id: string; title: string }[]
   is_course_level: boolean
-  course_id: number
+  course_id: string
   auto_assigned: boolean
   rationale: string | null
-  via_folder?: { id: number; name: string } | null
+  via_folder?: { id: string; name: string } | null
 }
 
 function dedupeByNode(entries: MaterialLinkInfo[]): MaterialLinkInfo[] {
-  const byNode = new Map<number, MaterialLinkInfo>()
+  const byNode = new Map<string, MaterialLinkInfo>()
   for (const entry of entries) {
     const existing = byNode.get(entry.node_id)
     if (existing === undefined || (existing.via_folder !== null && entry.via_folder === null)) {
@@ -55,7 +55,7 @@ export function LinkedLocationsDialog({
       }
       return dedupeByNode(await getMaterialLinks(target.id)).map((entry) => ({
         ...entry,
-        course_id: entry.course_id ?? 0,
+        course_id: entry.course_id ?? '',
       }))
     },
   })

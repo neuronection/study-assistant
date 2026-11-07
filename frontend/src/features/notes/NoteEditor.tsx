@@ -41,12 +41,13 @@ import { useConfirm } from '@/lib/use-confirm'
 import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 
 import { NoteHistoryDialog } from './NoteHistoryDialog'
+import { NoteLinks } from './NoteLinks'
 import { noteBodyMd, useNoteAutosave } from './useNoteAutosave'
 
 const ACTIONS = ['summarize', 'cleanup', 'explain', 'expand'] as const
 
 export type NoteInsertApi = {
-  insertQuote: (text: string, source: { title: string; materialId: number } | null) => void
+  insertQuote: (text: string, source: { title: string; materialId: string } | null) => void
 }
 
 export function NoteEditor({
@@ -59,7 +60,7 @@ export function NoteEditor({
   onExpand,
   docked = false,
 }: {
-  noteId: number
+  noteId: string
   onClose?: () => void
   onRequestClose?: () => void
   closeLabel?: string
@@ -235,7 +236,7 @@ export function NoteEditor({
   })
 
   const makeFlashcards = useMutation({
-    mutationFn: (courseIdForBody: number) =>
+    mutationFn: (courseIdForBody: string) =>
       generateFlashcards({
         source: 'note',
         note_id: noteId,
@@ -577,6 +578,7 @@ export function NoteEditor({
           meta={
             <>
               {tagsRow}
+              <NoteLinks noteId={noteId} />
               {autosaveChip}
             </>
           }
@@ -735,6 +737,7 @@ export function NoteEditor({
           </div>
         </div>
         {tagsRow}
+        <NoteLinks noteId={noteId} />
         {actionResultCard}
         {infoResultCard}
         {editorBlock}

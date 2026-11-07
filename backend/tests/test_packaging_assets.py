@@ -1,6 +1,9 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKAGING = REPO_ROOT / "packaging"
@@ -15,14 +18,36 @@ def test_spec_bundles_spa_alembic_and_entry() -> None:
     for needle in (
         '"frontend/dist"',
         '"alembic"',
+        '"app/data"',
         "alembic.ini",
         "studyassistant",
         "__main__.py",
         "runtime_hook.py",
         "sqlite_vec",
         "webview.platforms",
+        '"contracts"',
+        "app/extensions",
+        "_package_data",
     ):
         assert needle in spec, f"spec missing {needle}"
+
+
+def test_runtime_resource_paths_resolve_in_a_frozen_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import importlib
+
+    from app.core import resources
+
+    bundled = tmp_path / "bundle"
+    (bundled / "contracts").mkdir(parents=True)
+    monkeypatch.setattr(sys, "_MEIPASS", str(bundled), raising=False)
+    assert resources.contracts_dir() == bundled / "contracts"
+
+    monkeypatch.delattr(sys, "_MEIPASS", raising=False)
+    importlib.reload(resources)
+    assert resources.contracts_dir().name == "contracts"
+    assert (resources.contracts_dir() / "extension-manifest.schema.json").is_file()
 
 
 def test_spec_referenced_paths_exist() -> None:
@@ -87,21 +112,21 @@ def test_release_workflow_covers_tag_and_artifacts() -> None:
 def test_ci_workflow_installs_girepository_1_0_dev() -> None:
     workflow = _read(".github/workflows/ci.yml")
     assert "libgirepository1.0-dev" in workflow, "ci workflow missing libgirepository1.0-dev"
-    assert (
-        "libgirepository-2.0-dev" not in workflow
-    ), "ci workflow installs girepository-2.0; pygobject 3.50 needs gobject-introspection-1.0"
+    assert "libgirepository-2.0-dev" not in workflow, (
+        "ci workflow installs girepository-2.0; pygobject 3.50 needs gobject-introspection-1.0"
+    )
     assert "uv sync --frozen" in workflow
 
 
 def test_ci_workflow_guards_openapi_and_generated_types_drift() -> None:
     workflow = _read(".github/workflows/ci.yml")
     assert "export-openapi.py" in workflow, "backend job must regenerate the OpenAPI schema"
-    assert (
-        "git diff --exit-code -- frontend/openapi.json" in workflow
-    ), "backend job must guard schema drift"
-    assert (
-        "git diff --exit-code -- frontend/src/lib/api-schema.d.ts" in workflow
-    ), "frontend job must guard generated types drift"
-    assert (
-        "openapi-typescript openapi.json" in workflow
-    ), "frontend job must regenerate api-schema.d.ts"
+    assert "git diff --exit-code -- frontend/openapi.json" in workflow, (
+        "backend job must guard schema drift"
+    )
+    assert "git diff --exit-code -- frontend/src/lib/api-schema.d.ts" in workflow, (
+        "frontend job must guard generated types drift"
+    )
+    assert "openapi-typescript openapi.json" in workflow, (
+        "frontend job must regenerate api-schema.d.ts"
+    )

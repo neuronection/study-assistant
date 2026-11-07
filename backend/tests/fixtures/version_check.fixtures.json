@@ -1,0 +1,177 @@
+{
+  "schema": 1,
+  "adr": "ADR-0048",
+  "description": "Cross-language acceptance wall for the family version-check law (plan 48). Every implementation — hub-site JS (scripts/lib/semver.mjs), desktop-assistant TS (services/updates/semver.ts + policy.ts), and the Python products' vendored version_check.py — must satisfy these rows. Same law, one table, never per-language edits.",
+  "semverCompare": [
+    { "name": "release-above-its-prerelease", "a": "1.0.0", "b": "1.0.0-rc.1", "expected": 1 },
+    { "name": "prerelease-below-release", "a": "1.0.0-rc.1", "b": "1.0.0", "expected": -1 },
+    { "name": "numeric-identifiers-numeric", "a": "1.0.0-rc.10", "b": "1.0.0-rc.9", "expected": 1 },
+    { "name": "numeric-below-alphanumeric", "a": "1.0.0-1", "b": "1.0.0-alpha", "expected": -1 },
+    { "name": "longer-list-wins-shared-prefix", "a": "1.0.0-rc.1", "b": "1.0.0-rc.1.1", "expected": -1 },
+    { "name": "segments-numeric-not-lexical", "a": "0.10.0", "b": "0.9.0", "expected": 1 },
+    { "name": "equal", "a": "1.2.3", "b": "1.2.3", "expected": 0 }
+  ],
+  "channelOf": [
+    { "name": "stable", "version": "v0.8.0", "expected": "stable" },
+    { "name": "rc", "version": "v0.4.1-rc.1", "expected": "beta" },
+    { "name": "beta", "version": "v0.11.0-beta.2", "expected": "beta" },
+    { "name": "garbage", "version": "not-a-version", "expected": null },
+    { "name": "leading-zero", "version": "01.2.3", "expected": null }
+  ],
+  "resolveUpdate": [
+    {
+      "name": "stable-never-offered-prerelease-even-when-newer",
+      "current": "0.10.0",
+      "channel": "stable",
+      "latestStable": "0.10.0",
+      "latestBeta": "0.11.0-rc.1",
+      "expected": null
+    },
+    {
+      "name": "stable-offered-stable",
+      "current": "0.10.0",
+      "channel": "stable",
+      "latestStable": "0.11.0",
+      "latestBeta": "0.11.0-rc.1",
+      "expected": { "version": "0.11.0", "channel": "stable" }
+    },
+    {
+      "name": "beta-offered-final-release-over-its-rc",
+      "current": "0.11.0-rc.1",
+      "channel": "beta",
+      "latestStable": "0.11.0",
+      "latestBeta": "0.11.0-rc.1",
+      "expected": { "version": "0.11.0", "channel": "stable" }
+    },
+    {
+      "name": "beta-offered-semver-max",
+      "current": "0.10.0",
+      "channel": "beta",
+      "latestStable": "0.10.0",
+      "latestBeta": "0.11.0-rc.1",
+      "expected": { "version": "0.11.0-rc.1", "channel": "beta" }
+    },
+    {
+      "name": "never-a-downgrade",
+      "current": "0.12.0",
+      "channel": "stable",
+      "latestStable": "0.10.0",
+      "latestBeta": null,
+      "expected": null
+    },
+    {
+      "name": "no-beta-offered",
+      "current": "0.10.0",
+      "channel": "stable",
+      "latestStable": "0.10.0",
+      "latestBeta": null,
+      "expected": null
+    }
+  ],
+  "validateDoc": [
+    {
+      "name": "valid-document",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": { "version": "0.12.1", "tag": "v0.12.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.12.1" },
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": true
+    },
+    {
+      "name": "v-prefixed-version-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": { "version": "v0.12.1", "tag": "v0.12.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.12.1" },
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": false,
+      "issueContains": "bare semver"
+    },
+    {
+      "name": "prerelease-on-stable-channel-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": { "version": "0.13.0-rc.1", "tag": "v0.13.0-rc.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.13.0-rc.1" },
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": false,
+      "issueContains": "wrong channel suffix"
+    },
+    {
+      "name": "non-https-url-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": { "version": "0.12.1", "tag": "v0.12.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "http://example.com/x" },
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": false,
+      "issueContains": "https"
+    },
+    {
+      "name": "out-of-range-interval-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 500000,
+        "latestStable": { "version": "0.12.1", "tag": "v0.12.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.12.1" },
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": false,
+      "issueContains": "checkIntervalSec"
+    },
+    {
+      "name": "missing-latestStable-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestBeta": null,
+        "history": []
+      },
+      "valid": false
+    },
+    {
+      "name": "history-channel-mismatch-rejected",
+      "doc": {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": { "version": "0.12.1", "tag": "v0.12.1", "channel": "stable", "publishedAt": "2026-10-01T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.12.1" },
+        "latestBeta": null,
+        "history": [
+          { "version": "0.13.0-rc.1", "tag": "v0.13.0-rc.1", "channel": "stable", "publishedAt": "2026-10-02T00:00:00Z", "url": "https://github.com/neuronection/study-assistant/releases/tag/v0.13.0-rc.1" }
+        ]
+      },
+      "valid": false,
+      "issueContains": "declares stable but"
+    }
+  ]
+}

@@ -6,6 +6,16 @@ If something here does not match what you see, check the
 [known-issues section of STATUS.md](../STATUS.md) and open an issue on
 [GitHub](https://github.com/neuronection/study-assistant/issues).
 
+## The app will not start after upgrading from 0.12.x
+
+0.13 rebuilds the datastore schema; a 0.12.x database cannot be migrated. The
+app refuses it with a message and writes the same text to
+`STARTUP-ERROR.txt` in your data directory (also
+`%TEMP%/studyassistant.log` on Windows). Move the old data directory aside —
+or run `StudyAssistant reset --all` / `python -m studyassistant reset --all` —
+and start fresh. Backups made by 0.12.x are refused for the same reason; only
+backups made by 0.13 restore.
+
 ## AI features do nothing / "no model assigned"
 
 The app starts unconfigured on purpose — AI features return an error until you
@@ -27,7 +37,7 @@ See [Settings reference](settings.md) and [Local AI](local-ai.md).
   only offers vision models; if none are listed, add one under Models).
 - For scans with a poor text layer, re-run extraction and choose OCR explicitly
   from the material's ⋯ menu → **Re-extract**.
-- Very large images are downscaled before OCR (Settings → Search & OCR); raise
+- Very large images are downscaled before OCR (Settings → Tools → Search & OCR); raise
   the long-edge cap if fine detail is being lost.
 
 ## An upload was refused

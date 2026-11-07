@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Pkg quiz",
     "questions": [
         {
@@ -39,7 +39,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -51,10 +51,10 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiet",
@@ -68,7 +68,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -76,7 +76,7 @@ class QuietGateway(LLMGateway):
 def make_client() -> TestClient:
     import tempfile
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p7s3-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p7s3-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),
@@ -100,9 +100,7 @@ def test_linked_folder_scan_lifecycle(tmp_path: Path) -> None:
         bad = client.post("/api/v1/sources", json={"label": "L", "path": "/nonexistent"})
         assert bad.status_code == 422
 
-        no_course = client.post(
-            "/api/v1/sources", json={"label": "L", "path": str(lectures)}
-        )
+        no_course = client.post("/api/v1/sources", json={"label": "L", "path": str(lectures)})
         assert no_course.status_code == 422
 
         created = client.post(
@@ -159,21 +157,17 @@ def test_course_delete_purges_linked_source_folder(tmp_path: Path) -> None:
             for material in client.get("/api/v1/materials").json()
         )
 
-        deleted = client.delete(
-            f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-        )
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
         assert deleted.status_code == 200, deleted.text
         assert client.get("/api/v1/courses").json() == []
         assert client.get("/api/v1/sources").json() == []
         assert client.get("/api/v1/materials").json() == []
 
 
-def make_course(client: TestClient, headers: dict[str, str] | None = None) -> int:
-    created = client.post(
-        "/api/v1/courses", json={"title": "Test course"}, headers=headers
-    )
+def make_course(client: TestClient, headers: dict[str, str] | None = None) -> str:
+    created = client.post("/api/v1/courses", json={"title": "Test course"}, headers=headers)
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_profiles_create_and_header_scoping() -> None:
@@ -217,13 +211,8 @@ def test_profiles_create_and_header_scoping() -> None:
             from app.domain.models import Course as CourseRow
             from app.domain.models import Note as NoteRow
 
-            assert (
-                db.query(CourseRow).filter(CourseRow.profile_id == second_id).count()
-                == 0
-            )
-            assert (
-                db.query(NoteRow).filter(NoteRow.profile_id == second_id).count() == 0
-            )
+            assert db.query(CourseRow).filter(CourseRow.profile_id == second_id).count() == 0
+            assert db.query(NoteRow).filter(NoteRow.profile_id == second_id).count() == 0
 
         remaining_notes = client.get("/api/v1/notes").json()
         assert [note["title"] for note in remaining_notes["items"]] == ["Default note"]
@@ -338,9 +327,7 @@ def test_sample_course_study_content() -> None:
         due = client.get("/api/v1/flashcards/due", params={"course_id": course_id}).json()
         assert len(due) == 2
 
-        activities = client.get(
-            "/api/v1/quiz/activities", params={"course_id": course_id}
-        ).json()
+        activities = client.get("/api/v1/quiz/activities", params={"course_id": course_id}).json()
         assert [a["title"] for a in activities] == ["Sample quiz — Derivatives"]
 
         app = client.app

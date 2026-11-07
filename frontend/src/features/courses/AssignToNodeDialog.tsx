@@ -28,16 +28,16 @@ export function AssignToNodeDialog({
   onDone,
   onClose,
 }: {
-  courseId: number
+  courseId: string
   title: string
   countText: string
   confirmLabel: string
-  onDone: (nodeId: number) => Promise<void> | void
+  onDone: (nodeId: string) => Promise<void> | void
   onClose: () => void
 }) {
   useCloseFloatings()
   const { t } = useTranslation()
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const tree = useQuery({
     queryKey: ['tree', String(courseId)],

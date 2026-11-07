@@ -44,17 +44,17 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 const EXERCISE = {
-  id: 1,
+  id: '1',
   title: 'Squares',
-  course_id: 9,
-  node_id: 5,
+  course_id: '9',
+  node_id: '5',
   difficulty: 2,
   step_count: 2,
 }
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -63,7 +63,7 @@ const TREE = [
     is_root: true,
     children: [
       {
-        id: 5,
+        id: '5',
         title: 'Derivatives',
         summary: null,
         objectives: [],
@@ -82,7 +82,7 @@ function renderPlayer() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <Player exerciseId={1} />
+      <Player exerciseId="1" />
     </QueryClientProvider>
   )
 }
@@ -96,13 +96,13 @@ describe('exercise Player', () => {
     routerState.location.search = {}
     pushed.length = 0
     exerciseSteps.mockResolvedValue([
-      { id: 1, order_idx: 0, prompt: [{ type: 'text', md: 'Compute $\\frac{d}{dx} x^2$.' }], has_expected: true },
+      { id: '1', order_idx: 0, prompt: [{ type: 'text', md: 'Compute $\\frac{d}{dx} x^2$.' }], has_expected: true },
     ])
     getExercise.mockResolvedValue(EXERCISE)
     courseTree.mockResolvedValue(TREE)
     startExerciseSession.mockResolvedValue({
-      id: 3,
-      exercise_id: 1,
+      id: '3',
+      exercise_id: '1',
       current_step_idx: 0,
       status: 'active',
       socratic: false,
@@ -150,7 +150,7 @@ describe('exercise Player structural kinds', () => {
     pushed.length = 0
     exerciseSteps.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         order_idx: 0,
         prompt: [{ type: 'text', md: 'Match each function to its derivative.' }],
         has_expected: true,
@@ -168,8 +168,8 @@ describe('exercise Player structural kinds', () => {
     getExercise.mockResolvedValue({ ...EXERCISE, kind: 'matching', step_count: 1 })
     courseTree.mockResolvedValue(TREE)
     startExerciseSession.mockResolvedValue({
-      id: 3,
-      exercise_id: 1,
+      id: '3',
+      exercise_id: '1',
       current_step_idx: 0,
       status: 'active',
       socratic: false,
@@ -184,8 +184,8 @@ describe('exercise Player structural kinds', () => {
       error_class: null,
       advanced: false,
       session: {
-        id: 3,
-        exercise_id: 1,
+        id: '3',
+        exercise_id: '1',
         current_step_idx: 0,
         status: 'completed',
         socratic: false,
@@ -204,7 +204,7 @@ describe('exercise Player structural kinds', () => {
     expect((submit as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(submit)
 
-    await waitFor(() => expect(submitStepAnswer).toHaveBeenCalledWith(3, [0, 1]))
+    await waitFor(() => expect(submitStepAnswer).toHaveBeenCalledWith('3', [0, 1]))
     expect(await screen.findByText(/matching: correct/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(await screen.findByText(/Exercise completed/i)).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('exercise Player rubric kinds', () => {
   test('error_spot renders radio lines and submits the picked index', async () => {
     exerciseSteps.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         order_idx: 0,
         prompt: [{ type: 'text', md: 'One line below is flawed. Identify it.' }],
         has_expected: true,
@@ -241,8 +241,8 @@ describe('exercise Player rubric kinds', () => {
     getExercise.mockResolvedValue({ ...EXERCISE, kind: 'error_spot', step_count: 1 })
     courseTree.mockResolvedValue(TREE)
     startExerciseSession.mockResolvedValue({
-      id: 3,
-      exercise_id: 1,
+      id: '3',
+      exercise_id: '1',
       current_step_idx: 0,
       status: 'active',
       socratic: false,
@@ -254,8 +254,8 @@ describe('exercise Player rubric kinds', () => {
       error_class: null,
       advanced: false,
       session: {
-        id: 3,
-        exercise_id: 1,
+        id: '3',
+        exercise_id: '1',
         current_step_idx: 0,
         status: 'active',
         socratic: false,
@@ -274,7 +274,7 @@ describe('exercise Player rubric kinds', () => {
     fireEvent.click(submit)
     await waitFor(() =>
       expect(submitStepAnswer).toHaveBeenCalledWith(
-        3,
+        '3',
         JSON.stringify({ picked: [1], fix: '' }),
       ),
     )
@@ -284,7 +284,7 @@ describe('exercise Player rubric kinds', () => {
   test('explain renders a textarea and submits free text', async () => {
     exerciseSteps.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         order_idx: 0,
         prompt: [{ type: 'text', md: 'Explain the chain rule in your own words.' }],
         has_expected: true,
@@ -295,8 +295,8 @@ describe('exercise Player rubric kinds', () => {
     getExercise.mockResolvedValue({ ...EXERCISE, kind: 'explain', step_count: 1 })
     courseTree.mockResolvedValue(TREE)
     startExerciseSession.mockResolvedValue({
-      id: 4,
-      exercise_id: 1,
+      id: '4',
+      exercise_id: '1',
       current_step_idx: 0,
       status: 'active',
       socratic: false,
@@ -308,8 +308,8 @@ describe('exercise Player rubric kinds', () => {
       error_class: null,
       advanced: false,
       session: {
-        id: 4,
-        exercise_id: 1,
+        id: '4',
+        exercise_id: '1',
         current_step_idx: 0,
         status: 'active',
         socratic: false,
@@ -323,7 +323,7 @@ describe('exercise Player rubric kinds', () => {
     fireEvent.change(area, { target: { value: 'outer times inner derivative' } })
     fireEvent.click(screen.getByRole('button', { name: /check/i }))
     await waitFor(() =>
-      expect(submitStepAnswer).toHaveBeenCalledWith(4, 'outer times inner derivative')
+      expect(submitStepAnswer).toHaveBeenCalledWith('4', 'outer times inner derivative')
     )
     expect(await screen.findByText(/AI-graded/i)).toBeInTheDocument()
   })

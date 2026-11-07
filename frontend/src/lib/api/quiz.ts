@@ -1,63 +1,35 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 import type { HintResult } from './exercises'
+import type { QuizQuestionInput } from './hand-types'
 
-export interface QuizQuestionCell {
-  kind: string
-  text?: string
-}
+type Schemas = components['schemas']
 
-export interface QuizQuestionPart {
-  type: string
+export type {
+  QuizQuestionCell,
+  QuizQuestionInput,
+  QuizQuestionPart,
+  QuizQuestionTest,
+} from './hand-types'
+export type QuizQuestion = Omit<Schemas['QuestionOut'], 'input'> & {
+  input?: QuizQuestionInput | null
 }
-
-export interface QuizQuestionTest {
-  call: string
-  expected?: unknown
-  expected_stdout?: string | null
-}
-
-export interface QuizQuestionInput {
-  widget: string
-  min?: number
-  max?: number
-  headers?: string[]
-  row_labels?: string[]
-  cells?: QuizQuestionCell[][]
-  parts?: QuizQuestionPart[]
-  starter_code?: string
-  tests?: QuizQuestionTest[]
-  mode?: string
-}
-
-export interface QuizQuestion {
-  id: number
-  type: string
-  stem: BlockDto[]
-  options: BlockDto[] | null
-  difficulty: number | null
-  bloom: string | null
-  skill: string | null
-  expected_time_sec: number | null
-  flag: string
-  input: QuizQuestionInput | null
-}
-
-export interface QuizActivity {
-  id: number
-  title: string
-  type: string
-  course_id: number | null
-  node_id: number | null
-  question_count: number
-  time_limit_sec: number | null
-}
+export type QuizActivity = Schemas['ActivityOut']
+export type QuizAnswerKeyEntry = Schemas['AnswerKeyEntryOut']
+export type QuizAttempt = Schemas['AttemptOut']
+export type QuizFeedback = Schemas['FeedbackOut']
+export type QuizAttemptRow = Schemas['AttemptListItemOut']
+export type MistakeRow = Schemas['MistakeListItemOut']
+export type ImportValidation = Schemas['QuestionCheckOut']
+export type ImportResult = Schemas['CaqImportOut']
+export type RecognitionResult = Schemas['RecognizeOut']
 
 export async function generateQuiz(body: {
-  course_id: number
-  node_id?: number | null
-  concept_id?: number | null
+  course_id: string
+  node_id?: string | null
+  concept_id?: string | null
   count?: number
   difficulty?: number | null
   topic?: string | null
@@ -75,8 +47,8 @@ export async function generateQuiz(body: {
 }
 
 export async function listQuizzes(
-  courseId?: number,
-  nodeId?: number,
+  courseId?: string,
+  nodeId?: string,
   includeChildren = true
 ): Promise<QuizActivity[]> {
   const params = new URLSearchParams()
@@ -92,28 +64,22 @@ export async function listQuizzes(
   return json<QuizActivity[]>(response)
 }
 
-export async function quizQuestions(activityId: number): Promise<QuizQuestion[]> {
+export async function quizQuestions(activityId: string): Promise<QuizQuestion[]> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}/questions`)
   return json<QuizQuestion[]>(response)
 }
 
-export interface QuizAnswerKeyEntry {
-  question_id: number
-  type: string
-  key: string
-}
-
-export async function quizAnswerKey(activityId: number): Promise<QuizAnswerKeyEntry[]> {
+export async function quizAnswerKey(activityId: string): Promise<QuizAnswerKeyEntry[]> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}/answer-key`)
   return json<QuizAnswerKeyEntry[]>(response)
 }
 
-export async function getQuiz(activityId: number): Promise<QuizActivity> {
+export async function getQuiz(activityId: string): Promise<QuizActivity> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}`)
   return json<QuizActivity>(response)
 }
 
-export async function renameQuiz(activityId: number, title: string): Promise<QuizActivity> {
+export async function renameQuiz(activityId: string, title: string): Promise<QuizActivity> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -123,8 +89,8 @@ export async function renameQuiz(activityId: number, title: string): Promise<Qui
 }
 
 export async function moveQuiz(
-  activityId: number,
-  nodeId: number | null
+  activityId: string,
+  nodeId: string | null
 ): Promise<QuizActivity> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}/move`, {
     method: 'PATCH',
@@ -135,26 +101,16 @@ export async function moveQuiz(
 }
 
 export async function deleteQuiz(
-  activityId: number
-): Promise<{ deleted_item_id: number }> {
+  activityId: string
+): Promise<{ deleted_item_id: string }> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}`, {
     method: 'DELETE',
   })
-  return json<{ deleted_item_id: number }>(response)
-}
-
-export interface QuizAttempt {
-  id: number
-  activity_id: number
-  mode: string
-  started_at: string
-  deadline_at: string | null
-  finished_at: string | null
-  score: number | null
+  return json<{ deleted_item_id: string }>(response)
 }
 
 export async function setQuizTimeLimit(
-  activityId: number,
+  activityId: string,
   timeLimitSec: number | null
 ): Promise<QuizActivity> {
   const response = await apiFetch(
@@ -168,7 +124,7 @@ export async function setQuizTimeLimit(
   return json<QuizActivity>(response)
 }
 
-export async function startQuizAttempt(activityId: number, mode = 'practice'): Promise<QuizAttempt> {
+export async function startQuizAttempt(activityId: string, mode = 'practice'): Promise<QuizAttempt> {
   const response = await apiFetch(
     `/api/v1/quiz/activities/${activityId}/attempts?mode=${mode}`,
     { method: 'POST' }
@@ -176,18 +132,9 @@ export async function startQuizAttempt(activityId: number, mode = 'practice'): P
   return json<QuizAttempt>(response)
 }
 
-export interface QuizFeedback {
-  correct: boolean
-  partial_credit: number
-  graded_by: string | null
-  feedback: BlockDto[]
-  error_tags: string[]
-  explanation: BlockDto[]
-}
-
 export async function submitQuizAnswer(
-  attemptId: number,
-  questionId: number,
+  attemptId: string,
+  questionId: string,
   response: unknown,
   timeMs?: number,
   inputMode?: string,
@@ -207,65 +154,31 @@ export async function submitQuizAnswer(
   return json<QuizFeedback>(apiResponse)
 }
 
-export async function finishQuizAttempt(attemptId: number): Promise<QuizAttempt> {
+export async function finishQuizAttempt(attemptId: string): Promise<QuizAttempt> {
   const response = await apiFetch(`/api/v1/quiz/attempts/${attemptId}/finish`, { method: 'POST' })
   return json<QuizAttempt>(response)
 }
 
-export interface QuizAttemptRow {
-  id: number
-  activity_id: number
-  title: string
-  mode: string
-  started_at: string
-  finished_at: string | null
-  score: number | null
-}
-
-export async function listQuizAttempts(courseId?: number): Promise<QuizAttemptRow[]> {
+export async function listQuizAttempts(courseId?: string): Promise<QuizAttemptRow[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/quiz/attempts${params}`)
   return json<QuizAttemptRow[]>(response)
 }
 
-export interface MistakeRow {
-  id: number
-  question_id: number
-  activity_id: number
-  activity_title: string
-  stem_excerpt: string
-  error_tags: string[]
-  created_at: string
-}
-
-export async function listMistakes(courseId?: number): Promise<MistakeRow[]> {
+export async function listMistakes(courseId?: string): Promise<MistakeRow[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/quiz/mistakes${params}`)
   return json<MistakeRow[]>(response)
 }
 
-export function quizExportUrl(activityId: number): string {
+export function quizExportUrl(activityId: string): string {
   return `/api/v1/quiz/activities/${activityId}/export`
-}
-
-export interface ImportValidation {
-  index: number
-  ok: boolean
-  problems: string[]
-}
-
-export interface ImportResult {
-  dry_run: boolean
-  results: ImportValidation[]
-  valid: number
-  total: number
-  activity?: QuizActivity
 }
 
 export async function importQuiz(
   document: { title?: string; questions: unknown[] },
   dryRun: boolean,
-  courseId: number
+  courseId: string
 ): Promise<ImportResult> {
   const params = new URLSearchParams({ dry_run: String(dryRun), course_id: String(courseId) })
   const response = await apiFetch(`/api/v1/quiz/import?${params.toString()}`, {
@@ -277,8 +190,8 @@ export async function importQuiz(
 }
 
 export async function requestQuizHint(
-  attemptId: number,
-  questionId: number,
+  attemptId: string,
+  questionId: string,
   level: number,
   lastResponse: unknown = null
 ): Promise<HintResult> {
@@ -293,11 +206,6 @@ export async function requestQuizHint(
   return json<HintResult>(response)
 }
 
-export interface RecognitionResult {
-  markdown: string
-  latex_candidates: string[]
-}
-
 export async function recognizeHandwriting(pngBase64: string): Promise<RecognitionResult> {
   const response = await apiFetch('/api/v1/quiz/recognize', {
     method: 'POST',
@@ -307,14 +215,14 @@ export async function recognizeHandwriting(pngBase64: string): Promise<Recogniti
   return json<RecognitionResult>(response)
 }
 
-export function qpkgExportUrl(activityId: number): string {
+export function qpkgExportUrl(activityId: string): string {
   return `/api/v1/quiz/activities/${activityId}/export-qpkg`
 }
 
 export async function importQpkg(
   file: File,
   dryRun: boolean,
-  courseId: number
+  courseId: string
 ): Promise<ImportResult> {
   const form = new FormData()
   form.append('file', file)

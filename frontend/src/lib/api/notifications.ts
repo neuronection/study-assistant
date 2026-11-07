@@ -1,38 +1,14 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
 
-export interface DueReviewEntry {
-  card_id: number
-  kind: string
-  course_id: number
-  course_title: string
-}
+type Schemas = components['schemas']
 
-export interface PlanEntry {
-  item_id: number
-  title: string
-  kind: string
-  course_id: number
-  course_title: string
-  due_date: string
-  overdue: boolean
-}
-
-export interface ExamEntry {
-  course_id: number
-  course_title: string
-  exam_date: string
-  days_left: number
-}
-
-export interface Notifications {
-  due_cards: number
-  due_reviews: DueReviewEntry[]
-  plan_today: PlanEntry[]
-  plan_overdue_count: number
-  exams: ExamEntry[]
-  pending_proposals: number
-  generated_at: string
-}
+export type AlertEntry = Schemas['AlertEntryOut']
+export type DueReviewEntry = Schemas['DueReviewEntryOut']
+export type PlanEntry = Schemas['PlanEntryOut']
+export type ExamEntry = Schemas['ExamEntryOut']
+export type Notifications = Schemas['NotificationsOut']
 
 export async function getNotifications(): Promise<Notifications> {
   const response = await apiFetch('/api/v1/notifications')

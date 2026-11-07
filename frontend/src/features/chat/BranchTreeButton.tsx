@@ -20,7 +20,7 @@ function toBranchTree(data: Awaited<ReturnType<typeof getChatBranchTree>>): Bran
   })
 }
 
-export function BranchTreeButton({ sessionId }: { sessionId: number }) {
+export function BranchTreeButton({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const tree = useQuery({
@@ -28,7 +28,7 @@ export function BranchTreeButton({ sessionId }: { sessionId: number }) {
     queryFn: () => getChatBranchTree(sessionId),
   })
   const selectNode = useMutation({
-    mutationFn: (messageId: number) => selectChatVariant(messageId),
+    mutationFn: (messageId: string) => selectChatVariant(messageId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
       void queryClient.invalidateQueries({ queryKey: ['chat-branch-tree', sessionId] })
@@ -47,7 +47,7 @@ export function BranchTreeButton({ sessionId }: { sessionId: number }) {
       {branchTree !== null ? (
         <ChatBranchTree
           tree={branchTree}
-          onSelect={(id) => selectNode.mutate(Number(id))}
+          onSelect={(id) => selectNode.mutate(id)}
           labels={{
             tree: t('chat.tree.title'),
             user: t('chat.treeUser'),

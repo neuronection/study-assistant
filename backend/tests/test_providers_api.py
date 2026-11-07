@@ -36,11 +36,12 @@ FAKE_REMOTE_MODELS = [
     RemoteModel(external_id="text-embedding-004", caps=("embeddings",)),
 ]
 
+
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fetch(
-    provider_type: str, base_url: str, api_key: str | None, transport: object = None
-) -> list[RemoteModel]:
+        provider_type: str, base_url: str, api_key: str | None, transport: object = None
+    ) -> list[RemoteModel]:
         return FAKE_REMOTE_MODELS
 
     monkeypatch.setattr(providers_service_module, "fetch_remote_models", fake_fetch)
@@ -67,15 +68,15 @@ def create_provider(client: TestClient, **overrides: Any) -> dict[str, Any]:
     result: dict[str, Any] = response.json()
     return result
 
+
 def test_create_provider_stores_masked_key_not_plaintext(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     provider = create_provider(client)
     assert provider["masked_key"] == "••••1234"
     assert "supersecret" not in str(provider)
-    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == (
-        "AIza-supersecret-1234"
-    )
+    stored = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert stored is not None and stored.startswith("enc::")
 
 
 def test_provider_country_accepts_iso_alpha2_rejects_everything_else(
@@ -107,18 +108,13 @@ def test_update_provider_replaces_key_only_when_given(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     provider = create_provider(client)
-    response = client.patch(
-        f"/api/v1/providers/{provider['id']}", json={"name": "Renamed"}
-    )
+    response = client.patch(f"/api/v1/providers/{provider['id']}", json={"name": "Renamed"})
     assert response.status_code == 200
-    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == (
-        "AIza-supersecret-1234"
-    )
+    kept = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert kept is not None and kept.startswith("enc::")
     client.patch(f"/api/v1/providers/{provider['id']}", json={"api_key": "sk-new-9999"})
-    assert (
-        fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
-        == "sk-new-9999"
-    )
+    replaced = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert replaced is not None and replaced.startswith("enc::") and replaced != kept
 
 
 def test_delete_provider_removes_key_and_models(
@@ -147,15 +143,14 @@ def test_task_assignment_requires_vision_for_ocr(
     app = client.app
     assert isinstance(app, FastAPI)
     with app.state.session_factory() as session:
-        session.add(
-            AiModel(
-                provider_id=provider["id"],
-                external_id="text-only-model",
-                label="text-only-model",
-                caps=["text"],
-                enabled=True,
-            )
+        text_model = AiModel(
+            provider_id=provider["id"],
+            external_id="text-only-model",
+            label="text-only-model",
+            caps=["text"],
+            enabled=True,
         )
+        session.add(text_model)
         vision_model = AiModel(
             provider_id=provider["id"],
             external_id="vision-model",
@@ -166,9 +161,10 @@ def test_task_assignment_requires_vision_for_ocr(
         session.add(vision_model)
         session.commit()
         vision_model_id = vision_model.id
+        text_model_id = text_model.id
 
     rejected = client.put(
-        "/api/v1/tasks/ocr", json={"model_id": vision_model_id - 1, "fallback_model_id": None}
+        "/api/v1/tasks/ocr", json={"model_id": text_model_id, "fallback_model_id": None}
     )
     assert rejected.status_code == 422
     assert "vision" in rejected.json()["detail"]
@@ -249,13 +245,11 @@ def test_manual_model_add_infers_caps_and_is_idempotent(
     assert again.json()["id"] == body["id"]
     assert again.json()["caps"] == ["text"]
 
-    missing = client.post("/api/v1/models", json={"provider_id": 999, "external_id": "x"})
+    missing = client.post("/api/v1/models", json={"provider_id": "999", "external_id": "x"})
     assert missing.status_code == 404
 
 
-def test_model_reasoning_effort_round_trip(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_model_reasoning_effort_round_trip(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     created = client.post(
         "/api/v1/models",
@@ -269,15 +263,11 @@ def test_model_reasoning_effort_round_trip(
     assert created.json()["reasoning_effort"] == "none"
 
     model = created.json()
-    patched = client.patch(
-        f"/api/v1/models/{model['id']}", json={"reasoning_effort": "high"}
-    )
+    patched = client.patch(f"/api/v1/models/{model['id']}", json={"reasoning_effort": "high"})
     assert patched.status_code == 200
     assert patched.json()["reasoning_effort"] == "high"
 
-    cleared = client.patch(
-        f"/api/v1/models/{model['id']}", json={"reasoning_effort": "  "}
-    )
+    cleared = client.patch(f"/api/v1/models/{model['id']}", json={"reasoning_effort": "  "})
     assert cleared.status_code == 200
     assert cleared.json()["reasoning_effort"] is None
 
@@ -300,9 +290,7 @@ def test_manual_model_add_rejects_unknown_caps(
     assert patched.status_code == 422
 
 
-def test_manual_model_add_accepts_stt_caps(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_manual_model_add_accepts_stt_caps(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     created = client.post(
         "/api/v1/models",
@@ -323,9 +311,7 @@ def test_manual_model_add_accepts_stt_caps(
     assert patched.json()["caps"] == ["text", "stt"]
 
 
-def test_manual_add_revives_missing_model(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_manual_add_revives_missing_model(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     model = client.post(
         "/api/v1/models", json={"provider_id": provider["id"], "external_id": "llama-x"}
@@ -403,9 +389,7 @@ def test_readd_model_enables_it(client: TestClient, fake_keyring: FakeKeyring) -
     disabled = client.patch(f"/api/v1/models/{model['id']}", json={"enabled": False})
     assert disabled.json()["enabled"] is False
 
-    again = client.post(
-        "/api/v1/models", json={"provider_id": provider["id"], "external_id": "m1"}
-    )
+    again = client.post("/api/v1/models", json={"provider_id": provider["id"], "external_id": "m1"})
     assert again.status_code == 200
     assert again.json()["enabled"] is True
 
@@ -433,19 +417,31 @@ def test_task_defaults_endpoints_and_inheritance(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     defaults = client.get("/api/v1/tasks/defaults").json()
+    # ADR-0036: the `decision` default slot joins the vocabulary beside the
+    # four kind overrides.
     assert [entry["requires"] for entry in defaults] == [
-        "text", "vision", "embeddings", "stt", "tts",
+        "text",
+        "vision",
+        "embeddings",
+        "stt",
+        "tts",
+        "decision",
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
     ]
     assert all(entry["model_id"] is None for entry in defaults)
+    # Every row carries the ADR-0036 inherit-label field; with the default
+    # empty it is honestly None everywhere.
+    assert all(entry["resolved_inherit_label"] is None for entry in defaults)
 
     provider = create_provider(client, type="openai_compatible", base_url="http://localhost:1/v1")
     default_model = client.post(
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "gemini-flash", "caps": ["text"]},
     ).json()
-    set_default = client.put(
-        "/api/v1/tasks/defaults/text", json={"model_id": default_model["id"]}
-    )
+    set_default = client.put("/api/v1/tasks/defaults/text", json={"model_id": default_model["id"]})
     assert set_default.status_code == 200, set_default.text
     assert set_default.json()["model_label"] == "gemini-flash"
 
@@ -475,16 +471,72 @@ def test_task_defaults_endpoints_and_inheritance(
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "text-model", "caps": ["text"]},
     ).json()
-    mismatch = client.put(
-        "/api/v1/tasks/defaults/vision", json={"model_id": text_only["id"]}
-    )
+    mismatch = client.put("/api/v1/tasks/defaults/vision", json={"model_id": text_only["id"]})
     assert mismatch.status_code == 422
     assert "vision" in mismatch.json()["detail"]
 
-    unknown = client.put(
-        "/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]}
+    # ADR-0037: capability defaults reject a fallback (kind rows keep
+    # accepting one — see the decide conformance fallback chains).
+    rejected = client.put(
+        "/api/v1/tasks/defaults/text",
+        json={"model_id": default_model["id"], "fallback_model_id": override["id"]},
     )
+    assert rejected.status_code == 422
+    assert "single-slot" in rejected.json()["detail"]
+
+    unknown = client.put("/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]})
     assert unknown.status_code == 422
+
+
+def test_decision_default_slot_assignment_and_inherit_labels(
+    client: TestClient, fake_keyring: FakeKeyring
+) -> None:
+    """ADR-0036: the `decision` default slot is a first-class
+    DefaultTaskAssignment — decision-capable models only — and the kind
+    rows surface what their inherit state resolves to."""
+    provider = create_provider(client, type="decision", base_url="https://api.typesafe.ai")
+    decision_model = client.post(
+        "/api/v1/models",
+        json={
+            "provider_id": provider["id"],
+            "external_id": "typesafe/jev-1.13",
+            "caps": ["decision"],
+            "decision_transport": "systemone",
+        },
+    ).json()
+    chat_provider = create_provider(
+        client, name="Text Co", type="openai_compatible", base_url="http://localhost:2/v1"
+    )
+    text_model = client.post(
+        "/api/v1/models",
+        json={"provider_id": chat_provider["id"], "external_id": "gpt-x", "caps": ["text"]},
+    ).json()
+
+    # Slot separation (ADR-0032 D4, unchanged): a text model never
+    # satisfies the decision default.
+    rejected = client.put("/api/v1/tasks/defaults/decision", json={"model_id": text_model["id"]})
+    assert rejected.status_code == 422
+    assert "decision" in rejected.json()["detail"]
+
+    assigned = client.put(
+        "/api/v1/tasks/defaults/decision", json={"model_id": decision_model["id"]}
+    )
+    assert assigned.status_code == 200, assigned.text
+    assert assigned.json()["model_label"] == "typesafe/jev-1.13"
+
+    defaults = client.get("/api/v1/tasks/defaults").json()
+    default_row = next(entry for entry in defaults if entry["requires"] == "decision")
+    assert default_row["model_id"] == decision_model["id"]
+    # The kind rows' inherit state names the default's resolution.
+    for kind in (
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    ):
+        kind_row = next(entry for entry in defaults if entry["requires"] == kind)
+        assert kind_row["model_id"] is None
+        assert kind_row["resolved_inherit_label"] == "typesafe/jev-1.13"
 
 
 def test_delete_model_unassigns_task_defaults(
@@ -521,23 +573,19 @@ def test_delete_provider_unassigns_task_defaults(
     assert text_default["model_id"] is None
 
 
-def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> int:
+def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> str:
     provider = create_provider(client, type="openai_compatible", base_url="http://localhost:1/v1")
     model = client.post(
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "default-text", "caps": ["text"]},
     ).json()
-    response = client.put(
-        "/api/v1/tasks/defaults/text", json={"model_id": model["id"]}
-    )
+    response = client.put("/api/v1/tasks/defaults/text", json={"model_id": model["id"]})
     assert response.status_code == 200, response.text
-    model_id: int = model["id"]
+    model_id: str = model["id"]
     return model_id
 
 
-def test_task_defaults_survive_restart(
-    tmp_path: Path, fake_keyring: FakeKeyring
-) -> None:
+def test_task_defaults_survive_restart(tmp_path: Path, fake_keyring: FakeKeyring) -> None:
     settings = Settings(data_dir=tmp_path, log_level="WARNING")
     with TestClient(create_app(settings)) as first:
         model_id = _assign_text_default(first, fake_keyring)
@@ -548,9 +596,7 @@ def test_task_defaults_survive_restart(
         assert text_default["model_id"] == model_id
 
 
-def test_task_defaults_survive_restore(
-    tmp_path: Path, fake_keyring: FakeKeyring
-) -> None:
+def test_task_defaults_survive_restore(tmp_path: Path, fake_keyring: FakeKeyring) -> None:
     settings = Settings(data_dir=tmp_path, log_level="WARNING")
     with TestClient(create_app(settings)) as client:
         model_id = _assign_text_default(client, fake_keyring)

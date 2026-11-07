@@ -1,10 +1,20 @@
+import csv
+import io
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..core.vocab import GoalUnit, ItemFlag, RecommendationKind, SpeedLabel, SpeedQuadrant
+from ..core.vocab import (
+    AnalyticsExportFormat,
+    GoalUnit,
+    ItemFlag,
+    RecommendationKind,
+    SpeedLabel,
+    SpeedQuadrant,
+)
 from ..services.platform import metrics
 from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
@@ -42,12 +52,12 @@ class OverviewOut(BaseModel):
 
 
 class MostBehindNodeOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class ExamStatusOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     exam_date: str
     days_left: int
@@ -66,7 +76,7 @@ class ExamStatusOut(BaseModel):
 
 class WeaknessCellOut(BaseModel):
     concept: str
-    concept_id: int | None
+    concept_id: str | None
     skill: str
     n: int
     accuracy: float
@@ -111,14 +121,27 @@ class RecommendationOut(BaseModel):
 
 
 class ItemStatOut(BaseModel):
-    question_id: int
+    question_id: str
+    activity_id: str
     n_attempts: int
     p_correct: float
+    discrimination: float | None = None
+    distractor_efficiency: float | None = None
     avg_time_ms: int | None
     avg_time_ratio: float | None
     distractor_selection: dict[str, int] | None
     flag: ItemFlag
+    elo_outlier: bool = False
     stem_excerpt: str
+
+
+class AnalyticsExportOut(BaseModel):
+    version: int = 1
+    generated_at: str
+    course_id: str | None = None
+    daily: list[DayActivityOut]
+    concepts: list[WeaknessCellOut]
+    items: list[ItemStatOut]
 
 
 class GoalOut(BaseModel):
@@ -163,7 +186,7 @@ def exams(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
 
 @router.get("/diagnostics", response_model=DiagnosticsOut)
 def diagnostics(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     from ..services.study.teachback import teach_back_cells
 
@@ -184,22 +207,108 @@ def diagnostics(
 
 @router.get("/recommendations", response_model=list[RecommendationOut])
 def recommendations(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     return metrics.recommendations(session, profile.id, course_id)
 
 
 @router.get("/items", response_model=list[ItemStatOut])
-def items(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+def items(
+    course_id: str | None = None, session: Session = Depends(get_session)
+) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
-    return metrics.item_analysis(session, profile.id)
+    return metrics.item_analysis(session, profile.id, course_id)
+
+
+CSV_COLUMNS = (
+    "section",
+    "day",
+    "answers_n",
+    "correct_n",
+    "cards_reviewed",
+    "minutes",
+    "study_seconds",
+    "xp",
+    "concept",
+    "concept_id",
+    "skill",
+    "n",
+    "accuracy",
+    "avg_time_ratio",
+    "weakness_score",
+    "enough_data",
+    "question_id",
+    "p_correct",
+    "discrimination",
+    "distractor_efficiency",
+    "avg_time_ms",
+    "flag",
+    "elo_outlier",
+    "stem_excerpt",
+)
+
+
+def _export_payload(session: Session, profile_id: str, course_id: str | None) -> dict[str, Any]:
+    rows = metrics.answer_rows(session, profile_id, course_id)
+    return {
+        "version": 1,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "course_id": course_id,
+        "daily": metrics.daily_history(session, profile_id, course_id),
+        "concepts": metrics.weakness_matrix(rows),
+        "items": metrics.item_analysis(session, profile_id, course_id),
+    }
+
+
+def _csv_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for entry in payload["daily"]:
+        rows.append({"section": "daily", **entry})
+    for entry in payload["concepts"]:
+        rows.append(
+            {
+                "section": "concept",
+                "concept": entry["concept"],
+                "concept_id": entry["concept_id"],
+                "skill": entry["skill"],
+                "n": entry["n"],
+                "accuracy": entry["accuracy"],
+                "avg_time_ratio": entry["avg_time_ratio"],
+                "weakness_score": entry["weakness_score"],
+                "enough_data": entry["enough_data"],
+            }
+        )
+    for entry in payload["items"]:
+        rows.append({"section": "item", **entry})
+    return rows
+
+
+@router.get("/export", response_model=AnalyticsExportOut)
+def export_analytics(
+    format: AnalyticsExportFormat = AnalyticsExportFormat.CSV,
+    course_id: str | None = None,
+    session: Session = Depends(get_session),
+) -> Any:
+    profile = ensure_default_profile(session)
+    payload = _export_payload(session, profile.id, course_id)
+    if format == AnalyticsExportFormat.JSON:
+        return payload
+    buffer = io.StringIO()
+    writer = csv.DictWriter(
+        buffer, fieldnames=list(CSV_COLUMNS), extrasaction="ignore", lineterminator="\n"
+    )
+    writer.writeheader()
+    writer.writerows(_csv_rows(payload))
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="study-progress.csv"'},
+    )
 
 
 @router.put("/goal", response_model=GoalOut)
-def set_goal(
-    body: GoalIn, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def set_goal(body: GoalIn, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     if body.unit is None and body.answers_per_day is None and body.minutes_per_day is None:
         raise HTTPException(
@@ -237,9 +346,7 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
     from ..ai.tasks import TASK_DEFS
     from ..domain.models import AiInteraction, TaskAssignment
 
-    month_start = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     rows = session.execute(
         select(
             AiInteraction.task,

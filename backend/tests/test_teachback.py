@@ -32,15 +32,15 @@ def client(
         yield test_client, gateway, app
 
 
-def make_course(client: TestClient, title: str = "Teach-back course") -> int:
+def make_course(client: TestClient, title: str = "Teach-back course") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
 def test_teach_back_creates_explain_exercise(
@@ -78,7 +78,7 @@ def test_teach_back_from_node_uses_node_title(
         ).json()
         response = test_client.post(
             "/api/v1/exercises/teach-back",
-            json={"course_id": course_id, "node_id": int(node["id"])},
+            json={"course_id": course_id, "node_id": str(node["id"])},
         )
         assert response.status_code == 201, response.text
         assert response.json()["title"] == "Teach-back: Eigenvectors"
@@ -121,7 +121,7 @@ def test_teach_back_result_lands_in_diagnostics(
                 )
             )
             db.commit()
-            exercise_id = int(exercise.id)
+            exercise_id = str(exercise.id)
         finally:
             db.close()
 
@@ -130,15 +130,13 @@ def test_teach_back_result_lands_in_diagnostics(
                 {
                     "verdict": "correct",
                     "score": 1.0,
-                    "rationale": [
-                        {"rubric_id": "definition", "reason": "stated correctly"}
-                    ],
+                    "rationale": [{"rubric_id": "definition", "reason": "stated correctly"}],
                 }
             )
         )
         started = test_client.post(f"/api/v1/exercises/{exercise_id}/sessions")
         assert started.status_code in (200, 201), started.text
-        session_id = int(started.json()["id"])
+        session_id = str(started.json()["id"])
         answered = test_client.post(
             f"/api/v1/exercises/sessions/{session_id}/answer",
             json={
@@ -153,8 +151,7 @@ def test_teach_back_result_lands_in_diagnostics(
         diagnostics = test_client.get("/api/v1/analytics/diagnostics").json()
         cells = diagnostics.get("weakness_matrix") or []
         assert any(
-            cell["concept"] == "Eigenvalues" and cell["skill"] == "explanation"
-            for cell in cells
+            cell["concept"] == "Eigenvalues" and cell["skill"] == "explanation" for cell in cells
         )
 
 
@@ -187,7 +184,7 @@ def test_teachback_recommendation_after_repeated_drilling(
             assert activity is not None
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "integrate by parts"}],
                 options=[{"type": "text", "md": "ok"}],
                 answer={"index": 0},
@@ -197,9 +194,7 @@ def test_teachback_recommendation_after_repeated_drilling(
             db.add(question)
             db.flush()
             now = datetime.now(UTC)
-            for index, correct in enumerate(
-                [False, False, True, False, False, True, False]
-            ):
+            for index, correct in enumerate([False, False, True, False, False, True, False]):
                 attempt = Attempt(activity_id=activity.id, mode="practice")
                 db.add(attempt)
                 db.flush()

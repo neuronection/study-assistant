@@ -78,8 +78,8 @@ describe('WsClient', () => {
       data: JSON.stringify({ type: 'unsubscribed', topic: 'chat:5' }),
     })
     socket.onmessage?.({ data: JSON.stringify({ type: 'pong' }) })
-    socket.emit('chat:5', { type: 'stream_start' })
-    expect(seen).toEqual([{ type: 'stream_start' }])
+    socket.emit('chat:5', { type: 'delta', text: 'hi' })
+    expect(seen).toEqual([{ type: 'delta', text: 'hi' }])
   })
 
   test('unsubscribing the last handler sends an unsubscribe frame', () => {

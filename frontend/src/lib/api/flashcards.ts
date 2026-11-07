@@ -1,28 +1,16 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 
-export interface FlashcardInfo {
-  id: number
-  kind: string
-  front: BlockDto[]
-  back: BlockDto[]
-  source: string
-  source_ref: string | null
-  node_id: number | null
-  due_at: string | null
-  state: string | null
-}
+type Schemas = components['schemas']
 
-export interface ReviewResult {
-  interval_days: number
-  due_at: string
-  state: string
-}
+export type FlashcardInfo = Schemas['CardOut']
+export type ReviewResult = Schemas['ReviewOut']
 
 export async function listFlashcards(
-  courseId?: number,
-  nodeId?: number,
+  courseId?: string,
+  nodeId?: string,
   includeChildren = true
 ): Promise<FlashcardInfo[]> {
   const params = new URLSearchParams()
@@ -40,8 +28,8 @@ export async function listFlashcards(
 
 export async function dueFlashcards(
   limit = 20,
-  courseId?: number,
-  nodeId?: number
+  courseId?: string,
+  nodeId?: string
 ): Promise<FlashcardInfo[]> {
   const params = new URLSearchParams({ limit: String(limit) })
   if (courseId !== undefined) {
@@ -55,7 +43,7 @@ export async function dueFlashcards(
   return json<FlashcardInfo[]>(response)
 }
 
-export async function reviewFlashcard(cardId: number, rating: number): Promise<ReviewResult> {
+export async function reviewFlashcard(cardId: string, rating: number): Promise<ReviewResult> {
   const response = await apiFetch(`/api/v1/flashcards/${cardId}/review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,10 +54,10 @@ export async function reviewFlashcard(cardId: number, rating: number): Promise<R
 
 export async function generateFlashcards(body: {
   source: string
-  note_id?: number | null
-  material_id?: number | null
-  course_id: number
-  node_id?: number | null
+  note_id?: string | null
+  material_id?: string | null
+  course_id: string
+  node_id?: string | null
   count?: number
 } & GenerateContext): Promise<FlashcardInfo[]> {
   const response = await apiFetch('/api/v1/flashcards/generate', {
@@ -82,7 +70,7 @@ export async function generateFlashcards(body: {
 
 export async function importAnkiDeck(
   file: File,
-  courseId: number
+  courseId: string
 ): Promise<{ imported: number; skipped: number }> {
   const form = new FormData()
   form.append('file', file)
@@ -94,7 +82,7 @@ export async function importAnkiDeck(
   return json<{ imported: number; skipped: number }>(response)
 }
 
-export function ankiExportUrl(courseId?: number): string {
+export function ankiExportUrl(courseId?: string): string {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   return `/api/v1/flashcards/export-anki${params}`
 }

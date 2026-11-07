@@ -27,10 +27,10 @@ class ConvertGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -44,7 +44,7 @@ class ConvertGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -57,7 +57,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -75,11 +75,11 @@ def convert_client(tmp_path: Path) -> Iterator[tuple[TestClient, list[str]]]:
         yield test_client, gateway.responses
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Office"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Office"}).json()["id"])
 
 
-def wait_ready(client: TestClient, material_id: int) -> dict[str, Any]:
+def wait_ready(client: TestClient, material_id: str) -> dict[str, Any]:
     detail: dict[str, Any] = {}
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
@@ -92,14 +92,14 @@ def wait_ready(client: TestClient, material_id: int) -> dict[str, Any]:
     raise AssertionError("material never became ready")
 
 
-def upload(client: TestClient, course_id: int, filename: str, data: bytes) -> int:
+def upload(client: TestClient, course_id: str, filename: str, data: bytes) -> str:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, data)},
     )
     assert response.status_code == 200, response.text
-    return int(response.json()["material"]["id"])
+    return str(response.json()["material"]["id"])
 
 
 def test_docx_ingests_via_converter(convert_client: tuple[TestClient, list[str]]) -> None:
@@ -123,9 +123,7 @@ def test_docx_ingests_via_converter(convert_client: tuple[TestClient, list[str]]
 def test_pptx_slides_notes_and_order(convert_client: tuple[TestClient, list[str]]) -> None:
     client, _responses = convert_client
     course_id = make_course(client)
-    material_id = upload(
-        client, course_id, "deck.pptx", (FIXTURES / "deck.pptx").read_bytes()
-    )
+    material_id = upload(client, course_id, "deck.pptx", (FIXTURES / "deck.pptx").read_bytes())
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
     assert "## Slide 1 — The Chain Rule" in markdown
@@ -139,9 +137,7 @@ def test_epub_spine_order_and_chapters(
 ) -> None:
     client, _responses = convert_client
     course_id = make_course(client)
-    material_id = upload(
-        client, course_id, "book.epub", (FIXTURES / "book.epub").read_bytes()
-    )
+    material_id = upload(client, course_id, "book.epub", (FIXTURES / "book.epub").read_bytes())
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
     assert "# Limits" in markdown
@@ -171,11 +167,11 @@ def test_html_data_uri_images_become_ocr_jobs(
     client, responses = convert_client
     responses.append(IMAGE_OCR_TEXT)
     course_id = make_course(client)
-    html = f"<html><body><h1>Trig</h1><img src=\"{PENGUIN_PNG}\" alt=\"unit circle\"></body></html>"
+    html = f'<html><body><h1>Trig</h1><img src="{PENGUIN_PNG}" alt="unit circle"></body></html>'
     material_id = upload(client, course_id, "trig.html", html.encode("utf-8"))
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
-    assert "ca-image://" in markdown
+    assert "sa-image://" in markdown
     assert len(detail["images"]) == 1
     image = detail["images"][0]
 

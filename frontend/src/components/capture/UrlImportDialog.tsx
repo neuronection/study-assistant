@@ -30,7 +30,7 @@ export function UrlImportDialog() {
   const courseId = useWorkspaceStore((state) => state.courseId)
   const [mode, setMode] = useState<ImportMode>('attach')
   const [url, setUrl] = useState('')
-  const [selectedCourse, setSelectedCourse] = useState<number | null>(null)
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -138,7 +138,7 @@ export function UrlImportDialog() {
             <select
               className="bg-surface border-border w-full rounded-md border px-3 py-2 text-sm"
               value={effectiveCourseId ?? ''}
-              onChange={(event) => setSelectedCourse(Number(event.target.value))}
+              onChange={(event) => setSelectedCourse(event.target.value)}
             >
               {(courses.data ?? []).map((course) => (
                 <option key={course.id} value={course.id}>

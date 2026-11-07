@@ -21,12 +21,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getNote: (id: number) => getNote(id),
-    updateNote: (id: number, body: unknown) => updateNote(id, body),
+    getNote: (id: string) => getNote(id),
+    updateNote: (id: string, body: unknown) => updateNote(id, body),
   }
 })
 
-const DETAIL = (id: number) => ({
+const DETAIL = (id: string) => ({
   id,
   title: `Editor note ${id}`,
   course_id: null,
@@ -44,7 +44,7 @@ function StandaloneNotePage() {
   const { noteId } = useParams({ from: '/note/$noteId' })
   return (
     <main>
-      <NoteEditor noteId={Number(noteId)} />
+      <NoteEditor noteId={noteId} />
     </main>
   )
 }
@@ -99,14 +99,14 @@ function renderApp(initialUrl: string) {
 
 describe('search helpers', () => {
   test('openNote merges the note id and closeNote strips it', () => {
-    expect(openNote(7)({ tab: 'notes' })).toEqual({ tab: 'notes', note: 7 })
-    expect(closeNote({ tab: 'notes', note: 7 })).toEqual({ tab: 'notes' })
+    expect(openNote('7')({ tab: 'notes' })).toEqual({ tab: 'notes', note: '7' })
+    expect(closeNote({ tab: 'notes', note: '7' })).toEqual({ tab: 'notes' })
   })
 })
 
 describe('note route redirects', () => {
   test('/notes/$noteId redirects to /note/$noteId', async () => {
-    getNote.mockResolvedValue(DETAIL(7))
+    getNote.mockResolvedValue(DETAIL('7'))
     const router = renderApp('/notes/7')
     expect(await screen.findByRole('textbox', { name: 'Note title' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/note/7')
@@ -123,11 +123,11 @@ describe('NoteEditor save behavior', () => {
   test('saving the body keeps the editor mounted', async () => {
     getNote.mockReset()
     updateNote.mockReset()
-    getNote.mockImplementation((id: number) => ({
+    getNote.mockImplementation((id: string) => ({
       ...DETAIL(id),
       body: [{ type: 'text', md: 'original text' }],
     }))
-    updateNote.mockImplementation((id: number) => ({ ...DETAIL(id) }))
+    updateNote.mockImplementation((id: string) => ({ ...DETAIL(id) }))
     renderApp('/note/1')
     expect(await screen.findByRole('textbox', { name: 'Note title' })).toBeInTheDocument()
 

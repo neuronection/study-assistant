@@ -19,7 +19,7 @@ class BrokenGateway(ScriptedGateway):
         task: str,
         messages: Any,
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         raise RuntimeError("provider offline")
@@ -47,9 +47,7 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, list[dict[str,
         yield test_client, app, events
 
 
-def wait_for_condition(
-    condition: Any, timeout: float = 30.0, describe: Any = None
-) -> None:
+def wait_for_condition(condition: Any, timeout: float = 30.0, describe: Any = None) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if condition():
@@ -59,15 +57,13 @@ def wait_for_condition(
     raise AssertionError(f"condition never met within {timeout}s{detail}")
 
 
-def test_failed_turn_emits_turn_error_and_fails_job(
+def test_failed_turn_emits_flow_failed_and_fails_job(
     client: tuple[TestClient, FastAPI, list[dict[str, Any]]],
 ) -> None:
     test_client, app, events = client
     with test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         sent = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "hi"},
@@ -75,7 +71,7 @@ def test_failed_turn_emits_turn_error_and_fails_job(
         assert sent.status_code == 200
         job_id = sent.json()["job_id"]
         wait_for_condition(
-            lambda: any(e.get("type") == "turn_error" for e in events),
+            lambda: any(e.get("type") == "flow_failed" for e in events),
             describe=lambda: f"event types={[e.get('type') for e in events]}",
         )
         db = app.state.session_factory()
@@ -97,14 +93,17 @@ def test_failed_turn_emits_turn_error_and_fails_job(
             assert "provider offline" in (job.error or "")
         finally:
             db.close()
-        messages = test_client.get(
-            f"/api/v1/chat/sessions/{session['id']}/messages"
-        ).json()
+        messages = test_client.get(f"/api/v1/chat/sessions/{session['id']}/messages").json()
         # The failed turn persists a display-only marker row (uniform chat
         # error display): an empty assistant message with state.turn_failed;
         # excluded from the model context on the next turn.
         assert [m["role"] for m in messages] == ["user", "assistant"]
         assert messages[-1]["markdown"] == ""
         assert messages[-1]["state"]["turn_failed"]["code"] == "turn_error"
-        error_event = next(e for e in events if e.get("type") == "turn_error")
-        assert error_event["detail"] == "provider offline"
+        error_event = next(e for e in events if e.get("type") == "flow_failed")
+        assert error_event == {
+            "type": "flow_failed",
+            "code": "turn_error",
+            "message": "provider offline",
+            "retryable": True,
+        }

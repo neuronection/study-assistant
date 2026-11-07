@@ -72,9 +72,7 @@ def test_desktop_instance_boots_open_and_exchange_provisions_owner(
 
 
 @pytest.mark.contract  # §18.6 — the exchange/Dim surface is shell-secret gated
-def test_desktop_api_requires_shell_secret(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_desktop_api_requires_shell_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # SA_SHELL=1 = the shell.py attachment flag (§11 gate arms only for
     # shell-attached processes; ADR-0023).
     monkeypatch.setenv("SA_SHELL", "1")
@@ -85,42 +83,81 @@ def test_desktop_api_requires_shell_secret(
             shell_secret="test-shell-secret",
         )
     )
+    kit = app.state.auth
+    assert kit.config.identity_mode == "desktop", "SA_IDENTITY_MODE rides the §16 map"
+    assert kit.config.require_shell_secret is True, (
+        "the computed §11 value must reach the kit config (S11)"
+    )
     with TestClient(app) as unauthenticated:
-        assert unauthenticated.get("/api/v1/health").status_code == 403
-        wrong = unauthenticated.get(
-            "/api/v1/health", headers={"X-Shell-Token": "nope"}
-        )
+        # Health is a public liveness probe (Docker HEALTHCHECK / release
+        # smoke) — deliberately exempt from the shell gate; no owner data.
+        assert unauthenticated.get("/api/v1/health").status_code == 200
+        assert unauthenticated.get("/api/v1/instance/config").status_code == 403
+        wrong = unauthenticated.get("/api/v1/instance/config", headers={"X-Shell-Token": "nope"})
         assert wrong.status_code == 403
         ok = unauthenticated.get(
-            "/api/v1/health", headers={"X-Shell-Token": "test-shell-secret"}
+            "/api/v1/instance/config", headers={"X-Shell-Token": "test-shell-secret"}
         )
         assert ok.status_code == 200
 
 
 @pytest.mark.contract  # ADR-0023 — shell-less desktop dev leaves the gate open
 def test_shell_less_desktop_dev_does_not_gate(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Desktop identity WITHOUT an attached shell (`run-dev.sh`: uvicorn +
     vite — no SA_SHELL=1, no `?shell=` carrier) must not arm the §11 gate,
-    or the dev SPA could never authenticate."""
+    or the dev SPA could never authenticate — and must say so loudly."""
     monkeypatch.delenv("SA_SHELL", raising=False)
-    app = create_app(_settings(tmp_path, identity_mode="desktop"))
+    with caplog.at_level("WARNING"):
+        app = create_app(_settings(tmp_path, identity_mode="desktop"))
+    assert app.state.auth.config.require_shell_secret is False
+    assert any(
+        "X-Shell-Token gate is DISARMED" in record.getMessage() for record in caplog.records
+    ), "a disarmed gate warns loudly (S11)"
     with TestClient(app) as unauthenticated:
         assert unauthenticated.get("/api/v1/health").status_code == 200
-        assert (
-            unauthenticated.get("/api/v1/auth/me").status_code != 403
-        ), "shell-less desktop dev must not gate the API"
+        assert unauthenticated.get("/api/v1/auth/me").status_code != 403, (
+            "shell-less desktop dev must not gate the API"
+        )
+
+
+@pytest.mark.contract  # §18.6 — the gate arms on shell attachment only (S11)
+def test_env_require_shell_secret_never_arms_the_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`SA_REQUIRE_SHELL_SECRET=1` must not arm a gate no shell can answer:
+    `require_shell_secret` is computed (`SA_SHELL=1`), never env-set."""
+    monkeypatch.delenv("SA_SHELL", raising=False)
+    monkeypatch.setenv("SA_REQUIRE_SHELL_SECRET", "1")
+    app = create_app(_settings(tmp_path, identity_mode="desktop"))
+    assert app.state.auth.config.require_shell_secret is False
+    with TestClient(app) as unauthenticated:
+        assert unauthenticated.get("/api/v1/health").status_code == 200
+
+
+@pytest.mark.contract  # §18.6 — DIM mounts on the desktop row only (§4.3)
+def test_server_entrypoint_never_routes_dim(tmp_path: Path) -> None:
+    app = create_app(_settings(tmp_path))
+    with TestClient(app) as server:
+        exchanged = server.post(
+            "/api/v1/auth/desktop/exchange", headers={"X-Shell-Token": "anything"}
+        )
+    assert exchanged.status_code == 404, "the server entrypoint never routes DIM (§4.3)"
 
 
 @pytest.mark.contract  # §18.6 — env flip cannot change auth_mode after init
 def test_auth_mode_is_init_only(tmp_path: Path) -> None:
-    first = create_app(_settings(tmp_path, auth_mode="open"))
+    # desktop + open is the legal DIM row (§4); the server row is pinned
+    # by test_contract_identity_glue (S1: open coerces to authenticated).
+    first = create_app(_settings(tmp_path, identity_mode="desktop", auth_mode="open"))
     with TestClient(first):
         pass
     first_factory = first.state.session_factory
     assert StudyInstanceStore(first_factory).get("auth_mode") == "open"
-    second = create_app(_settings(tmp_path, auth_mode="authenticated"))
+    second = create_app(_settings(tmp_path, identity_mode="desktop", auth_mode="authenticated"))
     second_factory = second.state.session_factory
     assert StudyInstanceStore(second_factory).get("auth_mode") == "open"
 

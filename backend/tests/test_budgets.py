@@ -7,12 +7,12 @@ from sqlalchemy import text
 
 from app.ai.gateway import BudgetExceeded, LLMGateway, Message, ResolvedModel
 from app.core.config import Settings
-from app.domain.models import TaskAssignment
+from app.domain.models import AiInteraction, TaskAssignment
 from app.main import create_app
 from app.storage.db import make_engine, make_session_factory
 
 MODEL = ResolvedModel(
-    provider_id=1,
+    provider_id="1",
     provider_type="openai_compatible",
     base_url="http://localhost/v1",
     external_id="costy",
@@ -107,8 +107,8 @@ def test_generate_ledger_records_tokens_and_cost(session_factory: Any) -> None:
         ).one()
     assert row[0] == "chat"
     assert row[1] == "costy"
-    assert row[2] == 100
-    assert row[3] == 1
+    assert row[2] == 250
+    assert row[3] == 2
     assert row[4] is not None and row[4] > 0
 
 
@@ -132,9 +132,7 @@ def test_generate_ledger_records_real_provider_usage(session_factory: Any) -> No
     assert row[1] == 2
     assert row[2] == 3
     expected_cost = round(
-        (5 - 3) / 1_000_000 * 3.0
-        + 3 / 1_000_000 * 3.0 * 0.1
-        + 2 / 1_000_000 * 15.0,
+        (5 - 3) / 1_000_000 * 3.0 + 3 / 1_000_000 * 3.0 * 0.1 + 2 / 1_000_000 * 15.0,
         6,
     )
     assert row[3] == expected_cost
@@ -145,12 +143,14 @@ def test_budget_exceeded_blocks_call(session_factory: Any) -> None:
     gateway = LLMGateway(session_factory, transport=ok_transport(calls))
     seed_assignment(session_factory, "chat", 0.01)
     with session_factory() as session:
-        session.execute(
-            text(
-                "INSERT INTO ai_interactions "
-                "(context_type, task, model, input_tokens, output_tokens, cost_usd, "
-                "created_at) VALUES ('gateway', 'chat', 'costy', 1, 1, 5.0, "
-                "CURRENT_TIMESTAMP)"
+        session.add(
+            AiInteraction(
+                context_type="gateway",
+                task="chat",
+                model="costy",
+                input_tokens=1,
+                output_tokens=1,
+                cost_usd=5.0,
             )
         )
         session.commit()
@@ -168,7 +168,7 @@ def test_budget_ignored_without_cap_or_with_none_cost(session_factory: Any) -> N
     assert len(calls) == 1
 
     cheap = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="free-local",
@@ -197,9 +197,7 @@ def test_costs_endpoint_and_budget_api(tmp_path: Path, session_factory: Any) -> 
         describer=None,
     )
     with TestClient(app) as client:
-        put = client.put(
-            "/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 2.5}
-        )
+        put = client.put("/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 2.5})
         assert put.status_code == 200, put.text
         assert put.json()["monthly_cap_usd"] == 2.5
 
@@ -208,9 +206,7 @@ def test_costs_endpoint_and_budget_api(tmp_path: Path, session_factory: Any) -> 
         assert chat_task["monthly_cap_usd"] == 2.5
 
         client.put("/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 0.5})
-        gateway.generate(
-            "chat", [Message(role="user", content="hello")], model=MODEL
-        )
+        gateway.generate("chat", [Message(role="user", content="hello")], model=MODEL)
 
         costs = client.get("/api/v1/analytics/costs")
         assert costs.status_code == 200

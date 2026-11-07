@@ -23,7 +23,7 @@
 #                                         #   shows the login/register UI
 #   ./scripts/run-dev.sh -h | --help      # print this help and exit
 #
-# Ports (family dev-port bands, dev/guidelines/dev-ports.md): study is slot 2,
+# Ports (family dev-port bands): study is slot 2,
 # so SA_PORT defaults to 8200 and VITE_PORT to 3200 (dev-db Postgres: 5434).
 # Desktop mode (pywebview) is a single process: scripts/app.sh (`pnpm app`).
 # Built-SPA mode served by the backend: scripts/webapp.sh (`pnpm webapp`).
@@ -37,6 +37,9 @@ source scripts/lib/dev-common.sh
 BACKEND_PORT="${SA_PORT:-8200}"
 VITE_PORT="${VITE_PORT:-3200}"
 export SA_PORT="$BACKEND_PORT" VITE_PORT="$VITE_PORT"
+# Dev boot: the family boot guards (nx_auth.boot) otherwise assume
+# production (fail-safe default) and demand pinned keys on server boots.
+export SA_APP_ENV="${SA_APP_ENV:-development}"
 
 RESET=0
 RESET_ARGS=()
@@ -69,7 +72,7 @@ done
 
 if [[ "$RESET" -eq 1 ]]; then
   if [[ "$WEB" = true ]]; then
-    dc_die "--reset is desktop-mode only; reset web mode with: docker compose -f docker/docker-compose.dev-db.yml down -v && up -d"
+    dc_die "--reset is desktop-mode only; reset web mode with: docker compose --env-file .env -f docker/docker-compose.dev-db.yml down -v && up -d"
   fi
   dc_kill_port "$BACKEND_PORT"
   dc_kill_port "$VITE_PORT"
@@ -86,7 +89,16 @@ if [[ "$WEB" = true ]]; then
   if ! dc_port_in_use 5434; then
     if command -v docker >/dev/null 2>&1; then
       dc_info "dev-db not reachable on 5434 — starting docker/docker-compose.dev-db.yml"
-      docker compose -f docker/docker-compose.dev-db.yml up -d
+      # --env-file: compose interpolates ${POSTGRES_DB}/${POSTGRES_TEST_DB}/
+      # ${SA_DB_PORT} from the compose file's *directory* .env by default —
+      # i.e. docker/.env, the standalone/prod stack's env file — so a prod
+      # value could silently reshape the dev DB the run script then connects
+      # to. Pin the interpolation to the dev root .env (empty env when it is
+      # absent); shell exports (worktree-style SA_DB_PORT/
+      # COMPOSE_PROJECT_NAME overrides) still win over it. The bootstrap
+      # password is already pinned in the compose file for the same reason.
+      dev_db_env=.env; [[ -f "$dev_db_env" ]] || dev_db_env=/dev/null
+      docker compose --env-file "$dev_db_env" -f docker/docker-compose.dev-db.yml up -d
       dc_info "waiting for the dev-db to accept connections"
       ready=""
       for _ in $(seq 1 60); do
@@ -117,6 +129,12 @@ fi
 
 dc_check_port_free "$BACKEND_PORT" "backend"
 dc_check_port_free "$VITE_PORT" "frontend"
+
+# D6: migrations are an explicit dev step — `create_app` never migrates
+# (plan 20 Phase 4). Desktop profile: local SQLite; --web: the dev
+# Postgres on 5434.
+dc_info "migrations  → alembic upgrade head"
+(cd backend && uv run alembic upgrade head)
 
 dc_info "backend  → http://127.0.0.1:$BACKEND_PORT (api docs: /api/docs when SA_DEBUG=1)"
 dc_info "frontend → http://localhost:$VITE_PORT"

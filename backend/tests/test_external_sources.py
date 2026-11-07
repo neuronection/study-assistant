@@ -11,8 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import app.services.content.external_sources as ext
+import app.extensions.builtin.external_sources as extconn
 from app.domain.models import ExternalSource, MaterialSuggestion, Profile
+from app.services.content import external_sources as ext
 
 RSS_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -49,11 +50,9 @@ class FakeResponse:
 
 
 @pytest.fixture()
-def course_id(client: TestClient) -> int:
+def course_id(client: TestClient) -> str:
     with client:
-        return int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        return str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
 
 
 def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
@@ -70,9 +69,7 @@ def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
     return data
 
 
-def test_external_source_crud_and_validation(
-    client: TestClient, course_id: int
-) -> None:
+def test_external_source_crud_and_validation(client: TestClient, course_id: str) -> None:
     with client:
         created = _create_source(client, course_id=course_id)
         assert created["kind"] == "rss"
@@ -128,26 +125,20 @@ def test_external_source_crud_and_validation(
         assert patched.json()["enabled"] is False
         assert patched.json()["scan_interval_sec"] == 3600
 
-        assert (
-            client.delete(f"/api/v1/external-sources/{created['id']}").status_code
-            == 204
-        )
-        assert (
-            client.delete(f"/api/v1/external-sources/{created['id']}").status_code
-            == 404
-        )
+        assert client.delete(f"/api/v1/external-sources/{created['id']}").status_code == 204
+        assert client.delete(f"/api/v1/external-sources/{created['id']}").status_code == 404
 
 
 def test_rss_scan_lands_sanitized_suggestions(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=RSS_FEED)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         stats = client.post(f"/api/v1/external-sources/{source['id']}/scan")
@@ -177,7 +168,7 @@ def test_rss_scan_lands_sanitized_suggestions(
 def test_rss_cursor_prevents_resurfacing(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen_feeds = iter([RSS_FEED, RSS_FEED])
@@ -185,7 +176,7 @@ def test_rss_cursor_prevents_resurfacing(
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=next(seen_feeds))
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         first = client.post(f"/api/v1/external-sources/{source['id']}/scan").json()
@@ -194,15 +185,15 @@ def test_rss_cursor_prevents_resurfacing(
         assert again["new"] == 0
         assert again["updated"] == 0
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert isinstance(row.cursor, dict)
     assert "chain-1" in row.cursor["seen"]
-    assert len(row.cursor["seen"]) <= ext.MAX_SEEN_IDS
+    assert len(row.cursor["seen"]) <= extconn.MAX_SEEN_IDS
 
 
 def test_rss_304_short_circuits(
-    client: TestClient, course_id: int, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, course_id: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls: list[str] = []
 
@@ -210,7 +201,7 @@ def test_rss_304_short_circuits(
         calls.append(url)
         return FakeResponse(304)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         stats = client.post(f"/api/v1/external-sources/{source['id']}/scan")
@@ -222,7 +213,7 @@ def test_rss_304_short_circuits(
 def test_youtube_scan_records_video_suggestions(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_entries(url: str) -> list[dict[str, object]]:
@@ -237,7 +228,7 @@ def test_youtube_scan_records_video_suggestions(
             {"title": "no id, no url"},
         ]
 
-    monkeypatch.setattr(ext, "extract_flat_entries", fake_entries)
+    monkeypatch.setattr(extconn, "extract_flat_entries", fake_entries)
     with client:
         source = _create_source(
             client,
@@ -258,7 +249,7 @@ def test_youtube_scan_records_video_suggestions(
     assert (one.meta or {}).get("channel") == "Math Academy"
     assert one.provider == "youtube:Calc playlist"
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert row.cursor == {"seen": ["vid1", "vid2"]}
 
@@ -266,13 +257,13 @@ def test_youtube_scan_records_video_suggestions(
 def test_saved_suggestion_is_never_resurfaced(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=RSS_FEED)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         saved = client.post(
             "/api/v1/discovery/suggestions",
@@ -301,8 +292,13 @@ def test_site_search_scan_uses_provider_and_site_filter(
 ) -> None:
     seen_queries: list[str] = []
 
-    def fake_search(
-        base_url: str, flavor: str, query: str, api_key: str
+    def fake_fallback(
+        session: Session,
+        profile_id: str,
+        query: str,
+        *,
+        transport: object = None,
+        limit: int | None = None,
     ) -> list[dict[str, str]]:
         seen_queries.append(query)
         return [
@@ -313,17 +309,11 @@ def test_site_search_scan_uses_provider_and_site_filter(
             }
         ]
 
-    monkeypatch.setattr(ext, "_perform_site_search", fake_search)
+    monkeypatch.setattr(extconn, "search_with_fallback", fake_fallback)
 
     profile = Profile(
         user_id=owner.id,
         name="p",
-        preferences={
-            "search_provider": {
-                "base_url": "https://searxng.example",
-                "flavor": "searxng",
-            }
-        },
     )
     db_session.add(profile)
     db_session.commit()
@@ -336,7 +326,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
 
     source = ExternalSource(
         profile_id=str(profile.id),
-        course_id=int(course.id),
+        course_id=str(course.id),
         kind="site_search",
         url="https://khanacademy.org",
         label="Khan",
@@ -359,20 +349,20 @@ def test_site_search_scan_uses_provider_and_site_filter(
 def test_scan_failure_is_isolated_and_recorded(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         raise OSError("network unreachable")
 
-    monkeypatch.setattr(ext, "fetch_url", failing_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", failing_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         response = client.post(f"/api/v1/external-sources/{source['id']}/scan")
         assert response.status_code == 502
         assert "network unreachable" in response.json()["detail"]
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert "network unreachable" in (row.last_scan_error or "")
     assert row.enabled is True
@@ -380,22 +370,16 @@ def test_scan_failure_is_isolated_and_recorded(
 
 def test_course_purge_cascades_external_sources(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
-        deleted = client.delete(
-            f"/api/v1/courses/{course_id}", params={"confirmed_backup": "true"}
-        )
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": "true"})
         assert deleted.status_code == 200
         assert client.get("/api/v1/external-sources").json() == []
 
 
 def test_external_sources_ride_course_bundles(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(
             client,
             course_id=course_id,
@@ -417,6 +401,8 @@ def test_external_sources_ride_course_bundles(client: TestClient) -> None:
     assert payload == [
         {
             "kind": "youtube_channel",
+            "provider": "youtube",
+            "auth_kind": "none",
             "url": "https://youtube.com/@3blue1brown",
             "label": None,
             "options": {"max_items": 5},
@@ -430,9 +416,7 @@ def test_bundle_import_recreates_sources_with_fresh_cursors(
     client: TestClient,
 ) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
         export_response = client.get(f"/api/v1/courses/{course_id}/export")
         assert export_response.status_code == 200
@@ -507,19 +491,19 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
         session.flush()
         source = ExternalSource(
             profile_id=str(profile.id),
-            course_id=int(course.id),
+            course_id=str(course.id),
             kind="rss",
             url="https://broken.example/feed",
             label="Broken",
         )
         session.add(source)
         session.commit()
-        source_id = int(source.id)
+        source_id = str(source.id)
 
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         raise OSError("network unreachable")
 
-    monkeypatch.setattr(ext, "fetch_url", failing_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", failing_fetch)
 
     assert scheduler._scan_one(source_id) is None
     with app.state.session_factory() as session:
@@ -537,8 +521,9 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
 
     scheduler._in_flight.add(source_id)
     try:
-        assert scheduler.scan_all(
-            now=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=30)
-        ) == {}
+        assert (
+            scheduler.scan_all(now=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=30))
+            == {}
+        )
     finally:
         scheduler._in_flight.discard(source_id)

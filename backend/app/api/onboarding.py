@@ -101,9 +101,7 @@ def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, A
         .filter(DefaultTaskAssignment.model_id.isnot(None))
         .all()
     ]
-    has_course = (
-        session.query(Course.id).filter(Course.hidden.is_(False)).first() is not None
-    )
+    has_course = session.query(Course.id).filter(Course.hidden.is_(False)).first() is not None
     has_material = (
         session.query(Material.id)
         .join(Course, Material.course_id == Course.id)
@@ -121,7 +119,7 @@ def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, A
 
 
 class SampleCourseOut(BaseModel):
-    course_id: int
+    course_id: str
     materials: int
     created: bool
     flashcards: int = 0
@@ -149,9 +147,7 @@ SAMPLE_QUESTIONS: list[dict[str, Any]] = [
         "type": "numeric",
         "stem": [{"type": "text", "md": "Differentiate $f(x) = x^3$ and evaluate at $x = 2$."}],
         "answer": {"value": "12"},
-        "explanation": [
-            {"type": "text", "md": "Power rule: $f'(x) = 3x^2$, so $f'(2) = 12$."}
-        ],
+        "explanation": [{"type": "text", "md": "Power rule: $f'(x) = 3x^2$, so $f'(2) = 12$."}],
         "difficulty": 2,
         "bloom": "apply",
         "skill": "procedural",
@@ -234,7 +230,7 @@ def _seed_sample_study_content(session: Session, course: Course) -> tuple[int, i
             profile_id=course.profile_id,
             course_id=course.id,
             node_id=root.id,
-            kind="basic",
+            kind="card_basic",
             front=[{"type": "text", "md": front}],
             back=[{"type": "text", "md": back}],
             source="sample",
@@ -293,9 +289,7 @@ def create_sample_course(
         )
         session.add(material)
         session.flush()
-        _store_extraction(
-            session, material, extractor="native", markdown=markdown, pages=None
-        )
+        _store_extraction(session, material, extractor="native", markdown=markdown, pages=None)
         sync_material_fts(session, material, markdown)
         material.status = "ready"
         _ = chunk_markdown(markdown)

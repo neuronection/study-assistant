@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Database, Eye, FileText, AudioLines, Volume2, Wrench } from 'lucide-react'
+import { Database, Eye, FileText, AudioLines, ListChecks, Volume2, Wrench } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -20,7 +20,10 @@ import {
 } from '@/lib/api'
 import { useConfirm } from '@/lib/use-confirm'
 
-const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'stt', 'tts'] as const
+const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'stt', 'tts', 'decision'] as const
+/** Standalone kinds: selecting one makes the model exactly that kind —
+ * chat caps combine, standalone kinds replace everything (D4 in the form). */
+const STANDALONE_CAPS = ['embeddings', 'stt', 'tts', 'decision'] as const
 const REASONING_EFFORT_OPTIONS = ['none', 'low', 'medium', 'high', 'max', 'xhigh'] as const
 const CAP_ICONS = {
   text: FileText,
@@ -29,6 +32,7 @@ const CAP_ICONS = {
   embeddings: Database,
   stt: AudioLines,
   tts: Volume2,
+  decision: ListChecks,
 } as const
 
 export function ModelsTab() {
@@ -48,7 +52,7 @@ export function ModelsTab() {
     }
   }, [expandedProviderId, providers.data])
 
-  const providerId = expandedProviderId !== null ? Number(expandedProviderId) : null
+  const providerId = expandedProviderId
   const remote = useQuery({
     queryKey: ['remote-models', expandedProviderId],
     queryFn: () => listRemoteModels(providerId!),
@@ -65,7 +69,7 @@ export function ModelsTab() {
     setError(null)
     try {
       await createModel({
-        provider_id: Number(pid),
+        provider_id: pid,
         external_id: draft.externalId,
         label: draft.label ?? null,
         caps: draft.caps,
@@ -73,6 +77,7 @@ export function ModelsTab() {
         reasoning_effort: draft.reasoningEffort || null,
         temperature: draft.temperature ?? null,
         max_tokens: draft.maxTokens ?? null,
+        decision_transport: draft.decisionTransport ?? null,
       })
       await refresh()
     } catch (err) {
@@ -88,7 +93,7 @@ export function ModelsTab() {
         await Promise.all(
           drafts.slice(offset, offset + BATCH).map((draft) =>
             createModel({
-              provider_id: Number(pid),
+              provider_id: pid,
               external_id: draft.externalId,
               caps: draft.caps,
               enabled: true,
@@ -107,7 +112,7 @@ export function ModelsTab() {
   const handleUpdate = async (model: ModelRegistryModel, patch: ModelRegistryPatch) => {
     setError(null)
     try {
-      await updateModel(Number(model.id), {
+      await updateModel(model.id, {
         ...(patch.label !== undefined ? { label: patch.label } : {}),
         ...(patch.caps !== undefined ? { caps: patch.caps } : {}),
         ...(patch.reasoningEffort !== undefined
@@ -115,6 +120,9 @@ export function ModelsTab() {
           : {}),
         ...(patch.temperature !== undefined ? { temperature: patch.temperature } : {}),
         ...(patch.maxTokens !== undefined ? { max_tokens: patch.maxTokens } : {}),
+        ...(patch.decisionTransport !== undefined
+          ? { decision_transport: patch.decisionTransport || null }
+          : {}),
       })
       await refresh()
     } catch (err) {
@@ -135,7 +143,7 @@ export function ModelsTab() {
     }
     setError(null)
     try {
-      await deleteModel(Number(model.id))
+      await deleteModel(model.id)
       await refresh()
     } catch (err) {
       setError((err as Error).message)
@@ -163,6 +171,7 @@ export function ModelsTab() {
       caps: model.caps,
       enabled: model.enabled,
       reasoningEffort: model.reasoning_effort ?? undefined,
+      decisionTransport: model.decision_transport ?? undefined,
       missing: model.missing,
     }))
 
@@ -204,6 +213,26 @@ export function ModelsTab() {
         missingLabel={t('settings.missing')}
         capsLabel={t('settings.modelCaps')}
         capsHint={t('settings.modelCapsHint')}
+        standaloneCaps={[...STANDALONE_CAPS]}
+        standaloneLabel={t('settings.modelCapsStandalone')}
+        capImplications={{ vision: ['text'], tools: ['text'] }}
+        defaultCaps={(provider) =>
+          provider.type === 'decision' ? ['decision'] : ['text', 'vision', 'tools']
+        }
+        modifiersLabel={t('settings.capsModifiers')}
+        kindStepLabel={t('settings.modelKindStep')}
+        changeKindLabel={t('settings.modelChangeKind')}
+        kindDescriptions={{
+          text: t('settings.modelKindText'),
+          stt: t('settings.modelKindStt'),
+          tts: t('settings.modelKindTts'),
+          embeddings: t('settings.modelKindEmbeddings'),
+          decision: t('settings.modelKindDecision'),
+        }}
+        decisionTransport="systemone"
+        decisionTransportLabel={t('settings.modelTransport')}
+        useCatalogLabel={t('settings.useCatalog')}
+        providerContextLabel={t('settings.modelProvider')}
         searchPlaceholder={t('settings.searchModels')}
         searchLabel={t('settings.searchModels')}
         emptyProviderLabel={t('settings.noModels')}

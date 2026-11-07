@@ -23,6 +23,7 @@ import {
   ModalTitle,
 } from '@neuronection/assistant-ui'
 import {
+  acceptExternalSuggestion,
   createLinkMaterial,
   deleteDiscoverySuggestion,
   getJob,
@@ -40,7 +41,7 @@ import { cn } from '@/lib/utils'
 const POLL_INTERVAL_MS = 800
 const POLL_DEADLINE_MS = 15 * 60_000
 
-async function pollJob(jobId: number): Promise<void> {
+async function pollJob(jobId: string): Promise<void> {
   const deadline = Date.now() + POLL_DEADLINE_MS
   while (Date.now() < deadline) {
     const job = await getJob(jobId)
@@ -55,17 +56,24 @@ async function pollJob(jobId: number): Promise<void> {
 function providerOptions(
   prefs: { enabled: string[]; sites: { site: string; label: string | null }[] } | undefined,
   t: (key: string) => string
-): { id: string; label: string }[] {
+): { id: string; label: string; enabled: boolean }[] {
   const enabled = prefs?.enabled ?? ['web', 'youtube']
-  const options: { id: string; label: string }[] = []
-  if (enabled.includes('web')) options.push({ id: 'web', label: t('discovery.providerWeb') })
+  const options: { id: string; label: string; enabled: boolean }[] = []
+  if (enabled.includes('web'))
+    options.push({ id: 'web', label: t('discovery.providerWeb'), enabled: true })
   if (enabled.includes('youtube'))
-    options.push({ id: 'youtube', label: t('discovery.providerYoutube') })
+    options.push({ id: 'youtube', label: t('discovery.providerYoutube'), enabled: true })
+  const scholarly: [string, string][] = [
+    ['arxiv', t('discovery.providerArxiv')],
+    ['openalex', t('discovery.providerOpenalex')],
+    ['crossref', t('discovery.providerCrossref')],
+  ]
+  for (const [id, label] of scholarly) {
+    if (enabled.includes(id)) options.push({ id, label, enabled: true })
+  }
   for (const site of prefs?.sites ?? []) {
     const id = `site:${site.site}`
-    if (enabled.includes(id)) {
-      options.push({ id, label: site.label || site.site })
-    }
+    options.push({ id, label: site.label || site.site, enabled: enabled.includes(id) })
   }
   return options
 }
@@ -73,8 +81,8 @@ function providerOptions(
 type DiscoverDialogProps = {
   open: boolean
   onClose: () => void
-  courseId: number | null
-  nodeId?: number | null
+  courseId: string | null
+  nodeId?: string | null
   defaultQuery?: string
 }
 
@@ -102,7 +110,18 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
     queryFn: getProfilePreferences,
     enabled: open,
   })
-  const providers = providerOptions(preferences.data?.discovery, t)
+  const providers = providerOptions(
+    preferences.data?.discovery
+      ? {
+          enabled: preferences.data.discovery.enabled ?? [],
+          sites: (preferences.data.discovery.sites ?? []).map((entry) => ({
+            site: entry.site,
+            label: entry.label ?? null,
+          })),
+        }
+      : undefined,
+    t
+  )
 
   const suggestions = useQuery({
     queryKey: ['discovery', 'suggestions', courseId],
@@ -220,7 +239,7 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
   })
 
   const patchSaved = useMutation({
-    mutationFn: ({ id, ...body }: { id: number; status?: string; material_id?: number }) =>
+    mutationFn: ({ id, ...body }: { id: string; status?: string; material_id?: string }) =>
       patchDiscoverySuggestion(id, body),
     onSuccess: async () => {
       setNotice(null)
@@ -231,7 +250,7 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
   })
 
   const forget = useMutation({
-    mutationFn: (id: number) => deleteDiscoverySuggestion(id),
+    mutationFn: (id: string) => deleteDiscoverySuggestion(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['discovery', 'suggestions'] })
       if (submitted) search.mutate()
@@ -332,6 +351,27 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
     )
   }
 
+  const remoteImportable = (row: DiscoverySuggestion) => {
+    const meta = row.meta ?? {}
+    if (typeof meta.source_id !== 'string' || meta.source_id === '') return false
+    if (typeof meta.enclosure_url === 'string' && meta.enclosure_url !== '') return true
+    return !['rss:', 'youtube:', 'site:'].some((prefix) => row.provider.startsWith(prefix))
+  }
+
+  const acceptRemote = useMutation({
+    mutationFn: (row: DiscoverySuggestion) => {
+      const meta = row.meta ?? {}
+      const sourceId = typeof meta.source_id === 'string' ? meta.source_id : ''
+      if (!sourceId) throw new Error(t('discovery.importFailed'))
+      return acceptExternalSuggestion(sourceId, row.id)
+    },
+    onSuccess: async () => {
+      setNotice(null)
+      await refresh()
+    },
+    onError: (error: Error) => setNotice(error.message),
+  })
+
   const savedRowActions = (row: DiscoverySuggestion) => (
     <div className="flex shrink-0 flex-wrap items-center gap-1">
       <Button
@@ -342,6 +382,21 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
         <ExternalLink aria-hidden />
         {t('discovery.open')}
       </Button>
+      {remoteImportable(row) ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy(`saved-import-${row.id}`)}
+          onClick={markBusy(`saved-import-${row.id}`, () => acceptRemote.mutateAsync(row))}
+        >
+          {busy(`saved-import-${row.id}`) ? (
+            <Loader2 className="animate-spin" aria-hidden />
+          ) : (
+            <Download aria-hidden />
+          )}
+          {t('discovery.importParse')}
+        </Button>
+      ) : null}
       {row.material_id ? (
         <Button
           size="sm"
@@ -440,7 +495,9 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
             <div className="flex flex-wrap gap-1" role="group" aria-label={t('discovery.providersLabel')}>
               {providers.map((provider) => {
                 const active =
-                  selectedProviders === null || selectedProviders.includes(provider.id)
+                  selectedProviders === null
+                    ? provider.enabled
+                    : selectedProviders.includes(provider.id)
                 return (
                   <button
                     key={provider.id}
@@ -454,7 +511,8 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
                     )}
                     onClick={() => {
                       const current =
-                        selectedProviders ?? providers.map((entry) => entry.id)
+                        selectedProviders ??
+                        providers.filter((entry) => entry.enabled).map((entry) => entry.id)
                       const next = current.includes(provider.id)
                         ? current.filter((entry) => entry !== provider.id)
                         : [...current, provider.id]

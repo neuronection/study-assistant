@@ -28,12 +28,12 @@ from app.services.search import hybrid_search, retrieve_chunks
 from app.storage import vectors
 from app.storage.fts import sync_material_fts
 
+# gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
 DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(
-        "SA_TEST_DATABASE_URL is not set — the PostgreSQL search twin "
-        "needs a disposable server",
+        "SA_TEST_DATABASE_URL is not set — the PostgreSQL search twin needs a disposable server",
         allow_module_level=True,
     )
 
@@ -43,9 +43,7 @@ EMBED_DIM = 8
 # xdist workers each build their own scratch database; the full Alembic
 # chain must not run concurrently on the server or it exhausts PostgreSQL's
 # lock table (max_locks_per_transaction).
-_MIGRATION_LOCK = FileLock(
-    os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock")
-)
+_MIGRATION_LOCK = FileLock(os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock"))
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -144,9 +142,7 @@ def _material(
     )
     session.add(material)
     session.flush()
-    extraction = Extraction(
-        material_id=material.id, extractor="test", markdown=markdown, blocks=[]
-    )
+    extraction = Extraction(material_id=material.id, extractor="test", markdown=markdown, blocks=[])
     session.add(extraction)
     session.flush()
     chunk_rows = [
@@ -159,9 +155,9 @@ def _material(
     return material, chunk_rows
 
 
-def _hit_ids(session: Session, query: str, course_id: int | None = None) -> list[int]:
+def _hit_ids(session: Session, query: str, course_id: str | None = None) -> list[str]:
     hits = hybrid_search(session, query, 20, _no_embed, course_id)
-    return [int(hit["material_id"]) for hit in hits]
+    return [str(hit["material_id"]) for hit in hits]
 
 
 def test_exact_phrase_hit(pg_session: Session) -> None:
@@ -201,7 +197,7 @@ def test_or_terms_hits(pg_session: Session) -> None:
         ("one factor remains here",),
     )
     rows = retrieve_chunks(pg_session, "derivative factor", _no_embed, limit=5)
-    material_ids = {int(row["material_id"]) for row in rows}
+    material_ids = {str(row["material_id"]) for row in rows}
     assert material_ids == {derivatives.id, factors.id}
 
 
@@ -295,12 +291,12 @@ def test_vector_knn_returns_nearest_chunk(pg_session: Session) -> None:
     course = Course(profile_id=profile.id, title="Calculus")
     pg_session.add(course)
     pg_session.flush()
-    chunk_ids: list[int] = []
+    chunk_ids: list[str] = []
     for index in range(3):
         _created, chunks = _material(
             pg_session, profile, course, f"Material {index}", f"Body {index}", (f"chunk {index}",)
         )
-        chunk_ids.extend(int(chunk.id) for chunk in chunks)
+        chunk_ids.extend(str(chunk.id) for chunk in chunks)
     vectors.store(pg_session, chunk_ids, [_basis(i) for i in range(3)], EMBED_MODEL)
     hits = vectors.search(pg_session, _basis(1), limit=3)
     assert hits[0][0] == chunk_ids[1]

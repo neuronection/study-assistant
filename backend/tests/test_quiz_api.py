@@ -62,10 +62,10 @@ class QuizGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiz-model",
@@ -79,7 +79,7 @@ class QuizGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -88,7 +88,7 @@ class QuizGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         text = self.generate(task, messages, model)
         yield text
@@ -102,7 +102,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -113,7 +113,7 @@ def quiz_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -124,8 +124,8 @@ def quiz_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_generate_quiz_with_valid_metadata(quiz_client: TestClient) -> None:
@@ -167,7 +167,7 @@ def test_quizgen_repair_round_fixes_invalid_metadata() -> None:
         }
     )
     gateway = QuizGateway([invalid, QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -264,7 +264,7 @@ def test_quiz_generation_requires_assigned_model() -> None:
         def resolve(
             self,
             task: str,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> ResolvedModel:
             raise TaskUnassigned(task)
 
@@ -273,11 +273,11 @@ def test_quiz_generation_requires_assigned_model() -> None:
             task: str,
             messages: list[Message],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             raise TaskUnassigned(task)
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz3-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz3-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=UnassignedGateway(),
@@ -365,7 +365,7 @@ def test_quizgen_question_types_allowlist() -> None:
         }
     )
     gateway = QuizGateway([payload])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-types-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-types-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -382,9 +382,7 @@ def test_quizgen_question_types_allowlist() -> None:
             },
         )
         assert created.status_code == 201, created.text
-        questions = client.get(
-            f"/api/v1/quiz/activities/{created.json()['id']}/questions"
-        ).json()
+        questions = client.get(f"/api/v1/quiz/activities/{created.json()['id']}/questions").json()
         assert {q["type"] for q in questions} == {"numeric", "equation"}
 
 
@@ -396,11 +394,11 @@ def test_quizgen_question_types_rejected_when_unknown(
         json={
             "count": 3,
             "course_id": make_course(quiz_client),
-            "question_types": ["essay"],
+            "question_types": ["not_a_kind"],
         },
     )
     assert response.status_code == 422
-    assert "essay" in response.text
+    assert "not_a_kind" in response.text
 
 
 def test_quizgen_off_type_draft_repairs() -> None:
@@ -426,7 +424,7 @@ def test_quizgen_off_type_draft_repairs() -> None:
         }
     )
     gateway = QuizGateway([wrong, QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-types2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-types2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -453,7 +451,7 @@ def test_quizgen_shuffle_remaps_options() -> None:
     from app.domain.models import Question
 
     gateway = QuizGateway([QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-shuffle-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-shuffle-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -490,9 +488,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
     inbox = quiz_client.get("/api/v1/quiz/inbox/path").json()
     assert set(inbox) == {"path"}
 
-    attempt = quiz_client.post(
-        f"/api/v1/quiz/activities/{activity['id']}/attempts"
-    ).json()
+    attempt = quiz_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()
     attempts = quiz_client.get("/api/v1/quiz/attempts").json()
     assert len(attempts) == 1
     assert set(attempts[0]) == {
@@ -507,9 +503,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
     assert attempts[0]["mode"] == "practice"
     assert attempts[0]["score"] is None
 
-    questions = quiz_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()
+    questions = quiz_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
     quiz_client.post(
         f"/api/v1/quiz/attempts/{attempt['id']}/answers",
         json={"question_id": questions[0]["id"], "response": {"index": 1}},
@@ -521,14 +515,15 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
         "question_id",
         "activity_id",
         "activity_title",
+        "course_id",
+        "node_id",
+        "node_title",
         "stem_excerpt",
         "error_tags",
         "created_at",
     }
 
-    report = quiz_client.get(
-        f"/api/v1/quiz/attempts/{attempt['id']}/report"
-    ).json()
+    report = quiz_client.get(f"/api/v1/quiz/attempts/{attempt['id']}/report").json()
     assert set(report) == {"attempt", "answers"}
     assert set(report["attempt"]) == {
         "id",

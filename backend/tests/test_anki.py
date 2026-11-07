@@ -17,10 +17,10 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiet",
@@ -34,7 +34,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return "ok"
@@ -48,7 +48,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -57,7 +57,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-anki-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-anki-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),
@@ -67,15 +67,15 @@ def make_client() -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
-def add_card(client: TestClient, course_id: int, front: str, back: str) -> None:
+def add_card(client: TestClient, course_id: str, front: str, back: str) -> None:
     created = client.post(
         "/api/v1/flashcards",
         json={
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": front,
             "back_md": back,
             "course_id": course_id,
@@ -112,7 +112,7 @@ def test_anki_export_import_round_trip() -> None:
         listing = client.get("/api/v1/flashcards").json()
         anki_cards = [card for card in listing if card["source"] == "anki_import"]
         assert len(anki_cards) == 2
-        assert {card["kind"] for card in anki_cards} == {"basic"}
+        assert {card["kind"] for card in anki_cards} == {"card_basic"}
 
 
 def test_anki_import_rejects_non_apkg() -> None:
@@ -137,7 +137,7 @@ def test_cloze_detected_on_import() -> None:
         memory.executescript(
             "CREATE TABLE notes (id integer primary key, flds text, tags text);"
             "CREATE TABLE col (decks text);"
-            "INSERT INTO col VALUES ('{\"1\": {\"id\": 1, \"name\": \"Default\"}}');"
+            'INSERT INTO col VALUES (\'{"1": {"id": 1, "name": "Default"}}\');'
             f"INSERT INTO notes VALUES (1, '{cloze_fields}', '');"
         )
         buffer = io.BytesIO()
@@ -153,4 +153,4 @@ def test_cloze_detected_on_import() -> None:
         )
         assert imported.status_code == 201
         listing = client.get("/api/v1/flashcards").json()
-        assert listing[0]["kind"] == "cloze"
+        assert listing[0]["kind"] == "card_cloze"

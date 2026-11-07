@@ -69,10 +69,10 @@ class DrillGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="drill-model",
@@ -86,7 +86,7 @@ class DrillGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -99,7 +99,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -110,7 +110,7 @@ def drill_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-error-spot-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-error-spot-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -121,19 +121,18 @@ def drill_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_math_course(client: TestClient) -> int:
+def make_math_course(client: TestClient) -> str:
     types = {
-        entry["key"]: entry["id"]
-        for entry in client.get("/api/v1/skills/course-types").json()
+        entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
     created = client.post(
         "/api/v1/courses",
         json={"title": "Calculus", "course_type_id": types.get("math")},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def run_drill(client: TestClient, course_id: int) -> Any:
+def run_drill(client: TestClient, course_id: str) -> Any:
     created = client.post(
         "/api/v1/exercises/drills",
         json={"pattern": "sign_slip", "course_id": course_id},
@@ -142,7 +141,7 @@ def run_drill(client: TestClient, course_id: int) -> Any:
     return created.json()
 
 
-def answer(client: TestClient, session_id: int, response: Any) -> Any:
+def answer(client: TestClient, session_id: str, response: Any) -> Any:
     payload = response if isinstance(response, str) else json.dumps(response)
     result = client.post(
         f"/api/v1/exercises/sessions/{session_id}/answer", json={"response": payload}
@@ -206,9 +205,7 @@ def test_spotted_counts_track_correct_picks(drill_client: TestClient) -> None:
     session = drill_client.post(f"/api/v1/exercises/{exercise['id']}/sessions").json()
     answer(drill_client, session["id"], {"picked": [0], "fix": "-6*x"})
 
-    patterns = drill_client.get(
-        f"/api/v1/exercises/drills/patterns?course_id={course_id}"
-    ).json()
+    patterns = drill_client.get(f"/api/v1/exercises/drills/patterns?course_id={course_id}").json()
     sign_slip = next(entry for entry in patterns if entry["pattern"] == "sign_slip")
     assert sign_slip["spotted"] == 1
 
@@ -218,7 +215,7 @@ def test_unseeded_flaw_is_rejected_into_repair() -> None:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-error-spot-repair-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-error-spot-repair-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -237,7 +234,7 @@ def test_unseeded_flaw_is_rejected_into_repair() -> None:
         assert steps[0]["input"]["requires_fix"] is True
 
 
-def test_legacy_pick_response_still_graded_deterministically(
+def test_older_pick_response_still_graded_deterministically(
     drill_client: TestClient,
 ) -> None:
     course_id = make_math_course(drill_client)

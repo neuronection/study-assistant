@@ -4,8 +4,15 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, TaskUnassigned
-from ..core.vocab import ExtractionMode, MaterialKind, MaterialStatus, ProvenanceKind
+from ..core.vocab import (
+    ExtractionMode,
+    MaterialKind,
+    MaterialStatus,
+    PreprocessMode,
+    ProvenanceKind,
+)
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
+from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import (
     JobCancelled,
     ensure_target_exists,
@@ -15,9 +22,9 @@ from ..jobs.payloads import IngestPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
 from ..services.content.materials import extraction_to_blocks
+from ..services.retrieval.chunk_profile import chunk_texts_for_space
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
-from .chunking import chunk_markdown
 from .convert import (
     ImageStore,
     convert_html_document,
@@ -25,7 +32,7 @@ from .convert import (
     epub_to_markdown,
     pptx_to_markdown,
 )
-from .pdf_pages import plan_pages
+from .pdf_pages import assemble_hybrid_markdown, plan_pages
 
 OCR_RASTER_DPI = 150
 
@@ -59,11 +66,7 @@ def extract_pdf_text(data: bytes) -> tuple[str, int]:
 
 
 def _embedded_ocr_text(material: Material) -> str:
-    parts = [
-        drawing.ocr_markdown
-        for drawing in material.drawings
-        if drawing.ocr_markdown
-    ]
+    parts = [drawing.ocr_markdown for drawing in material.drawings if drawing.ocr_markdown]
     parts += [image.ocr_markdown for image in material.images if image.ocr_markdown]
     return "\n".join(parts)
 
@@ -106,13 +109,15 @@ def _store_extraction(
 
     ocr = _embedded_ocr_text(material)
     chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
-    for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+    for ordinal, (chunk_text, chunk_tokens) in enumerate(
+        chunk_texts_for_space(session, chunk_source)
+    ):
         session.add(
             Chunk(
                 extraction_id=extraction.id,
                 ordinal=ordinal,
                 text=chunk_text,
-                token_count=max(1, len(chunk_text) // 4),
+                token_count=chunk_tokens,
             )
         )
     words = len(markdown.split())
@@ -146,7 +151,7 @@ def make_ingest_handler(
         raw_id = payload.get("material_id")
         if raw_id is None:
             raise JobError("ingest payload missing material_id")
-        material_id = int(raw_id)
+        material_id = str(raw_id)
         material = session.get(Material, material_id)
         if material is None:
             raise JobError(f"material {material_id} not found")
@@ -154,6 +159,10 @@ def make_ingest_handler(
             mode = ExtractionMode(payload.get("mode") or ExtractionMode.AUTO.value)
         except ValueError as error:
             raise JobError(f"ingest payload has invalid mode: {error}") from error
+        try:
+            preprocess = PreprocessMode(payload.get("preprocess") or PreprocessMode.AUTO.value)
+        except ValueError as error:
+            raise JobError(f"ingest payload has invalid preprocess mode: {error}") from error
 
         material.status = MaterialStatus.PROCESSING
         session.commit()
@@ -187,6 +196,7 @@ def make_ingest_handler(
                         context=document_context,
                         instruction=page_instruction,
                         session=session,
+                        preprocess=preprocess.value,
                     )
                 except TaskUnassigned as error:
                     raise JobError(str(error)) from error
@@ -238,9 +248,7 @@ def make_ingest_handler(
                     doc = _open_pdf(data)
                     planned = plan_pages(doc)
                     pages = len(planned)
-                    text_parts = [
-                        text.strip() for decision, text in planned if decision.use_text
-                    ]
+                    text_parts = [text.strip() for decision, text in planned if decision.use_text]
                     weak_ordinals = [
                         ordinal
                         for ordinal, (decision, _text) in enumerate(planned)
@@ -275,6 +283,7 @@ def make_ingest_handler(
                                         context=document_context,
                                         instruction=page_instruction,
                                         session=session,
+                                        preprocess=preprocess.value,
                                     )
                                 except TaskUnassigned:
                                     degraded = True
@@ -300,13 +309,7 @@ def make_ingest_handler(
                                 pages=pages,
                             )
                         else:
-                            assembled = [
-                                ocr_parts.get(ordinal, text.strip())
-                                if not decision.use_text
-                                else text.strip()
-                                for ordinal, (decision, text) in enumerate(planned)
-                            ]
-                            markdown = "\n\n".join(part for part in assembled if part)
+                            markdown = assemble_hybrid_markdown(planned, ocr_parts)
                             _store_extraction(
                                 session,
                                 material,
@@ -380,10 +383,10 @@ def make_ingest_handler(
                     header_lines.append(f"({_format_duration(material.duration_sec)})")
                 header_lines.append(f"— transcribed by {result.model}.*")
                 markdown = " ".join(header_lines) + f"\n\n{result.text}"
-                material.provenance = {
-                    "source": ProvenanceKind.TRANSCRIBED,
-                    "model": result.model,
-                }
+                material.provenance = cast(
+                    MaterialProvenance,
+                    {"source": ProvenanceKind.TRANSCRIBED, "model": result.model},
+                )
                 _store_extraction(
                     session, material, extractor="transcribe", markdown=markdown, pages=None
                 )
@@ -394,12 +397,15 @@ def make_ingest_handler(
             raise
 
         if converted_kind is not None and store is not None:
-            material.provenance = {"source": ProvenanceKind.CONVERTED, "converter": converted_kind}
+            material.provenance = cast(
+                MaterialProvenance,
+                {"source": ProvenanceKind.CONVERTED, "converter": converted_kind},
+            )
             store.enqueue_ocr_jobs(session)
 
         report(80, "indexing")
         _sync_fts(session, material, markdown)
-        ensure_target_exists(session, Material, int(material_id), "material")
+        ensure_target_exists(session, Material, str(material_id), "material")
         material.status = MaterialStatus.READY
         from ..jobs.runner import JobRunner
 

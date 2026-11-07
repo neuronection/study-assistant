@@ -61,9 +61,7 @@ def test_foreign_blob_is_indistinguishable_from_missing(client: TestClient) -> N
 def test_unreferenced_blob_is_not_served(client: TestClient) -> None:
     app = cast(Any, client.app)
     with app.state.session_factory() as db:
-        stored = app.state.blobs.put(
-            b"orphan bytes", mime="application/octet-stream", session=db
-        )
+        stored = app.state.blobs.put(b"orphan bytes", mime="application/octet-stream", session=db)
         sha = str(stored.sha256)
     nav = _navigator(app, cast(Any, client).session_cookie)
     assert nav.get(f"/api/v1/blobs/{sha}").status_code == 404
@@ -88,3 +86,12 @@ def test_desktop_shell_gate_exempts_navigations(desktop_client: TestClient) -> N
     assert response.status_code == 200, response.text
     # the shell gate still arms the rest of the API
     assert nav.get("/api/v1/chat/sessions").status_code == 403
+
+
+def test_health_is_reachable_without_the_shell_token(desktop_client: TestClient) -> None:
+    """Public liveness probes (Docker HEALTHCHECK, release smoke) cannot
+    carry X-Shell-Token; health exposes no owner data."""
+    app = cast(Any, desktop_client).app
+    response = AnonymousTestClient(app).get("/api/v1/health")
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "ok"

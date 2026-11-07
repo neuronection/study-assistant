@@ -8,13 +8,11 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
 
-vi.mock('@/features/spike/SpikePage', () => ({
-  SpikeContent: () => <div>spike-content</div>,
-}))
 
 const listProviders = vi.fn()
 const listPresets = vi.fn()
@@ -108,7 +106,7 @@ async function openAiSection(label: string) {
 }
 
 const PROVIDER = {
-  id: 1,
+  id: '1',
   name: 'Google Gemini',
   type: 'google',
   base_url: 'https://generativelanguage.googleapis.com',
@@ -119,20 +117,103 @@ const PROVIDER = {
 }
 
 describe('SettingsPage', () => {
-  test('providers tab lists providers with masked key', async () => {
+  test('providers tab lists providers with no raw key — keyless ones flag it', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     await await renderSettings('/settings?tab=ai&section=providers')
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
-    expect(screen.getByText(/••••1234/)).toBeInTheDocument()
+    // the base URL rides as a discrete subtitle; a keyed provider shows no
+    // key chip (implied) and the raw key never leaks
+    expect(screen.getByText('https://generativelanguage.googleapis.com')).toBeInTheDocument()
+    expect(screen.queryByTestId('provider-key-1')).not.toBeInTheDocument()
+    expect(screen.queryByText(/••••1234/)).not.toBeInTheDocument()
     expect(screen.queryByText(/supersecret/i)).not.toBeInTheDocument()
+  })
+
+  test('providers tab shows hosting, country and disabled badges', async () => {
+    listProviders.mockResolvedValue([
+      {
+        ...PROVIDER,
+        id: '2',
+        name: 'Local Ollama',
+        is_local: true,
+        country: 'DE',
+        enabled: false,
+        masked_key: null,
+      },
+      { ...PROVIDER, id: '3', name: 'Cloud Gemini', is_local: false, country: 'US' },
+    ])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Local Ollama')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-hosting-2')).toHaveTextContent('Local / on-premise')
+    expect(screen.getByTestId('provider-country-2')).toHaveTextContent('🇩🇪 DE')
+    expect(screen.getByTestId('provider-hosting-3')).toHaveTextContent('Cloud')
+    expect(screen.getByTestId('provider-country-3')).toHaveTextContent('🇺🇸 US')
+    // keyed provider → no key chip (implied); keyless provider → danger "no key" chip;
+    // disabled provider → danger badge
+    expect(screen.queryByTestId('provider-key-3')).not.toBeInTheDocument()
+    expect(screen.getByTestId('provider-key-2')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-key-2')).toHaveTextContent('no key')
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+  })
+
+  test('providers tab tests a provider from the actions menu', async () => {
+    const user = userEvent.setup()
+    listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([
+      {
+        id: '11',
+        provider_id: '1',
+        external_id: 'gemini-2.5-flash',
+        label: 'gemini-2.5-flash',
+        caps: ['text'],
+        decision_transport: null,
+        enabled: true,
+        missing: false,
+        reasoning_effort: null,
+      },
+    ])
+    testProvider.mockResolvedValue({
+      ...PROVIDER,
+      status: { last_tested_at: '2026-08-18T00:00:00Z', ok: true, error: null, model_count: 43 },
+    })
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Test' }))
+    await waitFor(() => expect(testProvider).toHaveBeenCalledWith('1'))
+    expect(await screen.findByText('Connected')).toBeInTheDocument()
+  })
+
+  test('providers tab omits the Test action without a registered model', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Test' })).toBeNull()
+  })
+
+  test('providers tab deletes a provider through the actions menu and confirm', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete provider' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/delete this provider/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete provider' }))
+    await waitFor(() => expect(deleteProvider).toHaveBeenCalledWith('1'))
   })
 
   test('models tab lists selected (enabled) models with a catalog trigger', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -140,8 +221,8 @@ describe('SettingsPage', () => {
         missing: false,
       },
       {
-        id: 12,
-        provider_id: 1,
+        id: '12',
+        provider_id: '1',
         external_id: 'gemini-2.5-pro',
         label: 'gemini-2.5-pro',
         caps: ['text'],
@@ -152,7 +233,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Models')
     expect(await screen.findByText('gemini-2.5-flash')).toBeInTheDocument()
-    expect(screen.getAllByText('image / vision').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Vision').length).toBeGreaterThan(0)
     expect(screen.queryByText('gemini-2.5-pro')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     const browse = screen.getByRole('button', { name: 'Add model' })
@@ -173,14 +254,13 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([])
     await await renderSettings()
     await openAiSection('Tasks')
     expect(await screen.findByText('OCR')).toBeInTheDocument()
-    expect(screen.getByText('vision')).toBeInTheDocument()
+    expect(screen.getByText('Vision')).toBeInTheDocument()
     expect(
       screen.getAllByRole('combobox', { name: 'OCR' })[0],
     ).toHaveTextContent(/select a model/i)
@@ -200,7 +280,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
       {
         task: 'concepts',
@@ -212,7 +291,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([])
@@ -229,7 +307,7 @@ describe('SettingsPage', () => {
     listTaskDefaults.mockResolvedValue([
       {
         requires: 'text',
-        model_id: 11,
+        model_id: '11',
         fallback_model_id: null,
         model_label: 'gemini-2.5-flash',
         fallback_model_label: null,
@@ -248,13 +326,12 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: true,
         default_model_label: 'gemini-2.5-flash',
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -265,9 +342,9 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Tasks')
     expect(await screen.findByText(/default models/i)).toBeInTheDocument()
-    expect(screen.getByText(/set one default per capability/i)).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Text' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Image / Vision' })).toBeInTheDocument()
+    expect(screen.getByText(/one default per capability/i)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'LLM' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Vision' })).toBeInTheDocument()
     expect((await screen.findAllByRole('combobox')).length).toBeGreaterThanOrEqual(5)
     expect(await screen.findByText(/Inherited — using gemini-2.5-flash/)).toBeInTheDocument()
   })
@@ -286,13 +363,12 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'tools'],
@@ -307,7 +383,7 @@ describe('SettingsPage', () => {
     fireEvent.click(trigger)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
-    await waitFor(() => expect(assignTask).toHaveBeenCalledWith('quizgen', 11))
+    await waitFor(() => expect(assignTask).toHaveBeenCalledWith('quizgen', '11'))
   })
 
   test('tasks tab sets a default model per capability', async () => {
@@ -320,8 +396,8 @@ describe('SettingsPage', () => {
     listTasks.mockResolvedValue([])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -332,11 +408,11 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Tasks')
     await screen.findByText(/default models/i)
-    const textPrimary = screen.getByRole('combobox', { name: 'Text' })
+    const textPrimary = screen.getByRole('combobox', { name: 'LLM' })
     fireEvent.click(textPrimary)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
-    await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', 11, null))
+    await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', '11', null))
   })
 
   test('add provider opens the setup modal with the preset grid', async () => {
@@ -352,6 +428,7 @@ describe('SettingsPage', () => {
   test('add provider: preset tile leads to the guided form with set-up-automatically', async () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
+    listTaskDefaults.mockResolvedValue([])
     setupProviderPreset.mockResolvedValue({
       ok: true,
       provider: { ...PROVIDER, preset_key: 'openai' },
@@ -369,10 +446,21 @@ describe('SettingsPage', () => {
       target: { value: 'sk-test' },
     })
     fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
+    // connect registers only — binds stay off, the review step decides
     await waitFor(() =>
-      expect(setupProviderPreset).toHaveBeenCalledWith('openai', { api_key: 'sk-test', name: null })
+      expect(setupProviderPreset).toHaveBeenCalledWith('openai', {
+        api_key: 'sk-test',
+        name: null,
+        options: {
+          bind_chat: false,
+          bind_vision: false,
+          bind_stt: false,
+          bind_embeddings: false,
+          bind_decision: false,
+        },
+      })
     )
-    expect(await screen.findByText(/connected/i)).toBeInTheDocument()
+    expect(await screen.findByText('Default assignments')).toBeInTheDocument()
   })
 
   test('add provider: custom tile keeps a typed name and requires a base URL', async () => {
@@ -418,15 +506,62 @@ describe('SettingsPage', () => {
     )
   })
 
+  test('web search and discovery live under the tools tab, not under AI providers', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    // tools.* domains never render under the ai tab (ADR-0033 INV-2)
+    expect(screen.queryByText('Web search providers')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('discovery-card')).not.toBeInTheDocument()
+  })
+
+  test('the tools tab hosts web search by default and discovery via ?section=', async () => {
+    await renderSettings('/settings?tab=tools')
+    expect(await screen.findByText('Web search providers')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Web search' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Discovery' }))
+    expect(await screen.findByTestId('discovery-card')).toBeInTheDocument()
+    expect(screen.queryByText('Web search providers')).not.toBeInTheDocument()
+  })
+
+  test('older ?tab=search deep links land on tools → Search & OCR', async () => {
+    await renderSettings('/settings?tab=search')
+    expect(await screen.findByText(/semantic search/i)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Search & OCR' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
   test('rail navigation switches top-level sections', async () => {
     await renderSettings()
     fireEvent.click(screen.getByRole('button', { name: /^data/i }))
     expect(await screen.findByText(/backup & restore/i)).toBeInTheDocument()
-    expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
   })
 
-  test('the AI section deep-links via ?section=', async () => {
-    listProviders.mockResolvedValue([])
+  test('the tools connectors section deep-links via ?section=', async () => {
+    await renderSettings('/settings?tab=tools&section=connectors')
+    expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
+    expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  test('older AI-section deep links for skills and mcp land in the tools tab', async () => {
+    await renderSettings('/settings?tab=ai&section=skills')
+    expect(await screen.findByText(/named behaviors per task/i)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Skills' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  test('older ?tab=ai&section=mcp deep link lands on tools → Integrations', async () => {
     await renderSettings('/settings?tab=ai&section=mcp')
     expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(
@@ -441,18 +576,21 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Google Gemini')).not.toBeInTheDocument()
   })
 
-  test('developer tab shows the rendering spike content only when selected', async () => {
+  test('developer tab shows build diagnostics only when selected', async () => {
     await renderSettings()
-    expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Diagnostics for this build.')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^developer/i }))
-    expect(await screen.findByText('spike-content')).toBeInTheDocument()
+    expect(await screen.findByText('Diagnostics for this build.')).toBeInTheDocument()
   })
 
   test('edit provider dialog patches without touching the key when blank', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     await await renderSettings('/settings?tab=ai&section=providers')
-    const edit = await screen.findByRole('button', { name: /edit provider/i })
-    edit.click()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Google Gemini' }),
+    )
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
     const nameInput = await screen.findByLabelText(/name/i)
     expect(nameInput).toHaveValue('Google Gemini')
     expect(
@@ -462,13 +600,13 @@ describe('SettingsPage', () => {
     screen.getByRole('button', { name: /^save$/i }).click()
     await waitFor(() =>
       expect(updateProvider).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.not.objectContaining({ api_key: expect.anything() })
       )
     )
     await waitFor(() =>
       expect(updateProvider).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ name: 'Gemini main', enabled: true })
       )
     )
@@ -478,8 +616,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -495,8 +633,8 @@ describe('SettingsPage', () => {
       { external_id: 'text-embedding-004', caps: ['embeddings'] },
     ])
     createModel.mockResolvedValue({
-      id: 12,
-      provider_id: 1,
+      id: '12',
+      provider_id: '1',
       external_id: 'gemini-2.5-pro',
       label: 'gemini-2.5-pro',
       caps: ['text', 'vision', 'tools'],
@@ -509,19 +647,21 @@ describe('SettingsPage', () => {
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — pick the LLM kind, then the catalog picker appears
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
     const picker = await within(dialog).findByRole('combobox', { name: 'Model' })
     fireEvent.click(picker)
     fireEvent.click(await screen.findByRole('option', { name: 'gemini-2.5-pro' }))
     expect(
-      within(dialog).getByRole('button', { name: 'image / vision' }),
+      within(dialog).getByRole('button', { name: 'Vision' }),
     ).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider_id: 1,
+          provider_id: '1',
           external_id: 'gemini-2.5-pro',
           caps: ['text', 'vision', 'tools'],
           enabled: true,
@@ -532,8 +672,52 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('models tab offers manual add with cap correction when listing fails', async () => {
+  test('models tab adds decision models as a standalone kind with the transport seam', async () => {
     listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([])
+    listRemoteModels.mockRejectedValue(new Error('no key'))
+    createModel.mockResolvedValue({
+      id: '21',
+      provider_id: '1',
+      external_id: 'nimble',
+      label: 'nimble',
+      caps: ['decision'],
+      decision_transport: 'systemone',
+      enabled: true,
+      missing: false,
+    })
+    await renderSettings()
+    await openAiSection('Models')
+    fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
+    const dialog = await screen.findByRole('dialog')
+
+    // step 1 — the decision kind card seeds caps and stamps the transport
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Decision/ }))
+    expect(await within(dialog).findByText(/no key/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /manual/i }))
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText('Model')).toBeInTheDocument(),
+    )
+    fireEvent.change(within(dialog).getByLabelText('Model'), {
+      target: { value: 'nimble' },
+    })
+    // standalone kind: decision replaces the chat caps, hides the
+    // generation options, and stamps the transport
+    expect(within(dialog).getByText('Transport:')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Temperature')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
+    await waitFor(() =>
+      expect(createModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          external_id: 'nimble',
+          caps: ['decision'],
+          decision_transport: 'systemone',
+        }),
+      ),
+    )
+  })
+
+  test('models tab offers manual add with cap correction when listing fails', async () => {    listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listRemoteModels.mockRejectedValue(
       new Error(
@@ -541,8 +725,8 @@ describe('SettingsPage', () => {
       )
     )
     createModel.mockResolvedValue({
-      id: 13,
-      provider_id: 1,
+      id: '13',
+      provider_id: '1',
       external_id: 'gpt-9-turbo',
       label: 'gpt-9-turbo',
       caps: ['text'],
@@ -553,6 +737,8 @@ describe('SettingsPage', () => {
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — the LLM kind (chat family pre-selected in step 2)
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
     expect(await within(dialog).findByText(/no API key is stored/i)).toBeInTheDocument()
 
@@ -560,13 +746,15 @@ describe('SettingsPage', () => {
     fireEvent.change(within(dialog).getByLabelText('Model'), {
       target: { value: 'gpt-9-turbo' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
+    // the chat family comes pre-selected (text+vision+tools); the correction
+    // drops tools for this vision-only model
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tools' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
 
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider_id: 1,
+          provider_id: '1',
           external_id: 'gpt-9-turbo',
           caps: ['text', 'vision'],
           enabled: true,
@@ -579,8 +767,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -593,7 +781,7 @@ describe('SettingsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /delete model gemini-2\.5-flash/i }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete model' }))
-    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith('11'))
   })
 
   test('models tab bulk-adds pending entries from the modal footer', async () => {
@@ -604,14 +792,18 @@ describe('SettingsPage', () => {
       { external_id: 'gemini-2.5-pro', caps: ['text'] },
       { external_id: 'text-embedding-004', caps: ['embeddings'] },
     ])
-    createModel.mockResolvedValue({ id: 1 })
+    createModel.mockResolvedValue({ id: '1' })
     createModel.mockClear()
     await await renderSettings()
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — pick the LLM kind so the add-all footer action appears
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /add all \(3\)/i }))
+    // query-backed count — the settled-DOM wait is the contract; a sync
+    // lookup races the remote-models flush and sees "(0)" under load
+    fireEvent.click(await within(dialog).findByRole('button', { name: /add all \(3\)/i }))
 
     await waitFor(() => expect(createModel).toHaveBeenCalledTimes(3))
     expect(createModel).toHaveBeenCalledWith(
@@ -626,8 +818,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -636,8 +828,8 @@ describe('SettingsPage', () => {
       },
     ])
     updateModel.mockResolvedValue({
-      id: 11,
-      provider_id: 1,
+      id: '11',
+      provider_id: '1',
       external_id: 'gemini-2.5-flash',
       label: 'Flash',
       caps: ['text'],
@@ -651,11 +843,11 @@ describe('SettingsPage', () => {
 
     const labelInput = await within(dialog).findByLabelText(/display name/i)
     fireEvent.change(labelInput, { target: { value: 'Flash' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vision' }))
 
     fireEvent.click(within(dialog).getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
-      expect(updateModel).toHaveBeenCalledWith(11, {
+      expect(updateModel).toHaveBeenCalledWith('11', {
         label: 'Flash',
         caps: ['text', 'tools'],
         reasoning_effort: null,

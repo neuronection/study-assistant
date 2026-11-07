@@ -169,9 +169,7 @@ def _free_symbols(expr: sympy.Expr) -> list[sympy.Symbol]:
     return sorted(expr.free_symbols, key=lambda symbol: symbol.name)
 
 
-def _sample_points(
-    symbols: list[sympy.Symbol], count: int = 12
-) -> SamplePoints:
+def _sample_points(symbols: list[sympy.Symbol], count: int = 12) -> SamplePoints:
     rng = random.Random(20260819)
     points: SamplePoints = []
     for _ in range(count):

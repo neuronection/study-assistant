@@ -20,14 +20,12 @@ def utc_naive(value: datetime) -> datetime:
     return value.astimezone(UTC).replace(tzinfo=None)
 
 
-def snapshot_note(
-    session: Session, note: Note, cause: str, force: bool = False
-) -> None:
+def snapshot_note(session: Session, note: Note, cause: str, force: bool = False) -> None:
     latest = (
         session.execute(
             select(NoteVersion)
             .where(NoteVersion.note_id == note.id)
-            .order_by(NoteVersion.id.desc())
+            .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
             .limit(1)
         )
         .scalars()
@@ -54,7 +52,7 @@ def snapshot_note(
         session.execute(
             select(NoteVersion.id)
             .where(NoteVersion.note_id == note.id)
-            .order_by(NoteVersion.id.desc())
+            .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
             .offset(NOTE_VERSION_CAP)
         )
         .scalars()
@@ -76,25 +74,17 @@ def normalize_tags(tags: list[str] | None) -> list[str]:
 
 
 def validate_note_drawing_blocks(session: Session, note: Note) -> None:
-    ids = {
-        int(block["drawing_id"])
-        for block in note.body or []
-        if block.get("type") == "drawing"
-    }
+    ids = {str(block["drawing_id"]) for block in note.body or [] if block.get("type") == "drawing"}
     if not ids:
         return
     valid = set(
         session.scalars(
-            select(NoteDrawing.id).where(
-                NoteDrawing.note_id == note.id, NoteDrawing.id.in_(ids)
-            )
+            select(NoteDrawing.id).where(NoteDrawing.note_id == note.id, NoteDrawing.id.in_(ids))
         )
     )
     unknown = ids - valid
     if unknown:
-        raise NoteBodyError(
-            f"unknown drawing reference(s): {sorted(unknown)}"
-        )
+        raise NoteBodyError(f"unknown drawing reference(s): {sorted(unknown)}")
 
 
 def save_note_body(

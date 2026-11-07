@@ -18,6 +18,7 @@ from ..domain.models import (
     Note,
     TreeNode,
 )
+from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import JobCancelled, is_cancel_requested
 from ..jobs.payloads import ComposePayload, IngestPayload
 from ..jobs.runner import JobError, JobHandler, JobRunner, ProgressReporter
@@ -88,7 +89,7 @@ RETRIEVAL_EXCLUDED_KINDS = {"node_review"}
 
 
 def find_live_artifact(
-    session: Session, course_id: int, node_id: int, kind: str
+    session: Session, course_id: str, node_id: str, kind: str
 ) -> Material | None:
     rows = session.execute(
         select(Material)
@@ -98,13 +99,14 @@ def find_live_artifact(
             MaterialLink.node_id == node_id,
             Material.provenance.is_not(None),
         )
-        .order_by(Material.id.desc())
+        .order_by(Material.created_at.desc(), Material.id.desc())
     ).scalars()
     for material in rows:
         provenance = material.provenance
         if isinstance(provenance, dict) and provenance.get("kind") == kind:
             return material
     return None
+
 
 TRIVIAL_ARITHMETIC_RE = re.compile(r"^[\d\s+\-*/=.,()]+$")
 
@@ -113,20 +115,16 @@ def _normalize_formula(latex: str) -> str:
     return re.sub(r"\s+", "", latex.strip())
 
 
-def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
+def collect_formulas(session: Session, course_id: str) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
-            select(TreeNode)
-            .where(TreeNode.course_id == course_id)
-            .order_by(TreeNode.sort_path)
+            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
         )
     )
     title_by_node = {node.id: node.title for node in nodes}
 
-    def collect_from_texts(
-        node_id: int | None, texts: list[str]
-    ) -> list[tuple[str, int | None]]:
-        found: list[tuple[str, int | None]] = []
+    def collect_from_texts(node_id: str | None, texts: list[str]) -> list[tuple[str, str | None]]:
+        found: list[tuple[str, str | None]] = []
         for text in texts:
             for match in LATEX_SPAN_RE.finditer(text):
                 latex = (match.group(1) or match.group(2) or "").strip()
@@ -137,23 +135,19 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
                 found.append((latex, node_id))
         return found
 
-    pairs: list[tuple[str, int | None]] = []
+    pairs: list[tuple[str, str | None]] = []
     notes = list(session.scalars(select(Note).where(Note.course_id == course_id)))
     for note in notes:
         texts = [str(block.get("md") or "") for block in note.body or []]
-        texts += [
-            drawing.ocr_markdown
-            for drawing in note.drawings
-            if drawing.ocr_markdown
-        ]
+        texts += [drawing.ocr_markdown for drawing in note.drawings if drawing.ocr_markdown]
         pairs.extend(collect_from_texts(note.node_id, texts))
-    link_node: dict[int, int] = {}
+    link_node: dict[str, str] = {}
     for material_id, node_id in session.execute(
         select(MaterialLink.material_id, MaterialLink.node_id).where(
             MaterialLink.course_id == course_id
         )
     ):
-        link_node[int(material_id)] = int(node_id)
+        link_node[str(material_id)] = str(node_id)
     rows = list(
         session.execute(
             select(Extraction.material_id, Extraction.markdown)
@@ -162,13 +156,13 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
             .order_by(Extraction.material_id, Extraction.version.desc())
         )
     )
-    seen_materials: set[int] = set()
+    seen_materials: set[str] = set()
     for material_id, markdown in rows:
         if material_id in seen_materials:
             continue
         seen_materials.add(material_id)
-        pairs.extend(collect_from_texts(link_node.get(material_id), [markdown]))
-    by_node: dict[int | None, dict[str, str]] = {}
+        pairs.extend(collect_from_texts(link_node.get(str(material_id)), [markdown]))
+    by_node: dict[str | None, dict[str, str]] = {}
     for latex, node_id in pairs:
         key = _normalize_formula(latex)
         bucket = by_node.setdefault(node_id, {})
@@ -240,9 +234,7 @@ def _check_mentions(markdown: str, registry_refs: list[str]) -> list[str]:
     used = {f"{m.group(1)}{m.group(2)}" for m in MENTION_RE.finditer(markdown)}
     invalid = sorted(used - set(registry_refs))
     if invalid:
-        return [
-            f"handles {invalid} were not offered in the context — remove or fix them"
-        ]
+        return [f"handles {invalid} were not offered in the context — remove or fix them"]
     return []
 
 
@@ -257,9 +249,7 @@ def _validate_markdown(markdown: str, registry_refs: list[str]) -> list[str]:
     return problems
 
 
-def _validate_practice_draft(
-    draft: dict[str, Any], registry_refs: list[str]
-) -> list[str]:
+def _validate_practice_draft(draft: dict[str, Any], registry_refs: list[str]) -> list[str]:
     items = draft.get("items")
     if not isinstance(items, list) or not items:
         return ["response missing items list"]
@@ -292,9 +282,7 @@ def _validate_practice_draft(
             try:
                 parse_math(value)
             except Exception:
-                problems.append(
-                    f"{label}: equation answer '{value[:40]}' is not parseable"
-                )
+                problems.append(f"{label}: equation answer '{value[:40]}' is not parseable")
     rendered = _render_practice_set("Practice set", items[:MAX_PRACTICE_ITEMS])
     problems.extend(_check_mentions(rendered, registry_refs))
     return problems
@@ -320,9 +308,7 @@ def _render_practice_set(doc_title: str, items: list[dict[str, Any]]) -> str:
         raw_answer = entry.get("answer")
         answer: dict[str, Any] = raw_answer if isinstance(raw_answer, dict) else {}
         raw_choices = entry.get("choices")
-        answer_choices: list[Any] = (
-            list(raw_choices) if isinstance(raw_choices, list) else []
-        )
+        answer_choices: list[Any] = list(raw_choices) if isinstance(raw_choices, list) else []
         rendered = "—"
         if kind == "single":
             try:
@@ -344,9 +330,7 @@ def _render_practice_set(doc_title: str, items: list[dict[str, Any]]) -> str:
                     except (TypeError, ValueError):
                         continue
                     if 0 <= chosen < len(answer_choices):
-                        picked.append(
-                            f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}"
-                        )
+                        picked.append(f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}")
             rendered = ", ".join(picked) if picked else "—"
         elif kind == "truefalse":
             rendered = "True" if answer.get("value") is True else "False"
@@ -406,8 +390,8 @@ class ComposeService:
         self,
         *,
         profile_id: str,
-        course_id: int,
-        node_id: int | None,
+        course_id: str,
+        node_id: str | None,
         kind: str,
         title: str | None,
         instructions: str | None = None,
@@ -432,9 +416,7 @@ class ComposeService:
                 for formula in group["formulas"]:
                     known_keys.add(str(formula["key"]))
             if not known_keys:
-                raise ComposeError(
-                    "no formulas found in this course's notes or material yet"
-                )
+                raise ComposeError("no formulas found in this course's notes or material yet")
             lines = [
                 "Compose a formula sheet from EXACTLY the formulas collected below.",
                 "Title: " + doc_title,
@@ -448,9 +430,7 @@ class ComposeService:
                 lines.append(f"Instructions: {instructions.strip()}")
             for group in groups:
                 heading = str(group.get("node_title") or "Course")
-                entries = "\n".join(
-                    f"- ${formula['latex']}$" for formula in group["formulas"]
-                )
+                entries = "\n".join(f"- ${formula['latex']}$" for formula in group["formulas"])
                 lines.append(f"## {heading}\n{entries}")
             prompt = "\n\n".join(lines)
         else:
@@ -482,9 +462,7 @@ class ComposeService:
                 result = runner.run_json(
                     task=COMPOSE_TASK,
                     prompt=prompt + "\n\n" + PRACTICE_JSON_CONTRACT,
-                    validate=lambda draft: _validate_practice_draft(
-                        draft, registry_refs
-                    ),
+                    validate=lambda draft: _validate_practice_draft(draft, registry_refs),
                     fallback_system=PRACTICE_SET_SYSTEM,
                     skill_key=COMPOSE_PRACTICE_SKILL,
                     course_id=course_id,
@@ -559,7 +537,7 @@ class ComposeService:
                 updated["needs_review"] = True
             else:
                 updated.pop("needs_review", None)
-            existing.provenance = updated
+            existing.provenance = cast(MaterialProvenance, updated)
             self._session.flush()
             return existing
         material, _duplicate = services.create_text(
@@ -579,7 +557,7 @@ class ComposeService:
             provenance["practice_items"] = practice_items
         if needs_review:
             provenance["needs_review"] = True
-        material.provenance = provenance
+        material.provenance = cast(MaterialProvenance, provenance)
         if target_node_id is not None:
             link = self._session.scalars(
                 select(MaterialLink).where(
@@ -604,8 +582,8 @@ class ComposeService:
         self,
         *,
         profile_id: str,
-        course_id: int,
-        node_id: int,
+        course_id: str,
+        node_id: str,
         kind: str,
         title: str,
         markdown: str,
@@ -624,11 +602,10 @@ class ComposeService:
             filename=f"{title}.md",
             content=f"# {title}\n\n{markdown}",
         )
-        material.provenance = {
-            "source": ProvenanceKind.AI_COMPOSED,
-            "kind": kind,
-            "model": model_label,
-        }
+        material.provenance = cast(
+            MaterialProvenance,
+            {"source": ProvenanceKind.AI_COMPOSED, "kind": kind, "model": model_label},
+        )
         existing = self._session.scalars(
             select(MaterialLink).where(
                 MaterialLink.course_id == course_id,
@@ -649,20 +626,18 @@ class ComposeService:
         return material
 
 
-def make_compose_handler(
-    gateway: LLMGateway, blobs: BlobStore, embed: Any
-) -> JobHandler:
+def make_compose_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload = cast(ComposePayload, job.payload or {})
         raw_course_id = payload.get("course_id")
         if raw_course_id is None:
             raise JobError("compose payload missing course_id")
-        course = session.get(Course, int(raw_course_id))
+        course = session.get(Course, str(raw_course_id))
         if course is None:
             raise JobError(f"course {raw_course_id} not found")
         if is_cancel_requested(job.id):
             raise JobCancelled()
-        course_id = int(raw_course_id)
+        course_id = str(raw_course_id)
         node_id = payload.get("node_id")
         kind = str(payload.get("kind") or "study_guide")
         report(10, "context")
@@ -671,32 +646,22 @@ def make_compose_handler(
             bundle = resolver.resolve(
                 ContextSpec(
                     course_id=course_id,
-                    node_id=int(node_id) if node_id is not None else None,
+                    node_id=str(node_id) if node_id is not None else None,
                     scope=ContextScope(str(payload.get("scope") or "subtree")),
                     include_material_ids=[
-                        int(value)
-                        for value in (payload.get("include_material_ids") or [])
+                        str(value) for value in (payload.get("include_material_ids") or [])
                     ],
                     exclude_material_ids=[
-                        int(value)
-                        for value in (payload.get("exclude_material_ids") or [])
+                        str(value) for value in (payload.get("exclude_material_ids") or [])
                     ],
-                    note_ids=[
-                        int(value) for value in (payload.get("note_ids") or [])
-                    ],
-                    concept_ids=[
-                        int(value) for value in (payload.get("concept_ids") or [])
-                    ],
+                    note_ids=[str(value) for value in (payload.get("note_ids") or [])],
+                    concept_ids=[str(value) for value in (payload.get("concept_ids") or [])],
                     hint=payload.get("context_hint"),
                     query=str(
-                        payload.get("title")
-                        or payload.get("instructions")
-                        or "study material"
+                        payload.get("title") or payload.get("instructions") or "study material"
                     ),
                     exclude_ai_composed=True,
-                    include_unassigned=bool(
-                        payload.get("include_unassigned", False)
-                    ),
+                    include_unassigned=bool(payload.get("include_unassigned", False)),
                 )
             )
         except ContextError as error:
@@ -705,11 +670,10 @@ def make_compose_handler(
         if placement_node_id is None:
             placement_node_id = TreeService(session).ensure_root(course_id).id
         regenerate = bool(payload.get("regenerate", False))
-        live = find_live_artifact(session, course_id, int(placement_node_id), kind)
+        live = find_live_artifact(session, course_id, str(placement_node_id), kind)
         if live is not None and not regenerate:
             raise JobError(
-                f"a {kind.replace('_', ' ')} already exists at this node "
-                f"(material {live.id})"
+                f"a {kind.replace('_', ' ')} already exists at this node (material {live.id})"
             )
         existing_md: str | None = None
         if live is not None:

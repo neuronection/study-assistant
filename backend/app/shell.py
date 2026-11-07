@@ -218,10 +218,18 @@ def run_browser() -> None:
     settings = get_settings()
     # Attach the shell gate (identity-auth §11) before the app is built —
     # create_app arms the X-Shell-Token gate only for shell-attached
-    # processes; shell-less desktop dev (run-dev.sh) stays ungated.
+    # processes; shell-less desktop dev (run-dev.sh) stays ungated. (The
+    # desktop identity itself is declared by app/local.py's bootstrap.)
     os.environ["SA_SHELL"] = "1"
     app = create_app(settings)
+    # Per-boot shell secret (identity-auth §11): the SPA URL carries it as
+    # `?shell=` (also marks the desktop CSP variant) and echoes it as
+    # `X-Shell-Token` on every API request — same as the webview flow
+    # (run()) and career's run_browser.
+    shell_secret = getattr(getattr(app.state, "auth", None), "shell_secret", None)
     url = f"http://{settings.host}:{settings.port}"
+    if shell_secret:
+        url = f"{url}?shell={shell_secret}"
     threading.Timer(0.5, webbrowser.open, args=(url,)).start()
     uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level.lower())
 
@@ -357,9 +365,9 @@ class DesktopBridge:
 
 def run() -> None:
     sanitize_environment()
-    os.environ.setdefault("SA_IDENTITY_MODE", "desktop")
     # Attach the shell gate (identity-auth §11) before create_app — see
-    # run_browser().
+    # run_browser(). (The desktop identity itself is declared by
+    # app/local.py's bootstrap.)
     os.environ["SA_SHELL"] = "1"
     settings = get_settings()
     apply_webkit_compat_env(marker=Path(settings.data_dir) / "webkit_soft_fallback")

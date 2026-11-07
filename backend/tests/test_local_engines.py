@@ -135,7 +135,11 @@ def test_api_detect_local_returns_hits_and_skips_configured(
 ) -> None:
     create_response = client.post(
         "/api/v1/providers",
-        json={"name": "Ollama (local)", "type": "openai_compatible", "base_url": "http://localhost:11434/v1"},
+        json={
+            "name": "Ollama (local)",
+            "type": "openai_compatible",
+            "base_url": "http://localhost:11434/v1",
+        },
     )
     assert create_response.status_code == 201, create_response.text
     seen_kwargs: dict[str, Any] = {}
@@ -175,7 +179,7 @@ def test_create_local_provider_without_api_key_needs_no_keyring(
 
 def test_blank_key_resolves_to_keyless_chat_model() -> None:
     resolved = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost:8080/v1",
         external_id="qwen3-32b",

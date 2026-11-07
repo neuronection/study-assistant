@@ -12,13 +12,13 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    courseTree: (id: number) => courseTree(id),
+    courseTree: (id: string) => courseTree(id),
   }
 })
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -27,7 +27,7 @@ const TREE = [
     is_root: true,
     children: [
       {
-        id: 5,
+        id: '5',
         title: 'Derivatives',
         summary: null,
         objectives: [],
@@ -43,7 +43,7 @@ const TREE = [
 ]
 
 function ContextProbe() {
-  const context = useFocusContext(9, 5)
+  const context = useFocusContext('9', '5')
   return <FocusShell title="Chain rule quiz" context={context} meta={<span>meta-body</span>} onClose={() => {}}>
     <p>shell-content</p>
   </FocusShell>
@@ -259,6 +259,6 @@ describe('FocusShell', () => {
     renderApp('/probe')
     expect(await screen.findByRole('link', { name: /Calculus I/ })).toHaveAttribute('href', '/courses/9')
     await waitFor(() => expect(screen.getByRole('link', { name: 'Derivatives' })).toHaveAttribute('href', '/courses/9/n/5'))
-    expect(courseTree).toHaveBeenCalledWith(9)
+    expect(courseTree).toHaveBeenCalledWith('9')
   })
 })

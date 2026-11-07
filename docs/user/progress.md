@@ -50,12 +50,23 @@ Four tabs:
   - *Speed vs accuracy*: per concept — *rushing* (fast + wrong), *struggling*
     (slow + wrong), *effortful* (slow + right), *fluent* (fast + right), measured
     against each question's expected time.
+  - *Item analysis*: per-question difficulty (p-correct), discrimination
+    (how well the question separates strong from weak attempts; below 0.20 is
+    weak), distractor efficiency (share of wrong options students actually
+    choose) and the automatic `review` / `elo_outlier` flags. Weak rows are
+    tinted; click one to open the quiz that contains the question.
 - **Tips** — the same recommendations the Today screen uses, with their evidence.
 - **Mistakes** — your mistake notebook.
 
 Diagnostics quality grows with volume: answer more practice questions and the
 matrix sharpens. Items that nearly everyone gets wrong (or right) are flagged for
 review in the question bank automatically.
+
+**Export** — the Scores header has **Export CSV** and **Export JSON** buttons
+for the current course scope (or all courses). The CSV is one stable,
+spreadsheet-friendly table with a `section` column (`daily`, `concept`, `item`)
+so you can pivot progress history, mastery cells and item statistics in one
+file; JSON carries the same three typed lists plus a version and timestamp.
 
 ## Planner
 
@@ -96,6 +107,21 @@ the past week, marked cancelled), and the exam date becomes an all-day event.
 The file carries stable event IDs, so re-importing after moving items *updates*
 the existing events instead of duplicating them — import it into Google
 Calendar, GNOME Calendar, Outlook or anything that reads ICS.
+
+### Calendar import (ICS)
+
+**Import calendar** in the tab header reads a university timetable `.ics` and
+stages it before writing anything: the preview lists the events it will create,
+how many were skipped (outside the planner window), and any exam-looking event
+(title/categories matching exam, final, midterm, test, quiz, Prüfung, Klausur,
+εξέταση…). Recurring events expand per their `RRULE` into bounded occurrences
+(planner horizon, hard per-event cap), and times normalize to naive UTC.
+
+Committing creates normal planner items; each carries the calendar UID, so
+re-importing the same timetable updates the existing rows instead of
+duplicating the week. The exam date is **never** set implicitly — tick the
+confirmation in the preview to fill `exam_date` from the earliest exam-looking
+event. Import is file-only: no calendar account, no OAuth.
 
 Tips:
 - Set the exam date in the course's **Settings** tab first — the planner paces

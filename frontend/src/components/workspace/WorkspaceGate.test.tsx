@@ -45,7 +45,7 @@ describe('WorkspaceGate', () => {
   test('renders children once at least one course exists', async () => {
     listCourses.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus',
         subject: null,
         level: null,

@@ -2,15 +2,38 @@ import sys
 from functools import lru_cache
 from os import environ
 from pathlib import Path
-from typing import Literal
 
-from pydantic import Field
+from nx_auth.instance import IdentityMode, parse_identity_mode
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .working_dir import read_override
 
 APP_DIR_NAME = "StudyAssistant"
-LEGACY_APP_DIR_NAME = "CourseAssistant"
+
+_DEV_ENVS = ("development", "test", "testing")
+
+
+def _resolve_env_file() -> str | None:
+    """Locate the `.env` file (ADR-0028 §4): explicit `SA_ENV_FILE`, else
+    the nearest walk-up hit — but only in dev/test.
+
+    OS environment variables always override file values. The walk-up is
+    **disabled outside dev/test** so a baked-in `.env` can never downgrade
+    a production boot (health audit rule C-5); production operators point
+    `SA_ENV_FILE` at their deployment file explicitly.
+    """
+    explicit = environ.get("SA_ENV_FILE")
+    if explicit:
+        return explicit
+    if environ.get("SA_APP_ENV") not in _DEV_ENVS:
+        return None
+    here = Path(__file__).resolve().parent
+    for parent in [here, *here.parents]:
+        candidate = parent / ".env"
+        if candidate.is_file():
+            return str(candidate)
+    return None
 
 
 def _platform_base() -> Path:
@@ -36,18 +59,14 @@ def _platform_config_base() -> Path:
 
 
 def default_data_dir() -> Path:
-    data_dir = _platform_base() / APP_DIR_NAME
-    legacy = data_dir.with_name(LEGACY_APP_DIR_NAME)
-    if legacy.is_dir() and not data_dir.exists():
-        legacy.rename(data_dir)
-    return data_dir
+    return _platform_base() / APP_DIR_NAME
 
 
 def default_config_dir() -> Path:
     return _platform_config_base() / APP_DIR_NAME
 
 
-def _resolve_data_dir() -> Path:
+def resolve_data_dir() -> Path:
     configured = environ.get("SA_CONFIG_DIR")
     config_dir = Path(configured) if configured else default_config_dir()
     override = read_override(config_dir)
@@ -58,7 +77,7 @@ def _resolve_data_dir() -> Path:
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="SA_", env_file=".env", extra="ignore"
+        env_prefix="SA_", env_file=_resolve_env_file(), extra="ignore"
     )
 
     app_name: str = "Study Assistant"
@@ -66,15 +85,34 @@ class Settings(BaseSettings):
     port: int = 8200
     debug: bool = False
     log_level: str = "INFO"
-    identity_mode: Literal["server", "desktop"] = "server"
-    auth_mode: Literal["open", "authenticated"] | None = None
+    # Fail-safe default (family boot policy): without an explicit
+    # SA_APP_ENV the app assumes production and enforces the boot guards
+    # (nx_auth.boot). Dev scripts set SA_APP_ENV=development.
+    app_env: str = "production"
+    # Entrypoint half of the §4 matrix (ADR-0028); unknown values fail
+    # closed to `server` via the validator below.
+    identity_mode: IdentityMode = IdentityMode.SERVER
+    # Init-only (§4): consumed by nx_auth.instance.initialize_instance
+    # when seeding an empty DB (invalid values fail closed there; empty ⇒
+    # the §4 default). After init the DB row is authoritative.
+    auth_mode: str = ""
     demo_mode: bool = False
     shell_secret: str | None = None
     cors_origins: str = ""
     fs_roots: str = ""
+    # T3 stdio MCP launch allowlist (plan 37 Phase 6.3): comma-separated
+    # bare commands. Empty = stdio disabled (fail-closed); health's
+    # allowlist is the family reference. No shell, no inline code.
+    mcp_stdio_allowed_commands: str = ""
     config_dir: Path = Field(default_factory=default_config_dir)
-    data_dir: Path = Field(default_factory=_resolve_data_dir)
+    data_dir: Path = Field(default_factory=resolve_data_dir)
     spa_dist: Path | None = None
+    # The public base URL of THIS deployment (plan 52 web/desktop fix).
+    # Desktop/local leaves it unset and OAuth uses a loopback redirect
+    # (RFC 8252 — browser and app share a machine). A web/server deployment
+    # sets it so the provider redirects to the server's callback route
+    # instead of the user's own localhost.
+    app_url: str | None = None
     source_scan_interval_sec: int = Field(default=300, ge=15)
     auto_backup: bool = True
     backup_interval_hours: int = Field(default=24, ge=1, le=168)
@@ -90,6 +128,46 @@ class Settings(BaseSettings):
     db_password: str | None = None
     db_host: str = "localhost"
     db_port: int = 5434
+
+    # --- §16 auth knobs (ADR-0028) -------------------------------------
+    # Routed into the auth-kit config via nx_auth.config.knob_overrides
+    # so `.env`-file values reach the kit exactly like OS-environment
+    # ones (OS env wins per key). Field names mirror the kit's `<SA_>…`
+    # env suffixes verbatim.
+    auth_access_ttl_minutes: int = 60
+    auth_refresh_ttl_days: int = 7
+    auth_refresh_absolute_days: int = 30
+    auth_lockout_threshold: int = 5
+    auth_lockout_minutes: int = 15
+    auth_password_min_length: int = 10
+    registration_enabled: bool = True
+    cookie_secure: bool = False
+    trusted_proxy_count: int = 0
+    # §16 rate-limit ceilings (plan 21: the kit's family limiter; units
+    # are requests per minute, 0 disables a bucket, ENABLED stops all).
+    # AUTH/AUTH_EMAIL also feed the kit's auth limiters (§7).
+    ratelimit_enabled: bool = True
+    ratelimit_auth: int = 10
+    ratelimit_auth_email: int = 30
+    ratelimit_ai: int = 30
+    ratelimit_mcp: int = 120
+    ratelimit_default: int = 240
+
+    # --- §8 key pins (optional — generated 0600 auth_keys.json when
+    # unset; all three or none, resolved through KeyRing.load_for).
+    session_key: str | None = None
+    refresh_key: str | None = None
+    data_key: str | None = None
+    # Prior DATA_KEY values (comma-separated, decryption-only) for
+    # non-disruptive at-rest key rotation — see docs/dev/security.md
+    # "Rotating the at-rest key". New writes always seal under data_key.
+    data_key_previous: str | None = None
+
+    @field_validator("identity_mode", mode="before")
+    @classmethod
+    def _fail_closed_identity_mode(cls, value: object) -> IdentityMode:
+        """Unknown entrypoint values fail closed to `server` (§4)."""
+        return parse_identity_mode(None if value is None else str(value))
 
     @property
     def db_path(self) -> Path:
@@ -111,6 +189,16 @@ class Settings(BaseSettings):
                 f"@{self.db_host}:{self.db_port}/{self.db_name}"
             )
         return f"sqlite:///{self.db_path}"
+
+    @property
+    def is_production(self) -> bool:
+        """True when running with APP_ENV=production (boot guards apply)."""
+        return self.app_env == "production"
+
+    @property
+    def is_dev(self) -> bool:
+        """True in development/test environments."""
+        return self.app_env in ("development", "test", "testing")
 
     @property
     def inbox_dir(self) -> Path:

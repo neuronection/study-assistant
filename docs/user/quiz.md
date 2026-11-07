@@ -10,9 +10,14 @@ full-screen runner.
 
 **Practice tab → New practice** opens the practice builder. The **Quiz** group of the
 format picker lets you choose exactly which question types you want (single choice,
-multiple select, true/false, typed answer, numeric, equation — any subset, all by
-default), a question count, and a **Shuffle** toggle (randomizes question order and
-answer options). Below the format picker you control exactly **what the AI sees**:
+multiple select, true/false, typed answer, numeric, equation, number line, table
+fill, composite, graph read, code, **matching**, **ordering**, **fill blanks** and
+**essay** — any subset, all by default), a question count, and a **Shuffle** toggle
+(randomizes question order and answer options). The last four reuse the exercise
+engines: matching/ordering/fill-blanks are graded deterministically, and essay
+answers are graded against a rubric by the AI and clearly labelled **AI-graded**
+with per-criterion feedback. Below the format picker you control exactly **what the
+AI sees**:
 
 - **Scope** — *this node only*, *this node and children* (default), or *whole
   course*.
@@ -116,15 +121,18 @@ Quizzes are portable in two tiers:
 - **Export** — the *Export* link downloads `.caq.json` (single readable file);
   the *`.qpkg`* link downloads a **package**: a zip with a checksum manifest, the
   right shape for sharing between machines.
-- **Import — paste** — Practice tab → **Import** → paste a caq/v1 document. Press
+- **Import — paste** — Practice tab → **Import** → paste a saq/v1 document. Press
   **Validate** first: every question is checked with the same rules as generated
   ones (per-question report). Commit imports only what you've reviewed.
 - **Import — package** — the **Package** tab selects a `.qpkg` file; its integrity
   is verified (tampered archives are rejected) before the same validation preview.
 - **Import — inbox folder** — the **Inbox** tab shows files waiting in the app's
-  import-inbox folder (path shown on screen). Anything can drop files there —
-  you, a script, or an external AI agent. `AUTHORING.md` and `schema.json` inside
-  the folder explain the format to agents. Files import with one tap; imported
+  import-inbox folder (path shown on screen). The folder is **watched**: the
+  background scanner checks it on the same cadence as linked material folders,
+  so a dropped file appears in the notification bell (and in the Inbox tab)
+  without opening this page first. Anything can drop files there — you, a
+  script, or an external AI agent. `AUTHORING.md` and `schema.json` inside the
+  folder explain the format to agents. Files import with one tap; imported
   files are renamed `.imported`, invalid ones `.rejected` with a report beside
   them.
 - **Author with AI** — the **Author with AI** tab builds a ready-to-paste prompt

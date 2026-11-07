@@ -33,10 +33,10 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str = "Calculus") -> int:
+def make_course(client: TestClient, title: str = "Calculus") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 FILLER = (
@@ -45,9 +45,7 @@ FILLER = (
 )
 
 
-def upload_pdf(
-    client: TestClient, lines: list[str], filename: str, course_id: int
-) -> int:
+def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: str) -> str:
     content = [*lines, FILLER]
     response = client.post(
         "/api/v1/materials",
@@ -55,22 +53,21 @@ def upload_pdf(
         files={"file": (filename, make_text_pdf(content), "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    material_id = int(response.json()["material"]["id"])
+    material_id = str(response.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
 
-def hit_ids(client: TestClient, q: str, course_id: int | None = None) -> list[int]:
+def hit_ids(client: TestClient, q: str, course_id: str | None = None) -> list[str]:
     params: dict[str, int | str] = {"q": q}
     if course_id is not None:
         params["course_id"] = course_id
     search = client.get("/api/v1/search", params=params).json()
-    return [int(hit["material_id"]) for hit in search["hits"]]
+    return [str(hit["material_id"]) for hit in search["hits"]]
 
 
 def test_search_finds_misspelled_title(client: TestClient) -> None:
@@ -116,9 +113,7 @@ def test_search_respects_course_scope(client: TestClient) -> None:
     material_a = upload_pdf(
         client, ["Integration by Parts", "The formula for integration."], "f.pdf", course_a
     )
-    upload_pdf(
-        client, ["Integration by Parts", "The formula for integration."], "g.pdf", course_b
-    )
+    upload_pdf(client, ["Integration by Parts", "The formula for integration."], "g.pdf", course_b)
     assert hit_ids(client, "integraton by parts", course_id=course_a) == [material_a]
     assert hit_ids(client, "integraton by parts", course_id=course_b) != [material_a]
 
@@ -129,9 +124,7 @@ def test_unmatched_query_returns_no_hits(client: TestClient) -> None:
     assert hit_ids(client, "xylophone") == []
 
 
-def test_retrieve_chunks_fuzzy_fallback(
-    db_session: Session, owner: Any
-) -> None:
+def test_retrieve_chunks_fuzzy_fallback(db_session: Session, owner: Any) -> None:
     profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
@@ -175,27 +168,25 @@ def test_retrieve_chunks_fuzzy_fallback(
     assert retrieve_chunks(db_session, "xylophone", embed, limit=5) == []
 
 
-def _run_migrations(db_path: Path, target: str | None = None) -> None:
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(config, target or "head")
-
-
-def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
+def test_baseline_has_the_trigram_index(tmp_path: Path) -> None:
     import sqlite3
 
-    db_path = tmp_path / "legacy.db"
-    _run_migrations(db_path, "0044_chat_branches")
+    db_path = tmp_path / "baseline.db"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+    command.upgrade(config, "head")
 
     raw = sqlite3.connect(db_path)
     raw.execute(
         "INSERT INTO material_fts (title, markdown, description, topics, material_id) "
-        "VALUES ('Thermodynamics', 'entropy and energy', '', '', 1)"
+        "VALUES ('Thermodynamics', 'entropy and energy', '', '', '1')"
+    )
+    raw.execute(
+        "INSERT INTO material_fts_trigram (title, markdown, description, topics, material_id) "
+        "SELECT title, markdown, description, topics, material_id FROM material_fts"
     )
     raw.commit()
     raw.close()
-
-    _run_migrations(db_path, "0065_identity_core")
 
     check = sqlite3.connect(db_path)
     try:
@@ -205,19 +196,27 @@ def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
         ).fetchall()
     finally:
         check.close()
-    assert rows == [(1,)]
+    assert rows == [("1",)]
 
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.downgrade(config, "0044_chat_branches")
+    command.downgrade(config, "base")
     check = sqlite3.connect(db_path)
     try:
         tables = {
             row[0]
-            for row in check.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
     finally:
         check.close()
     assert "material_fts_trigram" not in tables
+    assert "material_fts" not in tables
+
+    command.upgrade(config, "head")
+    check = sqlite3.connect(db_path)
+    try:
+        tables = {
+            row[0]
+            for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+    finally:
+        check.close()
+    assert "material_fts_trigram" in tables

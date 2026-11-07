@@ -19,14 +19,14 @@ export function NotePickerDialog({
   onSelect,
   onClose,
 }: {
-  courseId: number
+  courseId: string
   nodeTitle?: string
-  onSelect: (entries: Array<{ id: number; title: string }>) => void
+  onSelect: (entries: Array<{ id: string; title: string }>) => void
   onClose: () => void
 }) {
   useCloseFloatings()
   const { t } = useTranslation()
-  const [selected, setSelected] = useState<Map<number, string>>(new Map())
+  const [selected, setSelected] = useState<Map<string, string>>(new Map())
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const pageSize = 100

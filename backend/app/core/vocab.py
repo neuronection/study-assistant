@@ -3,6 +3,10 @@ from enum import StrEnum
 
 class StrVocab(StrEnum):
     @classmethod
+    def values(cls) -> tuple[str, ...]:
+        return tuple(member.value for member in cls)
+
+    @classmethod
     def parse(cls, value: str) -> "StrVocab":
         try:
             return cls(value)
@@ -23,6 +27,16 @@ class JobStatus(StrVocab):
         return (cls.QUEUED, cls.RUNNING)
 
 
+class DegradedReason(StrVocab):
+    """Structured lexical-fallback reason (family retrieval contract)."""
+
+    PROVIDER_UNASSIGNED = "provider_unassigned"
+    EMBED_FAILED = "embed_failed"
+    INDEX_MISSING = "index_missing"
+    SPACE_MISMATCH = "space_mismatch"
+    OVER_CAP = "over_cap"
+
+
 class JobType(StrVocab):
     INGEST = "ingest"
     POSTPROCESS = "postprocess"
@@ -31,6 +45,50 @@ class JobType(StrVocab):
     IMAGE_OCR = "image_ocr"
     GENESIS = "genesis"
     URL_IMPORT = "url_import"
+    COMPOSE = "compose"
+    # Family retrieval-operations contract (plan 51 Q0): the names are the
+    # exact `retrieval_ops.VECTOR_JOB_TYPES` tokens, uppercase by contract.
+    VECTOR_REINDEX = "VECTOR_REINDEX"
+    VECTOR_MAINTENANCE = "VECTOR_MAINTENANCE"
+    VECTOR_CUTOVER = "VECTOR_CUTOVER"
+
+
+class QuestionType(StrVocab):
+    SINGLE = "single"
+    MULTI = "multi"
+    TRUEFALSE = "truefalse"
+    TEXT = "text"
+    NUMERIC = "numeric"
+    EQUATION = "equation"
+    NUMBERLINE = "numberline"
+    TABLE_FILL = "table_fill"
+    COMPOSITE = "composite"
+    GRAPH_READ = "graph_read"
+    CODE = "code"
+    MATCHING = "matching"
+    ORDERING = "ordering"
+    CLOZE = "cloze"
+    ESSAY = "essay"
+
+
+class ExerciseKind(StrVocab):
+    MULTI_STEP = "multi_step"
+    CARD_BASIC = "card_basic"
+    CARD_REVERSE = "card_reverse"
+    CARD_CLOZE = "card_cloze"
+    MATCHING = "matching"
+    ORDERING = "ordering"
+    CATEGORIZE = "categorize"
+    FILL_BLANK = "fill_blank"
+    EXPLAIN = "explain"
+    ERROR_SPOT = "error_spot"
+    CORRECT_SOLUTION = "correct_solution"
+
+
+class FlashcardKind(StrVocab):
+    CARD_BASIC = "card_basic"
+    CARD_CLOZE = "card_cloze"
+    CARD_REVERSE = "card_reverse"
 
 
 class ToolEntryKind(StrVocab):
@@ -61,14 +119,22 @@ class ChatProposalStatus(StrVocab):
         return (cls.APPROVED, cls.DISMISSED, cls.EXECUTED, cls.STALE, cls.CONFLICT)
 
 
-class FlowEvent(StrVocab):
-    FLOW_STARTED = "flow_started"
-    NODE_STARTED = "node_started"
-    NODE_FINISHED = "node_finished"
-    DELTA = "delta"
-    INTERRUPT = "interrupt"
-    FLOW_FINISHED = "flow_finished"
-    FLOW_FAILED = "flow_failed"
+class ProposalTargetKind(StrVocab):
+    NOTE = "note"
+    MATERIAL = "material"
+    CONCEPT = "concept"
+    LINK = "link"
+
+
+class ProposalAnchorOp(StrVocab):
+    REPLACE = "replace"
+    APPEND = "append"
+    PREPEND = "prepend"
+
+
+class QuizVerdict(StrVocab):
+    CORRECT = "correct"
+    INCORRECT = "incorrect"
 
 
 class DiscoveryKind(StrVocab):
@@ -76,7 +142,27 @@ class DiscoveryKind(StrVocab):
     COURSE = "course"
     ARTICLE = "article"
     EXERCISE = "exercise"
+    PAPER = "paper"
+    DATASET = "dataset"
+    REFERENCE = "reference"
     OTHER = "other"
+
+
+class CitationKind(StrVocab):
+    ARTICLE = "article"
+    BOOK = "book"
+    CHAPTER = "chapter"
+    CONFERENCE = "conference"
+    PREPRINT = "preprint"
+    THESIS = "thesis"
+    REPORT = "report"
+    DATASET = "dataset"
+    OTHER = "other"
+
+
+class BibliographyFormat(StrVocab):
+    BIBTEX = "bibtex"
+    RIS = "ris"
 
 
 class SuggestionStatus(StrVocab):
@@ -90,6 +176,21 @@ class ExternalSourceKind(StrVocab):
     YOUTUBE_CHANNEL = "youtube_channel"
     YOUTUBE_PLAYLIST = "youtube_playlist"
     SITE_SEARCH = "site_search"
+    WEBDAV_FOLDER = "webdav_folder"
+    CLOUD_FOLDER = "cloud_folder"
+    ZOTERO_COLLECTION = "zotero_collection"
+    ANKI_DECK = "anki_deck"
+
+
+class AuthKind(StrVocab):
+    TOKEN = "token"
+    OAUTH2 = "oauth2"
+    NONE = "none"
+
+
+class SourcePreset(StrVocab):
+    FOLDER = "folder"
+    VAULT = "vault"
 
 
 class MaterialKind(StrVocab):
@@ -174,6 +275,28 @@ class Capability(StrVocab):
     EMBEDDINGS = "embeddings"
     STT = "stt"
     TTS = "tts"
+    DECISION = "decision"
+
+
+class DecisionCapability(StrVocab):
+    TOOL_DISPATCH = "tool-dispatch"
+    BOOLEAN_GATE = "boolean-gate"
+    CHOICE = "choice"
+    SCORE = "score"
+    OPEN_ARGS = "open-args"
+
+
+class DecisionTransport(StrVocab):
+    SYSTEMONE = "systemone"
+
+
+class SystemOneErrorKind(StrVocab):
+    AUTH = "auth"
+    RATE_LIMIT = "rate-limit"
+    OVERLOADED = "overloaded"
+    VALIDATION = "validation"
+    TIMEOUT = "timeout"
+    UNAVAILABLE = "unavailable"
 
 
 class ProviderErrorCode(StrVocab):
@@ -245,6 +368,16 @@ class ItemFlag(StrVocab):
     ELO_OUTLIER = "elo_outlier"
 
 
+class AnalyticsExportFormat(StrVocab):
+    CSV = "csv"
+    JSON = "json"
+
+
+class PreprocessMode(StrVocab):
+    AUTO = "auto"
+    OFF = "off"
+
+
 class CourseOrigin(StrVocab):
     MANUAL = "manual"
     GENESIS = "genesis"
@@ -257,54 +390,84 @@ class PlanItemKind(StrVocab):
     PRACTICE = "practice"
     REVIEW = "review"
     MILESTONE = "milestone"
+    EXAM = "exam"
+    DEADLINE = "deadline"
 
 
-PLAN_ITEM_KINDS: tuple[str, ...] = tuple(
-    kind.value for kind in PlanItemKind
-)
+PLAN_ITEM_KINDS: tuple[str, ...] = tuple(kind.value for kind in PlanItemKind)
 
 
 class PlanItemOrigin(StrVocab):
     MANUAL = "manual"
     DRAFT = "draft"
+    CALENDAR = "calendar"
+
+
+class CalendarDirection(StrVocab):
+    """How a calendar link moves data (ADR-0052 §6)."""
+
+    PUSH = "push"
+    PULL = "pull"
+    TWO_WAY = "two-way"
+
+
+class CalendarStatus(StrVocab):
+    """Account/sync state; the family vocabulary plus the two auth states."""
+
+    OK = "ok"
+    DEGRADED = "degraded"
+    FAILING = "failing"
+    STALE = "stale"
+    NEEDS_AUTH = "needs-auth"
+    NEEDS_SECRET = "needs-secret"
+
+
+class NotificationKind(StrVocab):
+    """The boot-seeded family retrieval alerts (plan 51 Q1c/Q3c3a)."""
+
+    RETRIEVAL_COVERAGE_LOW = "retrieval.coverage_low"
+    RETRIEVAL_REINDEX_FAILED = "retrieval.reindex_failed"
+    RETRIEVAL_REINDEX_STALLED = "retrieval.reindex_stalled"
+    RETRIEVAL_QUALITY_GATE = "retrieval.quality_gate"
+    RETRIEVAL_QUERY_SLO = "retrieval.query_slo"
+    RETRIEVAL_DEGRADED_RATE = "retrieval.degraded_rate"
+    RETRIEVAL_PROVIDER_UNASSIGNED = "retrieval.provider_unassigned"
+    RETRIEVAL_INDEX_MISSING = "retrieval.index_missing"
+    RETRIEVAL_BUDGET_EXHAUSTED = "retrieval.budget_exhausted"
+    RETRIEVAL_SPACE_DROP_PENDING = "retrieval.space_drop_pending"
+
+
+class NotificationSeverity(StrVocab):
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
 
 
 class WsTopic:
     @staticmethod
-    def jobs(job_id: int) -> str:
+    def jobs(job_id: str) -> str:
         return f"jobs:{job_id}"
 
     @staticmethod
-    def chat(session_id: int) -> str:
+    def chat(session_id: str) -> str:
         return f"chat:{session_id}"
 
     @staticmethod
-    def source(source_id: int) -> str:
+    def source(source_id: str) -> str:
         return f"source:{source_id}"
 
     @staticmethod
-    def externalsource(source_id: int) -> str:
+    def externalsource(source_id: str) -> str:
         return f"externalsource:{source_id}"
 
     @staticmethod
-    def note(note_id: int) -> str:
+    def note(note_id: str) -> str:
         return f"note:{note_id}"
 
     @staticmethod
-    def material(material_id: int) -> str:
+    def material(material_id: str) -> str:
         return f"material:{material_id}"
 
-
-QUESTION_TYPES: tuple[str, ...] = (
-    "single",
-    "multi",
-    "truefalse",
-    "text",
-    "numeric",
-    "equation",
-    "numberline",
-    "table_fill",
-    "composite",
-    "graph_read",
-    "code",
-)
+    @staticmethod
+    def inbox() -> str:
+        return "inbox"

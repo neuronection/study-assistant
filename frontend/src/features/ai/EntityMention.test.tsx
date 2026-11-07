@@ -52,9 +52,9 @@ describe('EntityMention', () => {
     renderMention({
       ref: 'M12',
       kind: 'material',
-      id: 12,
+      id: '12',
       title: 'Lecture 3',
-      course_id: 1,
+      course_id: '1',
     })
     expect(await screen.findByRole('link', { name: /Lecture 3/ })).toHaveAttribute(
       'href',
@@ -63,7 +63,7 @@ describe('EntityMention', () => {
   })
 
   test('renders a note chip linking to the note page with origin return', async () => {
-    renderMention({ ref: 'N3', kind: 'note', id: 3, title: 'My note', course_id: null })
+    renderMention({ ref: 'N3', kind: 'note', id: '3', title: 'My note', course_id: null })
     expect(await screen.findByRole('link', { name: /My note/ })).toHaveAttribute(
       'href',
       '/note/3?from=%2F',
@@ -74,9 +74,9 @@ describe('EntityMention', () => {
     renderMention({
       ref: 'C7',
       kind: 'concept',
-      id: 7,
+      id: '7',
       title: 'chain rule',
-      course_id: 4,
+      course_id: '4',
     })
     expect(await screen.findByRole('link', { name: /chain rule/ })).toHaveAttribute(
       'href',
@@ -88,7 +88,7 @@ describe('EntityMention', () => {
     renderMention({
       ref: 'C7',
       kind: 'concept',
-      id: 7,
+      id: '7',
       title: 'chain rule',
       course_id: null,
     })
@@ -100,9 +100,9 @@ describe('EntityMention', () => {
     renderMention({
       ref: 'T5',
       kind: 'node',
-      id: 5,
+      id: '5',
       title: 'Chapter 2',
-      course_id: 4,
+      course_id: '4',
     })
     expect(await screen.findByRole('link', { name: /Chapter 2/ })).toHaveAttribute(
       'href',
@@ -114,9 +114,9 @@ describe('EntityMention', () => {
     const first = renderMention({
       ref: 'Q2',
       kind: 'quiz',
-      id: 2,
+      id: '2',
       title: 'Limits quiz',
-      course_id: 1,
+      course_id: '1',
     })
     expect(await first.findByRole('link', { name: /Limits quiz/ })).toHaveAttribute(
       'href',

@@ -108,7 +108,7 @@ class TestGrading:
             "reference_solution": "def f():\n    return 'hi'",
             "tests": [{"call": "f()", "expected": "hi"}],
         }
-        result = grade_code(answer, payload({"passed": True, "output": "\"hi\""}))
+        result = grade_code(answer, payload({"passed": True, "output": '"hi"'}))
         assert result["correct"] is True
 
     def test_malformed(self) -> None:

@@ -32,9 +32,7 @@ GENESIS_DRAFT: dict[str, Any] = {
         {
             "title": "Matrices",
             "summary": "Matrix algebra.",
-            "sections": [
-                {"title": "Multiplication", "objectives": ["Multiply matrices"]}
-            ],
+            "sections": [{"title": "Multiplication", "objectives": ["Multiply matrices"]}],
         },
     ],
 }
@@ -57,7 +55,7 @@ BAD_JSON = "not json at all"
 def cards_payload(prefix: str = "vector", count: int = 10) -> str:
     cards = [
         {
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": f"What is a {prefix} concept #{i}?",
             "back_md": f"A {prefix} fact #{i}.",
         }
@@ -93,7 +91,7 @@ class GenesisGateway(ScriptedGateway):
         task: str,
         messages: Any,
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(list(messages))
         prompt = "\n".join(str(message.content) for message in messages)
@@ -124,7 +122,7 @@ def genesis_client(
         yield test_client, genesis_gateway, app
 
 
-def wait_job(client: TestClient, job_id: int, status: str) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: str, status: str) -> dict[str, Any]:
     deadline = time.monotonic() + 30.0
     last: dict[str, Any] | None = None
     while time.monotonic() < deadline:
@@ -152,9 +150,7 @@ def test_genesis_draft_returns_validated_outline(
         draft = response.json()
         assert draft["title"] == "Linear Algebra for Economists"
         assert len(draft["chapters"]) == 2
-        assert draft["chapters"][0]["sections"][0]["objectives"] == [
-            "Define a vector space"
-        ]
+        assert draft["chapters"][0]["sections"][0]["objectives"] == ["Define a vector space"]
 
 
 def test_genesis_draft_rejects_malformed_output(
@@ -200,7 +196,7 @@ def test_genesis_commit_creates_course_nodes_and_job(
 
         stored = app.state.session_factory()
         try:
-            job = stored.get(Job, int(body["job_id"]))
+            job = stored.get(Job, str(body["job_id"]))
             assert job is not None
             assert job.type == "genesis"
             assert job.payload["course_id"] == course["id"]
@@ -260,17 +256,15 @@ def test_genesis_job_generates_lessons_and_isolates_failures(
         )
         assert response.status_code == 201, response.text
         body = response.json()
-        course_id = int(body["course"]["id"])
-        job_id = int(body["job_id"])
+        course_id = str(body["course"]["id"])
+        job_id = str(body["job_id"])
 
         final = wait_job(test_client, job_id, "done")
         assert final["status"] == "done"
 
         stored = app.state.session_factory()
         try:
-            lessons = stored.scalars(
-                select(Material).where(Material.course_id == course_id)
-            ).all()
+            lessons = stored.scalars(select(Material).where(Material.course_id == course_id)).all()
             lesson_rows = [
                 material
                 for material in lessons
@@ -279,15 +273,11 @@ def test_genesis_job_generates_lessons_and_isolates_failures(
             assert len(lesson_rows) == 2
             for material in lesson_rows:
                 link = stored.scalars(
-                    select(MaterialLink).where(
-                        MaterialLink.material_id == material.id
-                    )
+                    select(MaterialLink).where(MaterialLink.material_id == material.id)
                 ).first()
                 assert link is not None
             quizzes = stored.scalars(
-                select(Activity).where(
-                    Activity.course_id == course_id, Activity.type == "quiz"
-                )
+                select(Activity).where(Activity.course_id == course_id, Activity.type == "quiz")
             ).all()
             assert quizzes == []
             cards = stored.scalars(

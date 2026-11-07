@@ -34,8 +34,8 @@ export function ExtractionView({
   scopeNodeId,
   onQuoteSelection,
 }: {
-  materialId: number
-  scopeNodeId?: number
+  materialId: string
+  scopeNodeId?: string
   onQuoteSelection?: (text: string) => void
 }) {
   const { t } = useTranslation()

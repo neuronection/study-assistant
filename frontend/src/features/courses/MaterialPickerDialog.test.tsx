@@ -18,32 +18,32 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
     listMaterials: (...args: unknown[]) =>
-      listMaterials(...(args as [number | undefined, number | undefined, boolean | undefined])),
-    browseSource: (...args: unknown[]) => browseSource(...(args as [number, string])),
-    ingestSourceFile: (...args: unknown[]) => ingestSourceFile(...(args as [number, string])),
+      listMaterials(...(args as [string | undefined, string | undefined, boolean | undefined])),
+    browseSource: (...args: unknown[]) => browseSource(...(args as [string, string])),
+    ingestSourceFile: (...args: unknown[]) => ingestSourceFile(...(args as [string, string])),
     allocateMaterial: (...args: unknown[]) =>
-      allocateMaterial(...(args as [number, number])),
+      allocateMaterial(...(args as [string, string])),
     allocateNodeFolder: (...args: unknown[]) =>
-      allocateNodeFolder(...(args as [number, number])),
+      allocateNodeFolder(...(args as [string, string])),
     uploadMaterial: (...args: unknown[]) => uploadMaterial(...(args as [])),
   }
 })
 
 function renderDialog(
-  assignedIds: Set<number> = new Set(),
+  assignedIds: Set<string> = new Set(),
   props: {
-    assignedFolderIds?: Set<number>
+    assignedFolderIds?: Set<string>
     mode?: 'allocate' | 'select'
-    nodeId?: number | null
-    onSelect?: (ids: number[]) => void
+    nodeId?: string | null
+    onSelect?: (ids: string[]) => void
   } = {}
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <MaterialPickerDialog
-        courseId={1}
-        nodeId={props.nodeId !== undefined ? props.nodeId : 7}
+        courseId="1"
+        nodeId={props.nodeId !== undefined ? props.nodeId : '7'}
         nodeTitle="Derivatives"
         assignedIds={assignedIds}
         assignedFolderIds={props.assignedFolderIds}
@@ -55,7 +55,7 @@ function renderDialog(
   )
 }
 
-function material(id: number, title: string, folderId: number | null) {
+function material(id: string, title: string, folderId: string | null) {
   return {
     id,
     title,
@@ -64,8 +64,7 @@ function material(id: number, title: string, folderId: number | null) {
     filename: `${title}.pdf`,
     mime: 'application/pdf',
     pages: 3,
-    course_id: 1,
-    group_id: null,
+    course_id: '1',
     folder_id: folderId,
     blob_sha: null,
     created_at: '2026-08-01T00:00:00Z',
@@ -73,16 +72,16 @@ function material(id: number, title: string, folderId: number | null) {
 }
 
 const ALL = [
-  material(101, 'Lecture 1', 10),
-  material(102, 'Lecture 2', 11),
-  material(103, 'Scan A', 12),
-  material(104, 'Loose notes', null),
+  material('101', 'Lecture 1', '10'),
+  material('102', 'Lecture 2', '11'),
+  material('103', 'Scan A', '12'),
+  material('104', 'Loose notes', null),
 ]
 
 const FOLDERS = [
-  { id: 10, name: 'Lectures', path: '/Lectures', course_id: 1, parent_id: null, source_id: null, created_at: '2026-08-01T00:00:00Z' },
-  { id: 11, name: 'Week 1', path: '/Lectures/Week 1', course_id: 1, parent_id: 10, source_id: null, created_at: '2026-08-01T00:00:00Z' },
-  { id: 12, name: 'Scans', path: '/Scans', course_id: 1, parent_id: null, source_id: 3, created_at: '2026-08-01T00:00:00Z' },
+  { id: '10', name: 'Lectures', path: '/Lectures', course_id: '1', parent_id: null, source_id: null, created_at: '2026-08-01T00:00:00Z' },
+  { id: '11', name: 'Week 1', path: '/Lectures/Week 1', course_id: '1', parent_id: '10', source_id: null, created_at: '2026-08-01T00:00:00Z' },
+  { id: '12', name: 'Scans', path: '/Scans', course_id: '1', parent_id: null, source_id: '3', created_at: '2026-08-01T00:00:00Z' },
 ]
 
 function rowFor(title: string) {
@@ -122,8 +121,8 @@ describe('MaterialPickerDialog', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /loose notes/i }))
     fireEvent.click(screen.getByRole('button', { name: /^assign material$/i }))
 
-    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(7, 10))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(7, 104))
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith('7', '10'))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('7', '104'))
     expect(allocateNodeFolder).toHaveBeenCalledTimes(1)
   })
 
@@ -148,12 +147,12 @@ describe('MaterialPickerDialog', () => {
     fireEvent.click(screen.getAllByTitle(/assign the whole folder “scans”/i)[0])
     fireEvent.click(screen.getByRole('button', { name: /^assign folder$/i }))
 
-    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(7, 12))
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith('7', '12'))
     expect(allocateMaterial).not.toHaveBeenCalled()
   })
 
   test('folders already assigned to the node are locked, source folders assignable', async () => {
-    renderDialog(new Set(), { assignedFolderIds: new Set([10]) })
+    renderDialog(new Set(), { assignedFolderIds: new Set(['10']) })
     expect(await screen.findByText('Loose notes')).toBeInTheDocument()
 
     expect(
@@ -183,19 +182,19 @@ describe('MaterialPickerDialog', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /loose notes/i }))
     fireEvent.click(screen.getByRole('button', { name: /^assign material$/i }))
 
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(7, 104))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('7', '104'))
     expect(allocateMaterial).toHaveBeenCalledTimes(1)
   })
 
   test('marks already-assigned materials as locked', async () => {
-    renderDialog(new Set([104]))
+    renderDialog(new Set(['104']))
     expect(await screen.findByText('Loose notes')).toBeInTheDocument()
     expect(screen.getByText('Assigned here')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /loose notes/i })).not.toBeInTheDocument()
   })
 
   test('navigates into a folder, selects a subtree via the folder toggle, and deselects via the chip', async () => {
-    renderDialog(new Set([101]))
+    renderDialog(new Set(['101']))
     fireEvent.click((await screen.findAllByText('Lectures'))[0])
 
     expect(await screen.findByText('Lecture 1')).toBeInTheDocument()
@@ -211,7 +210,7 @@ describe('MaterialPickerDialog', () => {
     expect(await screen.findByText('1 material selected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^assign material$/i }))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(7, 102))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('7', '102'))
     expect(allocateMaterial).toHaveBeenCalledTimes(1)
   })
 
@@ -245,7 +244,7 @@ describe('MaterialPickerDialog', () => {
 
   test('linked folders browse the source and ingest-and-select pending files', async () => {
     browseSource.mockResolvedValue({
-      source_id: 3,
+      source_id: '3',
       label: 'Scans',
       path: '/tmp/scans',
       subdir: '',
@@ -258,29 +257,29 @@ describe('MaterialPickerDialog', () => {
       materials: [ALL[2]],
       uningested: [{ name: 'new-scan.pdf', relpath: 'new-scan.pdf', size_bytes: 10, mtime: 1 }],
     })
-    ingestSourceFile.mockResolvedValue({ material_id: 105, job_id: null, deduped: false })
+    ingestSourceFile.mockResolvedValue({ material_id: '105', job_id: null, deduped: false })
 
     renderDialog()
     fireEvent.click((await screen.findAllByText('Scans'))[0])
 
     expect(await screen.findByText('new-scan.pdf')).toBeInTheDocument()
-    expect(browseSource).toHaveBeenCalledWith(3, '')
+    expect(browseSource).toHaveBeenCalledWith('3', '')
 
     fireEvent.click(screen.getByRole('checkbox', { name: /scan a/i }))
     fireEvent.click(screen.getByRole('button', { name: /new-scan\.pdf/i }))
-    await waitFor(() => expect(ingestSourceFile).toHaveBeenCalledWith(3, 'new-scan.pdf'))
+    await waitFor(() => expect(ingestSourceFile).toHaveBeenCalledWith('3', 'new-scan.pdf'))
     expect(await screen.findByText('2 materials selected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /assign 2 materials/i }))
     await waitFor(() => {
-      expect(allocateMaterial).toHaveBeenCalledWith(7, 103)
-      expect(allocateMaterial).toHaveBeenCalledWith(7, 105)
+      expect(allocateMaterial).toHaveBeenCalledWith('7', '103')
+      expect(allocateMaterial).toHaveBeenCalledWith('7', '105')
     })
   })
 
   test('uploads from the picker land in the browsed folder and are auto-selected', async () => {
     uploadMaterial.mockResolvedValue({
-      material: { ...material(105, 'Fresh upload.pdf', null), title: 'Fresh upload.pdf' },
+      material: { ...material('105', 'Fresh upload.pdf', null), title: 'Fresh upload.pdf' },
       job_id: null,
       deduped: false,
     })
@@ -295,13 +294,13 @@ describe('MaterialPickerDialog', () => {
       target: { files: [new File(['data'], 'Fresh upload.pdf', { type: 'application/pdf' })] },
     })
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    expect(uploadMaterial.mock.calls[0][1]).toBe(1)
-    expect(uploadMaterial.mock.calls[0][2]).toBe(10)
-    expect(uploadMaterial.mock.calls[0][3]).toBe(7)
+    expect(uploadMaterial.mock.calls[0][1]).toBe('1')
+    expect(uploadMaterial.mock.calls[0][2]).toBe('10')
+    expect(uploadMaterial.mock.calls[0][3]).toBe('7')
     expect(await screen.findByText('1 material selected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^assign material$/i }))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(7, 105))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('7', '105'))
   })
 
   test('select mode returns the selection instead of allocating', async () => {
@@ -310,7 +309,7 @@ describe('MaterialPickerDialog', () => {
     render(
       <QueryClientProvider client={client}>
         <MaterialPickerDialog
-          courseId={1}
+          courseId="1"
           nodeTitle="Pick context"
           assignedIds={new Set()}
           onClose={() => undefined}
@@ -322,7 +321,7 @@ describe('MaterialPickerDialog', () => {
     expect(await screen.findByText('Loose notes')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('checkbox', { name: /loose notes/i }))
     fireEvent.click(screen.getByRole('button', { name: /^add material$/i }))
-    await waitFor(() => expect(onSelect).toHaveBeenCalledWith([104]))
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith(['104']))
     expect(allocateMaterial).not.toHaveBeenCalled()
   })
 })

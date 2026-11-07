@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.errors import sanitize_error_detail
@@ -11,6 +11,7 @@ from app.core.errors import sanitize_error_detail
 from ..core.events import EventBus
 from ..core.vocab import JobStatus, JobType, WsTopic
 from ..domain.models import Job, utcnow
+from ..services.progress import bound_progress_detail
 from .cancellation import (
     CANCELLED_ERROR,
     JobCancelled,
@@ -30,12 +31,18 @@ from .payloads import (
 
 logger = structlog.get_logger(__name__)
 
-ProgressReporter = Callable[[int, str], None]
+ProgressReporter = Callable[..., None]
 JobHandler = Callable[[Session, Job, ProgressReporter], None]
 GroupKey = Callable[[Job], str | None]
 
-INTERRUPTED_ERROR = (
-    "interrupted: the backend restarted before this job finished — please retry"
+INTERRUPTED_ERROR = "interrupted: the backend restarted before this job finished — please retry"
+
+VECTOR_JOB_TYPES = frozenset(
+    {
+        JobType.VECTOR_REINDEX.value,
+        JobType.VECTOR_MAINTENANCE.value,
+        JobType.VECTOR_CUTOVER.value,
+    }
 )
 
 
@@ -75,9 +82,7 @@ class JobRunner:
                 count=reclaimed,
             )
         for index in range(self._workers):
-            thread = threading.Thread(
-                target=self._run, name=f"job-worker-{index}", daemon=True
-            )
+            thread = threading.Thread(target=self._run, name=f"job-worker-{index}", daemon=True)
             thread.start()
             self._threads.append(thread)
 
@@ -94,10 +99,14 @@ class JobRunner:
     def has_handler(self, job_type: str) -> bool:
         return job_type in self._handlers
 
+    @property
+    def handler_types(self) -> frozenset[str]:
+        return frozenset(self._handlers)
+
     def retriable_handlers(self) -> frozenset[str]:
         return frozenset(self._handlers) - {JobType.CHAT_TURN}
 
-    def publish_progress(self, job_id: int, progress: int, stage: str, status: str) -> None:
+    def publish_progress(self, job_id: str, progress: int, stage: str, status: str) -> None:
         self._bus.publish_threadsafe(
             WsTopic.jobs(job_id), {"progress": progress, "stage": stage, "status": status}
         )
@@ -128,10 +137,13 @@ class JobRunner:
             select(Job)
             .where(
                 Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
-                Job.id < job.id,
+                or_(
+                    Job.created_at < job.created_at,
+                    and_(Job.created_at == job.created_at, Job.id < job.id),
+                ),
                 Job.type == job.type,
             )
-            .order_by(Job.id)
+            .order_by(Job.created_at, Job.id)
             .limit(100)
         ).all()
         return any(self._group_of(other) == group for other in earlier)
@@ -141,16 +153,22 @@ class JobRunner:
             candidates = session.scalars(
                 select(Job)
                 .where(Job.status == JobStatus.QUEUED)
-                .order_by(Job.id)
+                .order_by(Job.created_at, Job.id)
                 .limit(25)
             ).all()
             for job in candidates:
                 if self._blocked_by_group(session, job):
                     continue
+                values: dict[str, Any] = {
+                    "status": "running",
+                    "started_at": utcnow(),
+                }
+                if job.type in VECTOR_JOB_TYPES:
+                    values["heartbeat_at"] = utcnow()
                 claimed = session.execute(
                     update(Job)
                     .where(Job.id == job.id, Job.status == JobStatus.QUEUED)
-                    .values(status="running", started_at=utcnow())
+                    .values(**values)
                 )
                 session.commit()
                 if not bool(cast(Any, claimed).rowcount):
@@ -196,11 +214,9 @@ class JobRunner:
                 job_type=job.type,
                 timeout_sec=self._job_timeout_sec,
             )
-            self._mark_failed(
-                job.id, f"timed out after {int(self._job_timeout_sec)}s"
-            )
+            self._mark_failed(job.id, f"timed out after {int(self._job_timeout_sec)}s")
 
-    def _run_handler(self, job_id: int, job_type: str) -> None:
+    def _run_handler(self, job_id: str, job_type: str) -> None:
         handler = self._handlers.get(job_type)
         try:
             if is_cancel_requested(job_id):
@@ -213,11 +229,20 @@ class JobRunner:
                 if job_row.status != JobStatus.RUNNING:
                     return
 
-                def report(progress: int, stage: str) -> None:
+                def report(
+                    progress: int,
+                    stage: str,
+                    detail: dict[str, Any] | None = None,
+                ) -> None:
                     if is_cancel_requested(job_id):
                         raise JobCancelled(CANCELLED_ERROR)
                     job_row.progress = max(0, min(100, progress))
                     job_row.stage = stage
+                    bounded = bound_progress_detail(detail)
+                    if bounded is not None:
+                        job_row.progress_detail = cast(Any, bounded)
+                    if job_row.type in VECTOR_JOB_TYPES:
+                        job_row.heartbeat_at = utcnow()
                     session.commit()
                     self.publish_progress(job_id, progress, stage, "running")
 
@@ -230,6 +255,11 @@ class JobRunner:
                         job_row.status = JobStatus.DONE
                         job_row.progress = 100
                         job_row.finished_at = utcnow()
+                        if job_row.type in VECTOR_JOB_TYPES:
+                            job_row.heartbeat_at = job_row.finished_at
+                            job_row.lock_key = None
+                            job_row.cancel_requested = False
+                        job_row.progress_detail = None
                         session.commit()
                         self.publish_progress(job_id, 100, job_row.stage or "", "done")
                         logger.info("job_done", job_id=job_id, job_type=job_type)
@@ -243,14 +273,12 @@ class JobRunner:
                     )
                     self._mark_failed(job_id, str(error))
         except Exception as error:
-            logger.exception(
-                "job_handler_setup_failed", job_id=job_id, error=str(error)
-            )
+            logger.exception("job_handler_setup_failed", job_id=job_id, error=str(error))
             self._mark_failed(job_id, str(error))
         finally:
             clear_cancel(job_id)
 
-    def _mark_cancelled(self, job_id: int, error: str) -> None:
+    def _mark_cancelled(self, job_id: str, error: str) -> None:
         with self._session_factory() as session:
             cancelled = session.get(Job, job_id)
             if cancelled is None:
@@ -260,6 +288,10 @@ class JobRunner:
             cancelled.status = JobStatus.CANCELLED
             cancelled.error = sanitize_error_detail(str(error), 4000)
             cancelled.finished_at = utcnow()
+            if cancelled.type in VECTOR_JOB_TYPES:
+                cancelled.heartbeat_at = cancelled.finished_at
+                cancelled.lock_key = None
+                cancelled.cancel_requested = False
             session.commit()
             self._bus.publish_threadsafe(
                 WsTopic.jobs(job_id),
@@ -271,7 +303,7 @@ class JobRunner:
             )
             logger.info("job_cancelled", job_id=job_id)
 
-    def _mark_failed(self, job_id: int, error: str) -> None:
+    def _mark_failed(self, job_id: str, error: str) -> None:
         with self._session_factory() as session:
             failed = session.get(Job, job_id)
             if failed is None:
@@ -279,6 +311,10 @@ class JobRunner:
             failed.status = JobStatus.FAILED
             failed.error = sanitize_error_detail(str(error), 4000)
             failed.finished_at = utcnow()
+            if failed.type in VECTOR_JOB_TYPES:
+                failed.heartbeat_at = failed.finished_at
+                failed.lock_key = None
+                failed.cancel_requested = False
             session.commit()
             self._bus.publish_threadsafe(
                 WsTopic.jobs(job_id),

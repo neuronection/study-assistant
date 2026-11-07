@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   getProfilePreferences,
-  getSearchProvider,
+  listSearchProviders,
   updateProfilePreferences,
   type DiscoverySitePreset,
 } from '@/lib/api'
+import { ExtensionDocsButton } from './ExtensionDocsButton'
 
 const DISCOVERY_KINDS = ['video', 'course', 'article', 'exercise', 'other'] as const
 
@@ -23,7 +24,10 @@ export function DiscoveryCard() {
     queryKey: ['profile-preferences'],
     queryFn: getProfilePreferences,
   })
-  const searchProvider = useQuery({ queryKey: ['search-provider'], queryFn: getSearchProvider })
+  const searchProviders = useQuery({
+    queryKey: ['search-providers'],
+    queryFn: listSearchProviders,
+  })
 
   const [webEnabled, setWebEnabled] = useState(true)
   const [youtubeEnabled, setYoutubeEnabled] = useState(true)
@@ -33,12 +37,13 @@ export function DiscoveryCard() {
   useEffect(() => {
     const discovery = preferences.data?.discovery
     if (!discovery) return
-    setWebEnabled(discovery.enabled.includes('web'))
-    setYoutubeEnabled(discovery.enabled.includes('youtube'))
+    const enabled = discovery.enabled ?? []
+    setWebEnabled(enabled.includes('web'))
+    setYoutubeEnabled(enabled.includes('youtube'))
     setSites(
       (discovery.sites ?? []).map((entry) => ({
         ...entry,
-        enabled: discovery.enabled.includes(`site:${entry.site}`),
+        enabled: enabled.includes(`site:${entry.site}`),
       })),
     )
   }, [preferences.data])
@@ -70,7 +75,7 @@ export function DiscoveryCard() {
     onError: (error: Error) => setNotice(error.message),
   })
 
-  const searchAssigned = searchProvider.data?.assigned ?? false
+  const searchAssigned = (searchProviders.data ?? []).some((provider) => provider.enabled)
   const sitePresetsActive = searchAssigned
 
   const updateSite = (index: number, patch: Partial<EditableSite>) => {
@@ -82,7 +87,12 @@ export function DiscoveryCard() {
   return (
     <Card data-testid="discovery-card">
       <CardHeader>
-        <CardTitle className="text-sm">{t('settings.discoveryTitle')}</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2">
+          {t('settings.discoveryTitle')}
+          <span className="ml-auto">
+            <ExtensionDocsButton extensionId="discovery" />
+          </span>
+        </CardTitle>
         <CardDescription>{t('settings.discoveryDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

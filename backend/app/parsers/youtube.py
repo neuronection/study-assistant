@@ -85,11 +85,7 @@ def captions_to_markdown(data: bytes) -> str:
     current_start: float | None = None
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if (
-            not line
-            or line.startswith(("WEBVTT", "Kind:", "Language:", "NOTE"))
-            or line.isdigit()
-        ):
+        if not line or line.startswith(("WEBVTT", "Kind:", "Language:", "NOTE")) or line.isdigit():
             continue
         if "-->" in line:
             start = _vtt_timestamp(line.split("-->")[0])
@@ -101,9 +97,7 @@ def captions_to_markdown(data: bytes) -> str:
             continue
         if cleaned == last_text:
             continue
-        anchor = (
-            f"[{_format_anchor(current_start)}] " if current_start is not None else ""
-        )
+        anchor = f"[{_format_anchor(current_start)}] " if current_start is not None else ""
         lines.append(f"{anchor}{cleaned}")
         last_text = cleaned
     return "\n\n".join(lines)
@@ -192,9 +186,7 @@ class YouTubeParser:
                 header_lines.extend(["", "## Transcript", ""])
                 markdown = "\n".join(header_lines) + transcript
         if markdown is None:
-            metadata["parse_note"] = (
-                "no captions available — transcribe the audio instead"
-            )
+            metadata["parse_note"] = "no captions available — transcribe the audio instead"
         return ParsedDocument(
             title=title[:300],
             markdown=markdown,

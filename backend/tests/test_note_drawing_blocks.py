@@ -19,10 +19,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -36,7 +36,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -49,7 +49,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -58,7 +58,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="ca-drawblocks-"))
+    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="sa-drawblocks-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=Scripted(responses or []),
@@ -68,7 +68,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     return TestClient(app)
 
 
-def add_drawing(client: TestClient, note_id: int) -> int:
+def add_drawing(client: TestClient, note_id: str) -> str:
     added = client.post(
         f"/api/v1/notes/{note_id}/drawings",
         json={
@@ -78,10 +78,10 @@ def add_drawing(client: TestClient, note_id: int) -> int:
         },
     )
     assert added.status_code == 201, added.text
-    return int(added.json()["drawings"][-1]["id"])
+    return str(added.json()["drawings"][-1]["id"])
 
 
-def set_drawing_ocr(client: TestClient, note_id: int, drawing_id: int, markdown: str) -> None:
+def set_drawing_ocr(client: TestClient, note_id: str, drawing_id: str, markdown: str) -> None:
     app = client.app
     assert isinstance(app, FastAPI)
     with app.state.session_factory() as session:
@@ -98,9 +98,7 @@ def set_drawing_ocr(client: TestClient, note_id: int, drawing_id: int, markdown:
 def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Lossless", "body_md": "seed", "course_id": course_id},
@@ -113,13 +111,11 @@ def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
             "\n\nleading blank lines\n\nbody",
             "body with trailing\n\n\n",
             "only text\n\nsecond",
-            f"text\n\n![drawing](ca-drawing://{first})\n\n![drawing](ca-drawing://{second})",
-            f"start\n\n![drawing](ca-drawing://{first})\n\nmid\n\n\n![drawing](ca-drawing://{second})\ntail\n",
+            f"text\n\n![drawing](sa-drawing://{first})\n\n![drawing](sa-drawing://{second})",
+            f"start\n\n![drawing](sa-drawing://{first})\n\nmid\n\n\n![drawing](sa-drawing://{second})\ntail\n",
         ]
         for body_md in cases:
-            patched = client.patch(
-                f"/api/v1/notes/{note_id}", json={"body_md": body_md}
-            )
+            patched = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": body_md})
             assert patched.status_code == 200, patched.text
             blocks = patched.json()["body"]
             assert _blocks_md(blocks) == body_md
@@ -134,15 +130,15 @@ def _blocks_md(blocks: object) -> str:
     return join(blocks)  # type: ignore[arg-type]
 
 
-def test_legacy_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
+def test_v1_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
     from app.services.content.drawings import blocks_md as _blocks_md
 
-    legacy: list[dict[str, Any]] = [
+    v1: list[dict[str, Any]] = [
         {"type": "text", "md": "before"},
         {"type": "drawing", "drawing_id": 1},
         {"type": "text", "md": "after"},
     ]
-    assert _blocks_md(legacy) == "before\n\n![drawing](ca-drawing://1)\n\nafter"
+    assert _blocks_md(v1) == "before\n\n![drawing](sa-drawing://1)\n\nafter"
     assert _blocks_md([{"type": "text", "md": "only"}]) == "only"
     assert _blocks_md(None) == ""
 
@@ -150,9 +146,7 @@ def test_legacy_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
 def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Derivations", "body_md": "start", "course_id": course_id},
@@ -161,7 +155,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"before\n\n![drawing](ca-drawing://{drawing_id})\n\nafter"},
+            json={"body_md": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200, patched.text
         body = patched.json()["body"]
@@ -185,7 +179,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 
         unknown = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": "![drawing](ca-drawing://999)"},
+            json={"body_md": "![drawing](sa-drawing://999)"},
         )
         assert unknown.status_code == 422
         assert "999" in unknown.json()["detail"]
@@ -197,9 +191,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Sketches", "body_md": "intro", "course_id": course_id},
@@ -211,7 +203,7 @@ def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"intro\n\n![drawing](ca-drawing://{inline_id})\n\noutro"},
+            json={"body_md": f"intro\n\n![drawing](sa-drawing://{inline_id})\n\noutro"},
         )
         assert patched.status_code == 200
 
@@ -232,9 +224,7 @@ def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
 def test_search_includes_inline_drawing_refs_harmlessly(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Notes", "body_md": "plain", "course_id": course_id},
@@ -242,7 +232,7 @@ def test_search_includes_inline_drawing_refs_harmlessly(tmp_path: Any) -> None:
         drawing_id = add_drawing(client, note_id)
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"text\n\n![drawing](ca-drawing://{drawing_id})"},
+            json={"body_md": f"text\n\n![drawing](sa-drawing://{drawing_id})"},
         )
         assert patched.status_code == 200
         hits = client.get("/api/v1/notes", params={"q": "text"})

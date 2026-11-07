@@ -1,8 +1,12 @@
 import base64
+import io
+import re
+import zipfile
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -10,16 +14,22 @@ from sqlalchemy.orm import Session
 from ..ai.contracts.contracts import Constraint, validate
 from ..ai.gateway import LLMGateway, Message, ProviderError, TaskUnassigned
 from ..ai.skills import NOTE_ACTION_SYSTEM, NOTE_COMPOSE_SYSTEM
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..domain.models import (
     AiInteraction,
+    Course,
     Note,
     NoteDrawing,
+    NoteLink,
     NoteVersion,
     utcnow,
 )
+from ..domain.payloads import StrokeList
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
+    apply_drawing_view,
     blocks_md,
+    drawing_view,
     enqueue_drawing_ocr,
     md_to_blocks,
     note_search_text,
@@ -61,10 +71,10 @@ NOTE_ACTIONS: dict[str, str] = {
 class NoteCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body_md: str = ""
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     owner_type: str = "standalone"
-    owner_id: int | None = None
+    owner_id: str | None = None
     tags: list[str] = Field(default_factory=list, max_length=20)
 
 
@@ -78,12 +88,12 @@ class NoteUpdate(BaseModel):
 
 
 class NoteOut(BaseModel):
-    id: int
+    id: str
     title: str
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     owner_type: str
-    owner_id: int | None
+    owner_id: str | None
     tags: list[str]
     pinned: bool
     updated_at: str
@@ -121,15 +131,15 @@ class ActionOut(BaseModel):
 
 
 class NoteComposeIn(BaseModel):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     scope: str = "subtree"
     title: str | None = Field(default=None, max_length=300)
     instructions: str | None = Field(default=None, max_length=2000)
-    include_material_ids: list[int] = Field(default_factory=list)
-    exclude_material_ids: list[int] = Field(default_factory=list)
-    note_ids: list[int] = Field(default_factory=list)
-    concept_ids: list[int] = Field(default_factory=list)
+    include_material_ids: list[str] = Field(default_factory=list)
+    exclude_material_ids: list[str] = Field(default_factory=list)
+    note_ids: list[str] = Field(default_factory=list)
+    concept_ids: list[str] = Field(default_factory=list)
     context_hint: str | None = Field(default=None, max_length=2000)
 
 
@@ -157,13 +167,13 @@ def _note_out(note: Note) -> NoteOut:
 def _note_detail(session: Session, note: Note) -> NoteDetail:
     return NoteDetail(
         **_note_out(note).model_dump(),
-        body=note.body,
+        body=cast(list[dict[str, Any]], note.body),
         drawings=[
             {
                 "id": drawing.id,
                 "png_sha": drawing.png_sha,
                 "strokes": drawing.strokes,
-                "view": drawing.view,
+                "view": drawing_view(drawing),
                 "ocr_version": drawing.ocr_version,
                 "ocr_markdown": drawing.ocr_markdown,
                 "ocr_job_id": pending_ocr_job_id(session, drawing),
@@ -174,7 +184,7 @@ def _note_detail(session: Session, note: Note) -> NoteDetail:
     )
 
 
-def _load_note(db: Session, note_id: int, profile_id: str) -> Note:
+def _load_note(db: Session, note_id: str, profile_id: str) -> Note:
     note = db.get(Note, note_id)
     if note is None or note.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="note not found")
@@ -182,9 +192,7 @@ def _load_note(db: Session, note_id: int, profile_id: str) -> Note:
 
 
 @router.post("", response_model=NoteDetail, status_code=201)
-def create_note(
-    body: NoteCreate, session: Session = Depends(get_session)
-) -> NoteDetail:
+def create_note(body: NoteCreate, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
     if body.owner_type not in OWNER_TYPES:
         raise HTTPException(status_code=422, detail="unknown owner_type")
@@ -254,7 +262,7 @@ def compose_note(
     prompt = "\n\n".join(prompt_parts) or "Write a study note for this material."
 
     gateway: LLMGateway = request.app.state.gateway
-    skill_version_id: int | None = None
+    skill_version_id: str | None = None
     skills = SkillService(session)
     version = skills.resolve("notes.compose", course_id=body.course_id)
     if version is not None:
@@ -300,6 +308,7 @@ def compose_note(
     note.search_text = note_search_text(note)
     session.add(note)
     session.flush()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="note_compose",
@@ -307,18 +316,17 @@ def compose_note(
             direction="compose",
             model=None,
             skill_version_id=skill_version_id,
-            input_tokens=max(1, len(prompt) // 4),
-            output_tokens=max(1, len(output) // 4),
+            input_tokens=token_count(prompt, accounting),
+            output_tokens=token_count(output, accounting),
             latency_ms=None,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()
     return _note_detail(session, note)
 
 
-def _apply_cursor(
-    statement: Any, cursor: str | None
-) -> tuple[Any, datetime | None]:
+def _apply_cursor(statement: Any, cursor: str | None) -> tuple[Any, datetime | None]:
     if not cursor:
         return statement, None
     try:
@@ -328,18 +336,12 @@ def _apply_cursor(
     return statement.where(Note.updated_at < moment), moment
 
 
-def _search_filter(
-    session: Session, statement: Any, q: str, cursor: str | None
-) -> Any:
+def _search_filter(session: Session, statement: Any, q: str, cursor: str | None) -> Any:
     like = statement.where(Note.search_text.like(f"%{q}%"))
     like, _ = _apply_cursor(like, cursor)
     if session.scalar(select(func.count()).select_from(like.subquery())):
         return statement.where(Note.search_text.like(f"%{q}%"))
-    ids = [
-        note.id
-        for note in session.scalars(statement)
-        if fuzzy_text_match(q, note.search_text)
-    ]
+    ids = [note.id for note in session.scalars(statement) if fuzzy_text_match(q, note.search_text)]
     if not ids:
         return like
     return statement.where(Note.id.in_(ids))
@@ -348,8 +350,8 @@ def _search_filter(
 @router.get("", response_model=NotesPage)
 def list_notes(
     q: str | None = None,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     tag: str | None = None,
     limit: int = 50,
@@ -369,15 +371,11 @@ def list_notes(
     if tag:
         statement = statement.where(Note.tags.like(f'%"{tag.strip().lower()}"%'))
     statement, _moment = _apply_cursor(statement, cursor)
-    statement = statement.order_by(Note.pinned.desc(), Note.updated_at.desc()).limit(
-        limit + 1
-    )
+    statement = statement.order_by(Note.pinned.desc(), Note.updated_at.desc()).limit(limit + 1)
     rows = list(session.scalars(statement))
     has_more = len(rows) > limit
     rows = rows[:limit]
-    next_cursor = (
-        rows[-1].updated_at.isoformat() if has_more and rows else None
-    )
+    next_cursor = rows[-1].updated_at.isoformat() if has_more and rows else None
     return NotesPage(items=[_note_out(note) for note in rows], next_cursor=next_cursor)
 
 
@@ -388,7 +386,7 @@ class NoteTagCountOut(BaseModel):
 
 @router.get("/tags/list", response_model=list[NoteTagCountOut])
 def list_note_tags(
-    course_id: int | None = None,
+    course_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
@@ -405,15 +403,103 @@ def list_note_tags(
     ]
 
 
+class NoteLinkOut(BaseModel):
+    id: str
+    target: str
+    note_id: str | None
+    title: str | None
+    broken: bool = False
+
+
+class NoteLinksOut(BaseModel):
+    outbound: list[NoteLinkOut]
+    backlinks: list[NoteLinkOut]
+
+
+@router.get("/{note_id}/links", response_model=NoteLinksOut)
+def get_note_links(note_id: str, session: Session = Depends(get_session)) -> NoteLinksOut:
+    profile = ensure_default_profile(session)
+    note = _load_note(session, note_id, profile.id)
+    outbound: list[NoteLinkOut] = []
+    for link in session.scalars(select(NoteLink).where(NoteLink.from_note_id == note.id)):
+        target = session.get(Note, link.to_note_id) if link.to_note_id else None
+        outbound.append(
+            NoteLinkOut(
+                id=link.id,
+                target=link.target,
+                note_id=link.to_note_id,
+                title=target.title if target is not None else None,
+                broken=link.to_note_id is None,
+            )
+        )
+    backlinks: list[NoteLinkOut] = []
+    for link in session.scalars(select(NoteLink).where(NoteLink.to_note_id == note.id)):
+        source = session.get(Note, link.from_note_id)
+        backlinks.append(
+            NoteLinkOut(
+                id=link.id,
+                target=link.target,
+                note_id=link.from_note_id,
+                title=source.title if source is not None else None,
+            )
+        )
+    return NoteLinksOut(outbound=outbound, backlinks=backlinks)
+
+
+def _vault_filename(title: str, index: int, used: set[str]) -> str:
+    cleaned = re.sub(r'[\\/:*?"<>|]+', "-", title).strip().strip(".")
+    base = cleaned[:120] or f"note-{index}"
+    name = f"{base}.md"
+    suffix = 2
+    while name in used:
+        name = f"{base} ({suffix}).md"
+        suffix += 1
+    used.add(name)
+    return name
+
+
+@router.get("/vault.zip")
+def export_course_vault(
+    course_id: str,
+    session: Session = Depends(get_session),
+) -> Response:
+    profile = ensure_default_profile(session)
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="course not found")
+    notes = list(
+        session.scalars(
+            select(Note)
+            .where(Note.profile_id == profile.id, Note.course_id == course_id)
+            .order_by(Note.title, Note.id)
+        )
+    )
+    buffer = io.BytesIO()
+    used: set[str] = set()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for index, note in enumerate(notes, start=1):
+            tags = ", ".join(note.tags or [])
+            frontmatter = f"---\ntitle: {note.title}\ntags: [{tags}]\n---\n\n"
+            archive.writestr(
+                _vault_filename(note.title, index, used),
+                frontmatter + blocks_md(note.body),
+            )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="vault-{course_id}.zip"'},
+    )
+
+
 @router.get("/{note_id}", response_model=NoteDetail)
-def get_note(note_id: int, session: Session = Depends(get_session)) -> NoteDetail:
+def get_note(note_id: str, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
     return _note_detail(session, _load_note(session, note_id, profile.id))
 
 
 @router.patch("/{note_id}", response_model=NoteDetail)
 def update_note(
-    note_id: int, body: NoteUpdate, session: Session = Depends(get_session)
+    note_id: str, body: NoteUpdate, session: Session = Depends(get_session)
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
@@ -447,19 +533,15 @@ def update_note(
 
 
 class NoteMove(BaseModel):
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 @router.patch("/{note_id}/move", response_model=NoteDetail)
-def move_note(
-    note_id: int, body: NoteMove, session: Session = Depends(get_session)
-) -> NoteDetail:
+def move_note(note_id: str, body: NoteMove, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
     try:
-        note.node_id = TreeService(session).placement_node(
-            note.course_id, body.node_id
-        )
+        note.node_id = TreeService(session).placement_node(note.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -467,7 +549,7 @@ def move_note(
 
 
 class NoteVersionOut(BaseModel):
-    version_id: int
+    version_id: str
     cause: str
     title: str
     chars: int
@@ -490,7 +572,7 @@ def _version_out(version: NoteVersion) -> NoteVersionOut:
 
 @router.get("/{note_id}/versions", response_model=list[NoteVersionOut])
 def list_note_versions(
-    note_id: int, session: Session = Depends(get_session)
+    note_id: str, session: Session = Depends(get_session)
 ) -> list[NoteVersionOut]:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
@@ -498,7 +580,7 @@ def list_note_versions(
         session.execute(
             select(NoteVersion)
             .where(NoteVersion.note_id == note.id)
-            .order_by(NoteVersion.id.desc())
+            .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
             .limit(NOTE_VERSION_CAP)
         )
         .scalars()
@@ -516,17 +598,17 @@ class NoteVersionDiffOut(BaseModel):
 
 
 def _resolve_note_ref(
-    note: Note, ref: str, versions_by_id: dict[int, NoteVersion]
+    note: Note, ref: str, versions_by_id: dict[str, NoteVersion]
 ) -> tuple[str, str]:
     if ref == "current":
         return blocks_md(note.body), "current"
     try:
-        version_id = int(ref)
+        UUID(ref)
     except ValueError:
         raise HTTPException(
-            status_code=422, detail="version ref must be an id or 'current'"
+            status_code=422, detail="version ref must be a version id or 'current'"
         ) from None
-    version = versions_by_id.get(version_id)
+    version = versions_by_id.get(ref)
     if version is None:
         raise HTTPException(status_code=404, detail="version not found")
     return blocks_md(version.body), f"#{version.id}"
@@ -534,7 +616,7 @@ def _resolve_note_ref(
 
 @router.get("/{note_id}/versions/diff", response_model=NoteVersionDiffOut)
 def diff_note_versions(
-    note_id: int,
+    note_id: str,
     from_ref: str = Query(alias="from"),
     to_ref: str = Query(alias="to"),
     session: Session = Depends(get_session),
@@ -544,7 +626,7 @@ def diff_note_versions(
     rows = session.execute(
         select(NoteVersion)
         .where(NoteVersion.note_id == note.id)
-        .order_by(NoteVersion.id.desc())
+        .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
         .limit(NOTE_VERSION_CAP)
     ).scalars()
     versions_by_id = {version.id: version for version in rows}
@@ -562,7 +644,7 @@ def diff_note_versions(
 
 @router.get("/{note_id}/versions/{version_id}", response_model=NoteVersionDetail)
 def get_note_version(
-    note_id: int, version_id: int, session: Session = Depends(get_session)
+    note_id: str, version_id: str, session: Session = Depends(get_session)
 ) -> NoteVersionDetail:
     profile = ensure_default_profile(session)
     _load_note(session, note_id, profile.id)
@@ -573,12 +655,12 @@ def get_note_version(
 
 
 class NoteRestoreIn(BaseModel):
-    version_id: int
+    version_id: str
 
 
 @router.post("/{note_id}/restore", response_model=NoteDetail)
 def restore_note_version(
-    note_id: int, body: NoteRestoreIn, session: Session = Depends(get_session)
+    note_id: str, body: NoteRestoreIn, session: Session = Depends(get_session)
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
@@ -594,12 +676,12 @@ def restore_note_version(
 
 
 class NoteDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 @router.delete("/{note_id}", response_model=NoteDeletedOut)
 def delete_note(
-    note_id: int, request: Request, session: Session = Depends(get_session)
+    note_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
@@ -632,8 +714,8 @@ def _store_drawing(
         note_id=note.id,
         strokes=body.strokes,
         png_sha=stored.sha256,
-        view=body.view.model_dump() if body.view is not None else None,
     )
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     session.add(drawing)
     session.flush()
     if run_ocr and body.strokes:
@@ -648,7 +730,7 @@ def _store_drawing(
 
 @router.post("/{note_id}/drawings", response_model=NoteDetail, status_code=201)
 def add_drawing(
-    note_id: int,
+    note_id: str,
     body: DrawingIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -662,8 +744,8 @@ def add_drawing(
 
 @router.put("/{note_id}/drawings/{drawing_id}", response_model=NoteDetail)
 def update_drawing(
-    note_id: int,
-    drawing_id: int,
+    note_id: str,
+    drawing_id: str,
     body: DrawingUpdate,
     request: Request,
     session: Session = Depends(get_session),
@@ -678,9 +760,9 @@ def update_drawing(
     except (ValueError, TypeError) as error:
         raise HTTPException(status_code=422, detail="invalid png_base64") from error
     stored = request.app.state.blobs.put(png, mime="image/png", session=session)
-    drawing.strokes = body.strokes
+    drawing.strokes = cast(StrokeList, body.strokes)
     drawing.png_sha = stored.sha256
-    drawing.view = body.view.model_dump() if body.view is not None else None
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     if body.ocr and body.strokes:
         drawing.ocr_job_id = enqueue_drawing_ocr(
             session, kind="note", owner_id=note.id, drawing_id=drawing.id
@@ -698,8 +780,8 @@ def update_drawing(
 
 @router.post("/{note_id}/drawings/{drawing_id}/reocr", response_model=NoteDetail)
 def reocr_drawing(
-    note_id: int,
-    drawing_id: int,
+    note_id: str,
+    drawing_id: str,
     session: Session = Depends(get_session),
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
@@ -721,8 +803,8 @@ def reocr_drawing(
 
 @router.delete("/{note_id}/drawings/{drawing_id}", response_model=NoteDetail)
 def delete_drawing(
-    note_id: int,
-    drawing_id: int,
+    note_id: str,
+    drawing_id: str,
     session: Session = Depends(get_session),
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
@@ -733,10 +815,7 @@ def delete_drawing(
     note.body = [
         block
         for block in (note.body or [])
-        if not (
-            block.get("type") == "drawing"
-            and int(block.get("drawing_id", 0)) == drawing.id
-        )
+        if not (block.get("type") == "drawing" and str(block.get("drawing_id", "")) == drawing.id)
     ]
     session.delete(drawing)
     session.flush()
@@ -748,7 +827,7 @@ def delete_drawing(
 
 @router.post("/{note_id}/actions", response_model=ActionOut)
 def run_note_action(
-    note_id: int,
+    note_id: str,
     body: ActionIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -767,7 +846,7 @@ def run_note_action(
         raise HTTPException(status_code=422, detail="note is empty")
     prompt = f"{instruction}\n\nNote title: {note.title}\n\n{content}"
     gateway: LLMGateway = request.app.state.gateway
-    skill_version_id: int | None = None
+    skill_version_id: str | None = None
     skills = SkillService(session)
     version = skills.resolve("notes.action", course_id=note.course_id)
     if version is not None:
@@ -792,9 +871,7 @@ def run_note_action(
             )
         messages.append(Message(role="user", content=prompt))
         try:
-            output = gateway.generate(
-                "description", messages, course_id=note.course_id
-            )
+            output = gateway.generate("description", messages, course_id=note.course_id)
         except (TaskUnassigned, ProviderError) as error:
             raise HTTPException(status_code=502, detail=str(error)) from error
         validation = validate(output, constraints, {})
@@ -802,6 +879,7 @@ def run_note_action(
             feedback = ""
             break
         feedback = validation.feedback()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="note_action",
@@ -809,9 +887,10 @@ def run_note_action(
             direction=body.action,
             model=None,
             skill_version_id=skill_version_id,
-            input_tokens=max(1, len(prompt) // 4),
-            output_tokens=max(1, len(output) // 4),
+            input_tokens=token_count(prompt, accounting),
+            output_tokens=token_count(output, accounting),
             latency_ms=None,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()

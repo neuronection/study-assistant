@@ -63,7 +63,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     enabled: open,
   })
 
-  const resolveCourseId = useCallback((): number | null => {
+  const resolveCourseId = useCallback((): string | null => {
     if (courseId !== null) {
       return courseId
     }
@@ -91,7 +91,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   })
 
   const trees = useMemo(() => {
-    const map = new Map<number, NodeInfo[]>()
+    const map = new Map<string, NodeInfo[]>()
     treeCourseIds.forEach((id, index) => {
       const data = treeQueries[index]?.data
       if (data !== undefined) {
@@ -182,7 +182,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             course_id: noteCourseId,
           })
           await queryClient.invalidateQueries({ queryKey: ['notes'] })
-          void navigate({ to: '/note/$noteId', params: { noteId: String(note.id) } })
+          void navigate({ to: '/note/$noteId', params: { noteId: note.id } })
           onClose()
         },
       },
@@ -219,7 +219,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               label: t('palette.noteResult', { title: note.title }),
               icon: NotebookPen,
               run: () => {
-                void navigate({ to: '/note/$noteId', params: { noteId: String(note.id) } })
+                void navigate({ to: '/note/$noteId', params: { noteId: note.id } })
                 onClose()
               },
             }))

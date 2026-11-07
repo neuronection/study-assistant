@@ -11,8 +11,8 @@ from conftest import AnonymousTestClient
 from fastapi.testclient import TestClient
 
 
-def _chat_session(client: Any) -> int:
-    return int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+def _chat_session(client: Any) -> str:
+    return str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
 
 
 def _mint(app: Any, email: str, is_admin: bool = False) -> tuple[str, str, str]:

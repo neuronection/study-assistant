@@ -6,8 +6,8 @@ export interface EntityNode {
 }
 
 export interface EntityContext {
-  courseId: number
-  scopeNodeId: number | null
+  courseId: string
+  scopeNodeId: string | null
 }
 
 export interface NodeSource<TNode = unknown> {

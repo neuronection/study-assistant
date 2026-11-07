@@ -31,7 +31,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listCourseTypes: () => listCourseTypes(),
     listCourses: () => listCourses(),
     skillVersions: (key: string) => skillVersions(key),
-    skillResolution: (key: string, courseId?: number | null) => skillResolution(key, courseId),
+    skillResolution: (key: string, courseId?: string | null) => skillResolution(key, courseId),
     contextVars: () => contextVars(),
     saveSkillVersion: (key: string, body: unknown) => saveSkillVersion(key, body),
     exportSkillPack: (keys: string[]) => exportSkillPack(keys),
@@ -82,7 +82,7 @@ describe('Settings Skills tab', () => {
     exportSkillPack.mockReset()
     importSkillPackPreview.mockReset()
     importSkillPackCommit.mockReset()
-    exportSkillPack.mockResolvedValue({ format: 'ca-skills/v1', exported_at: 'now', skills: [] })
+    exportSkillPack.mockResolvedValue({ format: 'sa-skills/v1', exported_at: 'now', skills: [] })
     listSkills.mockResolvedValue([
       {
         key: 'tutor.hint',
@@ -92,11 +92,11 @@ describe('Settings Skills tab', () => {
         is_system: true,
       },
     ])
-    listCourseTypes.mockResolvedValue([{ id: 1, key: 'math', name: 'Math', description: null }])
+    listCourseTypes.mockResolvedValue([{ id: '1', key: 'math', name: 'Math', description: null }])
     listCourses.mockResolvedValue([])
     skillVersions.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         scope_type: 'system',
         scope_ref: null,
         version: 1,
@@ -110,7 +110,7 @@ describe('Settings Skills tab', () => {
     skillResolution.mockResolvedValue({
       chain: { system: 'v1' },
       active: {
-        id: 1,
+        id: '1',
         scope_type: 'system',
         scope_ref: null,
         version: 1,
@@ -134,7 +134,7 @@ describe('Settings Skills tab', () => {
   })
 
   test('saving creates a new version with the edited template', async () => {
-    saveSkillVersion.mockResolvedValue({ id: 2, version: 2 })
+    saveSkillVersion.mockResolvedValue({ id: '2', version: 2 })
     await renderSettings()
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }))
     const systemArea = (await screen.findByLabelText(/System template/)) as HTMLTextAreaElement
@@ -163,7 +163,7 @@ describe('Settings Skills tab — packs', () => {
         is_system: true,
       },
     ])
-    listCourseTypes.mockResolvedValue([{ id: 1, key: 'math', name: 'Math', description: null }])
+    listCourseTypes.mockResolvedValue([{ id: '1', key: 'math', name: 'Math', description: null }])
     listCourses.mockResolvedValue([])
     skillVersions.mockResolvedValue([])
     skillResolution.mockResolvedValue({ chain: { system: 'v1' }, active: null })
@@ -178,7 +178,7 @@ describe('Settings Skills tab — packs', () => {
 
   test('import flow: preview, resolution, commit', async () => {
     const pack = {
-      format: 'ca-skills/v1',
+      format: 'sa-skills/v1',
       exported_at: 'now',
       skills: [
         {
@@ -201,7 +201,7 @@ describe('Settings Skills tab — packs', () => {
       ],
     }
     importSkillPackPreview.mockResolvedValue({
-      format: 'ca-skills/v1',
+      format: 'sa-skills/v1',
       skills: [
         {
           key: 'tutor.hint',

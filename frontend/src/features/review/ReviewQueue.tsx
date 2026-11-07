@@ -137,7 +137,7 @@ export function ReviewQueue({
             {...presets.step}
             layout
           >
-            <Card>
+            <Card data-capture="review-card">
               <CardContent className="space-y-4 p-6">
                 <div className="text-muted-foreground flex items-center justify-between text-xs">
                   {cardHeader ? <span className="min-w-0">{cardHeader(card)}</span> : <span />}

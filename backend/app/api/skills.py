@@ -15,7 +15,7 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 
 
 class CourseTypeOut(BaseModel):
-    id: int
+    id: str
     key: str
     name: str
     description: str | None
@@ -36,9 +36,9 @@ class SkillOut(BaseModel):
 
 
 class VersionOut(BaseModel):
-    id: int
+    id: str
     scope_type: str
-    scope_ref: int | None
+    scope_ref: str | None
     version: int
     system_template: str
     user_template: str
@@ -50,7 +50,7 @@ class VersionOut(BaseModel):
 
 class SaveIn(BaseModel):
     scope_type: str
-    scope_ref: int | None = None
+    scope_ref: str | None = None
     system_template: str = Field(min_length=1)
     user_template: str = ""
     params: dict[str, Any] | None = None
@@ -137,14 +137,12 @@ def _version_out(version: Any) -> VersionOut:
 def course_types(session: Session = Depends(get_session)) -> list[CourseTypeOut]:
     return [
         CourseTypeOut(id=entry.id, key=entry.key, name=entry.name, description=entry.description)
-        for entry in session.scalars(select(CourseType).order_by(CourseType.id))
+        for entry in session.scalars(select(CourseType).order_by(CourseType.key))
     ]
 
 
 @router.post("/course-types", response_model=CourseTypeOut, status_code=201)
-def add_course_type(
-    body: CourseTypeIn, session: Session = Depends(get_session)
-) -> CourseTypeOut:
+def add_course_type(body: CourseTypeIn, session: Session = Depends(get_session)) -> CourseTypeOut:
     existing = session.scalars(select(CourseType).where(CourseType.key == body.key)).first()
     if existing is not None:
         raise HTTPException(status_code=422, detail="course type key already exists")
@@ -156,7 +154,7 @@ def add_course_type(
 
 @router.patch("/course-types/{course_type_id}", response_model=CourseTypeOut)
 def update_course_type(
-    course_type_id: int, body: CourseTypeIn, session: Session = Depends(get_session)
+    course_type_id: str, body: CourseTypeIn, session: Session = Depends(get_session)
 ) -> CourseTypeOut:
     entry = session.get(CourseType, course_type_id)
     if entry is None:
@@ -185,9 +183,7 @@ def list_skills(session: Session = Depends(get_session)) -> list[SkillOut]:
 
 
 @router.get("/{skill_key}/versions", response_model=list[VersionOut])
-def skill_versions(
-    skill_key: str, session: Session = Depends(get_session)
-) -> list[VersionOut]:
+def skill_versions(skill_key: str, session: Session = Depends(get_session)) -> list[VersionOut]:
     service = SkillService(session)
     try:
         versions = service.versions(skill_key)
@@ -219,7 +215,7 @@ def save_version(
 
 @router.post("/{skill_key}/versions/{version_id}/activate", response_model=VersionOut)
 def activate_version(
-    skill_key: str, version_id: int, session: Session = Depends(get_session)
+    skill_key: str, version_id: str, session: Session = Depends(get_session)
 ) -> VersionOut:
     service = SkillService(session)
     try:
@@ -231,9 +227,7 @@ def activate_version(
 
 
 @router.post("/{skill_key}/restore", response_model=VersionOut)
-def restore_default(
-    skill_key: str, session: Session = Depends(get_session)
-) -> VersionOut:
+def restore_default(skill_key: str, session: Session = Depends(get_session)) -> VersionOut:
     service = SkillService(session)
     try:
         version = service.restore_system(skill_key)
@@ -250,7 +244,7 @@ class ResolutionOut(BaseModel):
 
 @router.get("/{skill_key}/resolution", response_model=ResolutionOut)
 def resolution(
-    skill_key: str, course_id: int | None = None, session: Session = Depends(get_session)
+    skill_key: str, course_id: str | None = None, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     service = SkillService(session)
     chain = service.resolution_chain(skill_key, course_id)
@@ -264,8 +258,8 @@ def resolution(
 @router.post("/{skill_key}/diff/{left_id}/{right_id}", response_model=DiffOut)
 def diff_versions(
     skill_key: str,
-    left_id: int,
-    right_id: int,
+    left_id: str,
+    right_id: str,
     session: Session = Depends(get_session),
 ) -> DiffOut:
     from ..domain.models import SkillVersion
@@ -292,13 +286,11 @@ class TestRunOut(BaseModel):
     system: str
     user: str
     constraints: list[ConstraintOut]
-    skill_version_id: int
+    skill_version_id: str
 
 
 @router.post("/test-run", response_model=TestRunOut)
-def test_run(
-    body: TestRunIn, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def test_run(body: TestRunIn, session: Session = Depends(get_session)) -> dict[str, Any]:
     service = SkillService(session)
     version = service.resolve(body.skill_key)
     if version is None:
@@ -316,9 +308,7 @@ def test_run(
 
 
 @router.post("/export", response_model=SkillPackOut)
-def export_pack(
-    body: SkillPackExportIn, session: Session = Depends(get_session)
-) -> SkillPackOut:
+def export_pack(body: SkillPackExportIn, session: Session = Depends(get_session)) -> SkillPackOut:
     from ..services.platform.skill_packs import PackError, export_skill_pack
 
     try:

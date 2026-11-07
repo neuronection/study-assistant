@@ -1,5 +1,6 @@
 import re
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.parsing import blocks_to_md as _blocks_to_md
+from ..core.vocab import ExerciseKind
 from ..domain.models import (
     Activity,
     ChatSession,
@@ -18,11 +20,12 @@ from ..domain.models import (
     ReviewLog,
     StepAttempt,
 )
+from ..domain.payloads import ChatSessionContext
 from ..math.regions import grade_regions
 from ..pipelines.exgen import ExgenError, ExgenService
 from ..services.knowledge.context import ContextBundle, ContextError, ContextParams, ContextResolver
 from ..services.knowledge.tree import TreeError, TreeService
-from ..services.platform.chat import ChatService
+from ..services.platform.chat.service import ChatService
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.exercise_kinds import GENERATABLE_KINDS
 from ..services.study.exercise_rubric import (
@@ -47,26 +50,26 @@ class StepIn(BaseModel):
 
 class ExerciseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     context_md: str | None = None
     difficulty: float | None = None
     steps: list[StepIn] = Field(min_length=1, max_length=20)
 
 
 class ExerciseOut(BaseModel):
-    id: int
+    id: str
     title: str
-    course_id: int | None
-    node_id: int | None
-    kind: str = "multi_step"
+    course_id: str | None
+    node_id: str | None
+    kind: ExerciseKind = ExerciseKind.MULTI_STEP
     deck_ref: str | None = None
     difficulty: float | None
     step_count: int
 
 
 class StepOut(BaseModel):
-    id: int
+    id: str
     order_idx: int
     prompt: list[dict[str, Any]]
     has_expected: bool
@@ -75,8 +78,8 @@ class StepOut(BaseModel):
 
 
 class SessionOut(BaseModel):
-    id: int
-    exercise_id: int
+    id: str
+    exercise_id: str
     current_step_idx: int
     status: str
     socratic: bool
@@ -107,13 +110,13 @@ class AskIn(BaseModel):
 
 
 class AskOut(BaseModel):
-    chat_session_id: int
+    chat_session_id: str
     public_id: str
 
 
 class GenerateIn(ContextParams):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     topic: str | None = Field(default=None, max_length=500)
     difficulty: float | None = Field(default=None, ge=1, le=5)
     step_count: int = Field(default=4, ge=1, le=8)
@@ -122,7 +125,7 @@ class GenerateIn(ContextParams):
 
 class DrillIn(BaseModel):
     pattern: str = Field(min_length=1, max_length=60)
-    course_id: int
+    course_id: str
 
 
 class PatternOut(BaseModel):
@@ -143,11 +146,11 @@ class PatternProposalOut(BaseModel):
 
 
 class PatternProposeIn(BaseModel):
-    course_id: int
+    course_id: str
 
 
 class PatternCreateIn(BaseModel):
-    course_id: int
+    course_id: str
     key: str = Field(min_length=3, max_length=60, pattern=r"^[a-z][a-z0-9_]*$")
     name: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=2000)
@@ -170,8 +173,8 @@ def _run_exgen(
     session: Session,
     profile_id: str,
     *,
-    course_id: int | None,
-    node_id: int | None,
+    course_id: str | None,
+    node_id: str | None,
     topic: str | None,
     difficulty: float | None,
     step_count: int,
@@ -210,7 +213,7 @@ def _run_exgen(
 
 
 def _recent_wrong_answers(
-    session: Session, course_id: int, profile_id: str, limit: int = 30
+    session: Session, course_id: str, profile_id: str, limit: int = 30
 ) -> list[dict[str, Any]]:
     from ..domain.models import Answer
     from ..domain.models import Question as _Question
@@ -234,11 +237,7 @@ def _recent_wrong_answers(
             value = question.answer.get("value")
             if value is not None:
                 expected = str(value)
-        response = (
-            answer.response.get("value")
-            if isinstance(answer.response, dict)
-            else None
-        )
+        response = answer.response.get("value") if isinstance(answer.response, dict) else None
         entries.append(
             {
                 "stem": _blocks_to_md(question.stem or [])[:240],
@@ -253,7 +252,7 @@ def _recent_wrong_answers(
 def _run_pattern_discover(
     request: Request,
     session: Session,
-    course_id: int,
+    course_id: str,
     entries: list[dict[str, Any]],
     existing: list[Any],
 ) -> list[PatternProposalOut]:
@@ -316,8 +315,7 @@ def _run_pattern_discover(
     )
     if result.problems:
         raise ValueError(
-            "pattern discovery did not pass validation: "
-            + "; ".join(result.problems[:6])
+            "pattern discovery did not pass validation: " + "; ".join(result.problems[:6])
         )
     return [
         PatternProposalOut(
@@ -338,23 +336,17 @@ def generate_exercise(
 ) -> ExerciseOut:
     profile = ensure_default_profile(session)
     try:
-        placement_node_id = TreeService(session).placement_node(
-            body.course_id, body.node_id
-        )
+        placement_node_id = TreeService(session).placement_node(body.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     try:
         context = ContextResolver(session, request.app.state.embedder.embed).resolve(
-            body.to_spec(
-                course_id=body.course_id, node_id=placement_node_id, query=body.topic
-            )
+            body.to_spec(course_id=body.course_id, node_id=placement_node_id, query=body.topic)
         )
     except ContextError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if body.kind not in GENERATABLE_KINDS:
-        raise HTTPException(
-            status_code=422, detail=f"kind must be one of {GENERATABLE_KINDS}"
-        )
+        raise HTTPException(status_code=422, detail=f"kind must be one of {GENERATABLE_KINDS}")
     exercise = _run_exgen(
         request,
         session,
@@ -373,7 +365,7 @@ def generate_exercise(
 
 @router.post("/{exercise_id}/similar", response_model=ExerciseOut, status_code=201)
 def similar_exercise(
-    exercise_id: int,
+    exercise_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ExerciseOut:
@@ -395,9 +387,7 @@ def similar_exercise(
 
 
 @router.get("/drills/patterns", response_model=list[PatternOut])
-def drill_patterns(
-    course_id: int, session: Session = Depends(get_session)
-) -> list[PatternOut]:
+def drill_patterns(course_id: str, session: Session = Depends(get_session)) -> list[PatternOut]:
     ensure_default_profile(session)
     service = ErrorPatternService(session)
     patterns = service.resolve(course_id)
@@ -418,9 +408,7 @@ def drill_patterns(
 
 
 @router.post("/drills/patterns", response_model=PatternOut, status_code=201)
-def create_pattern(
-    body: PatternCreateIn, session: Session = Depends(get_session)
-) -> PatternOut:
+def create_pattern(body: PatternCreateIn, session: Session = Depends(get_session)) -> PatternOut:
     ensure_default_profile(session)
     service = ErrorPatternService(session)
     try:
@@ -458,9 +446,7 @@ def propose_patterns(
         return []
     existing = service.resolve(body.course_id)
     try:
-        proposals = _run_pattern_discover(
-            request, session, body.course_id, mistakes, existing
-        )
+        proposals = _run_pattern_discover(request, session, body.course_id, mistakes, existing)
     except (TaskUnassigned, ProviderError) as error:
         session.rollback()
         raise HTTPException(status_code=502, detail=str(error)) from error
@@ -512,7 +498,7 @@ def _exercise_out(exercise: Exercise, step_count: int) -> ExerciseOut:
         title=exercise.title,
         course_id=exercise.course_id,
         node_id=exercise.node_id,
-        kind=exercise.kind,
+        kind=ExerciseKind(exercise.kind),
         deck_ref=exercise.deck_ref,
         difficulty=exercise.difficulty,
         step_count=step_count,
@@ -531,10 +517,10 @@ def _session_out(session_row: ExerciseSession) -> SessionOut:
 
 
 class TeachBackIn(BaseModel):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     concept: str | None = Field(default=None, max_length=200)
-    concept_id: int | None = None
+    concept_id: str | None = None
 
 
 @router.post("/teach-back", response_model=ExerciseOut, status_code=201)
@@ -560,9 +546,7 @@ def create_teach_back_exercise(
 
 
 @router.post("", response_model=ExerciseOut, status_code=201)
-def create_exercise(
-    body: ExerciseCreate, session: Session = Depends(get_session)
-) -> ExerciseOut:
+def create_exercise(body: ExerciseCreate, session: Session = Depends(get_session)) -> ExerciseOut:
     profile = ensure_default_profile(session)
     try:
         node_id = TreeService(session).placement_node(body.course_id, body.node_id)
@@ -598,10 +582,11 @@ class ExerciseRename(BaseModel):
 
 @router.patch("/{exercise_id}", response_model=ExerciseOut)
 def rename_exercise(
-    exercise_id: int, body: ExerciseRename, session: Session = Depends(get_session)
+    exercise_id: str, body: ExerciseRename, session: Session = Depends(get_session)
 ) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     exercise.title = body.title.strip()[:300] or exercise.title
     session.commit()
@@ -614,20 +599,19 @@ def rename_exercise(
 
 
 class ExerciseMove(BaseModel):
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 @router.patch("/{exercise_id}/move", response_model=ExerciseOut)
 def move_exercise(
-    exercise_id: int, body: ExerciseMove, session: Session = Depends(get_session)
+    exercise_id: str, body: ExerciseMove, session: Session = Depends(get_session)
 ) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     try:
-        exercise.node_id = TreeService(session).placement_node(
-            exercise.course_id, body.node_id
-        )
+        exercise.node_id = TreeService(session).placement_node(exercise.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -640,20 +624,19 @@ def move_exercise(
 
 
 class SummaryNoteOut(BaseModel):
-    note_id: int
+    note_id: str
     node_title: str | None
 
 
 class ExerciseDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 @router.delete("/{exercise_id}", response_model=ExerciseDeletedOut)
-def delete_exercise(
-    exercise_id: int, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def delete_exercise(exercise_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     from ..services.platform import trash
 
@@ -668,8 +651,8 @@ def delete_exercise(
 
 @router.get("", response_model=list[ExerciseOut])
 def list_exercises(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     session: Session = Depends(get_session),
 ) -> list[ExerciseOut]:
@@ -682,7 +665,9 @@ def list_exercises(
         statement = statement.where(Exercise.node_id.in_(scope_ids))
     elif course_id is not None:
         statement = statement.where(Exercise.course_id == course_id)
-    exercises = session.scalars(statement.order_by(Exercise.id.desc()).limit(50))
+    exercises = session.scalars(
+        statement.order_by(Exercise.created_at.desc(), Exercise.id.desc()).limit(50)
+    )
     result = []
     for exercise in exercises:
         count = len(
@@ -695,9 +680,10 @@ def list_exercises(
 
 
 @router.get("/{exercise_id}", response_model=ExerciseOut)
-def get_exercise(exercise_id: int, session: Session = Depends(get_session)) -> ExerciseOut:
+def get_exercise(exercise_id: str, session: Session = Depends(get_session)) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     count = len(
         session.scalars(
@@ -707,7 +693,7 @@ def get_exercise(exercise_id: int, session: Session = Depends(get_session)) -> E
     return _exercise_out(exercise, count)
 
 
-def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
+def _numberline_input(spec: Mapping[str, Any]) -> dict[str, Any] | None:
     value = spec.get("value")
     domain = value.get("domain") if isinstance(value, dict) else None
     if not isinstance(domain, dict):
@@ -720,9 +706,11 @@ def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
 
 
 @router.get("/{exercise_id}/steps", response_model=list[StepOut])
-def exercise_steps(
-    exercise_id: int, session: Session = Depends(get_session)
-) -> list[StepOut]:
+def exercise_steps(exercise_id: str, session: Session = Depends(get_session)) -> list[StepOut]:
+    profile = ensure_default_profile(session)
+    exercise = session.get(Exercise, exercise_id)
+    if exercise is None or exercise.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="exercise not found")
     steps = session.scalars(
         select(ExerciseStep)
         .where(ExerciseStep.exercise_id == exercise_id)
@@ -744,7 +732,7 @@ def exercise_steps(
             StepOut(
                 id=step.id,
                 order_idx=step.order_idx,
-                prompt=step.prompt,
+                prompt=cast(list[dict[str, Any]], step.prompt),
                 has_expected=step.expected is not None,
                 kind=kind if isinstance(kind, str) else None,
                 input=widget,
@@ -755,7 +743,7 @@ def exercise_steps(
 
 @router.post("/{exercise_id}/sessions", response_model=SessionOut, status_code=201)
 def start_session(
-    exercise_id: int,
+    exercise_id: str,
     socratic: bool = False,
     session: Session = Depends(get_session),
 ) -> SessionOut:
@@ -770,7 +758,7 @@ def start_session(
 
 
 def _load_session(
-    db: Session, session_id: int, profile_id: str
+    db: Session, session_id: str, profile_id: str
 ) -> tuple[ExerciseSession, Exercise]:
     exercise_session = db.get(ExerciseSession, session_id)
     if exercise_session is None:
@@ -788,7 +776,7 @@ class AnswerIn(BaseModel):
 
 @router.post("/sessions/{session_id}/answer", response_model=CheckOut)
 def submit_step_answer(
-    session_id: int,
+    session_id: str,
     body: AnswerIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -798,8 +786,7 @@ def submit_step_answer(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -821,11 +808,7 @@ def submit_step_answer(
             expected["tolerance"] = spec["tolerance"]
         result = grade_regions(expected, body.response)
         correct = result.correct
-        stage = (
-            "numberline: correct"
-            if correct
-            else "numberline: " + "; ".join(result.feedback)
-        )
+        stage = "numberline: correct" if correct else "numberline: " + "; ".join(result.feedback)
         error_class = None
     elif isinstance(spec.get("kind"), str) and spec["kind"] in RUBRIC_KINDS:
         if not isinstance(body.response, str) or not body.response.strip():
@@ -843,9 +826,7 @@ def submit_step_answer(
             except (RubricError, TaskUnassigned, ProviderError) as error:
                 session.rollback()
                 raise HTTPException(
-                    status_code=502
-                    if isinstance(error, (TaskUnassigned, ProviderError))
-                    else 422,
+                    status_code=502 if isinstance(error, (TaskUnassigned, ProviderError)) else 422,
                     detail=str(error),
                 ) from error
             correct = rubric_assessment["verdict"] == "correct"
@@ -906,9 +887,7 @@ def submit_step_answer(
 
             exercise_session.finished_at = utcnow()
             attempts = list(
-                session.scalars(
-                    select(StepAttempt).where(StepAttempt.session_id == session_id)
-                )
+                session.scalars(select(StepAttempt).where(StepAttempt.session_id == session_id))
             )
             exercise_session.independence_score = TutorService.independence_score(attempts)
         else:
@@ -925,7 +904,7 @@ def submit_step_answer(
 
 @router.post("/sessions/{session_id}/hint", response_model=HintOut)
 def request_hint(
-    session_id: int,
+    session_id: str,
     body: HintIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -935,8 +914,7 @@ def request_hint(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -964,7 +942,7 @@ def request_hint(
 
 @router.post("/sessions/{session_id}/ask", response_model=AskOut, status_code=201)
 def ask_about_session(
-    session_id: int,
+    session_id: str,
     body: AskIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -974,8 +952,7 @@ def ask_about_session(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -995,7 +972,7 @@ def ask_about_session(
         None,
     )
     if existing is not None:
-        context = dict(existing.context or {})
+        context = cast(ChatSessionContext, dict(existing.context or {}))
         context["pending_answer"] = pending
         existing.context = context
         session.commit()
@@ -1026,7 +1003,7 @@ def ask_about_session(
 
 @router.get("/sessions/{session_id}/transcript", response_model=list[TranscriptEntry])
 def session_transcript(
-    session_id: int, session: Session = Depends(get_session)
+    session_id: str, session: Session = Depends(get_session)
 ) -> list[TranscriptEntry]:
     profile = ensure_default_profile(session)
     exercise_session, _exercise = _load_session(session, session_id, profile.id)
@@ -1035,7 +1012,7 @@ def session_transcript(
 
 @router.post("/sessions/{session_id}/summary-note", response_model=SummaryNoteOut)
 def session_summary_note(
-    session_id: int, session: Session = Depends(get_session)
+    session_id: str, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     exercise_session, exercise = _load_session(session, session_id, profile.id)
@@ -1063,9 +1040,7 @@ def session_summary_note(
     )
     if mistakes:
         lines += ["", "## What went wrong", *mistakes]
-    correct_steps = sorted(
-        {entry.step_idx + 1 for entry in entries if entry.correct is True}
-    )
+    correct_steps = sorted({entry.step_idx + 1 for entry in entries if entry.correct is True})
     if correct_steps:
         lines += ["", "## Completed correctly", f"Steps {correct_steps}"]
     node = session.get(TreeNode, exercise.node_id) if exercise.node_id else None
@@ -1088,7 +1063,7 @@ def _transcript_entries(session: Session, exercise_session: Any) -> list[Transcr
         session.scalars(
             select(StepAttempt)
             .where(StepAttempt.session_id == exercise_session.id)
-            .order_by(StepAttempt.id)
+            .order_by(StepAttempt.created_at, StepAttempt.id)
         )
     )
     entries = []
@@ -1100,9 +1075,7 @@ def _transcript_entries(session: Session, exercise_session: Any) -> list[Transcr
             TranscriptEntry(
                 step_idx=attempt.step_idx,
                 kind="hint" if attempt.response is None else "answer",
-                response=(
-                    str(attempt.response.get("value")) if attempt.response else None
-                ),
+                response=(str(attempt.response.get("value")) if attempt.response else None),
                 correct=attempt.correct,
                 hint_level_used=attempt.hint_level_used,
                 error_class=attempt.error_class,

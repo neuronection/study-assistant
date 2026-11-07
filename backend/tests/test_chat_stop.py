@@ -11,7 +11,7 @@ from test_chat_branches import harness
 from app.ai.gateway import LLMGateway, ResolvedModel, StreamChunk
 from app.ai.graphs.chat_turn_adapter import ChatTurnEngine
 from app.domain.models import ChatMessage, ChatSession
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 from app.services.platform.profiles import ensure_default_profile
 
 
@@ -22,11 +22,9 @@ class SelfStoppingGateway(LLMGateway):
         super().__init__(session_factory=None)
         self.stop = threading.Event()
 
-    def resolve(
-        self, task: str, course_id: int | None = None
-    ) -> ResolvedModel:
+    def resolve(self, task: str, course_id: str | None = None) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake",
@@ -40,16 +38,14 @@ class SelfStoppingGateway(LLMGateway):
         task: str,
         messages: list[Any],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         yield StreamChunk("text", "prefix ")
         self.stop.set()
         yield StreamChunk("text", "tail [1]")
 
 
-def test_stop_mid_stream_persists_prefix_and_marks_trace(
-    db_session: Session, owner: Any
-) -> None:
+def test_stop_mid_stream_persists_prefix_and_marks_trace(db_session: Session, owner: Any) -> None:
     profile = ensure_default_profile(db_session, owner.id)
     session_row = ChatSession(profile_id=profile.id, title="t")
     db_session.add(session_row)
@@ -79,9 +75,10 @@ def test_stop_mid_stream_persists_prefix_and_marks_trace(
     )
 
     assert created.trace is not None
-    assert created.trace["stream_interrupted"] is True
     assert "stopped by user" in str(created.trace["interruption"])
-    assert any(e["type"] == "stream_interrupted" for e in events)
+    assert [e for e in events if e["type"] == "flow_interrupted"] == [
+        {"type": "flow_interrupted", "reason": "user", "partial": True}
+    ]
     assert str(created.blocks[0]["md"]).startswith("prefix")
 
 

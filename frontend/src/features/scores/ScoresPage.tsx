@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookX, Grid3x3, History, Lightbulb } from 'lucide-react'
+import { BarChart3, BookX, Download, Grid3x3, History, Lightbulb } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 
@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { WorkspaceGate } from '@/components/workspace/WorkspaceGate'
 import {
+  analyticsExportUrl,
   getDiagnostics,
+  getItems,
   getRecommendations,
   listMistakes,
   listQuizAttempts,
+  type ItemStat,
   type MatrixCell,
 } from '@/lib/api'
 import { useWorkspaceStore } from '@/lib/workspace-store'
@@ -174,6 +177,86 @@ function SpeedAccuracy() {
   )
 }
 
+function ItemAnalysis() {
+  const { t } = useTranslation()
+  const courseId = useWorkspaceStore((state) => state.courseId)
+  const from = useCurrentOrigin()
+  const items = useQuery({
+    queryKey: ['analytics-items', courseId],
+    queryFn: () => getItems(courseId ?? undefined),
+  })
+  const rows = items.data ?? []
+  if (items.isLoading) {
+    return <p className="text-muted-foreground text-sm">{t('library.loading')}</p>
+  }
+  if (rows.length === 0) {
+    return <p className="text-muted-foreground text-sm">{t('scores.noItems')}</p>
+  }
+  const flagLabel = (entry: ItemStat): string => {
+    if (entry.elo_outlier) return t('scores.itemFlagElo')
+    if (entry.flag === 'review') return t('scores.itemFlagReview')
+    return t('scores.itemFlagOk')
+  }
+  const weak = (entry: ItemStat): boolean =>
+    entry.elo_outlier ||
+    entry.flag === 'review' ||
+    (entry.discrimination != null && entry.discrimination < 0.2)
+  return (
+    <div className="space-y-1">
+      <div className="text-muted-foreground grid grid-cols-[1fr_repeat(4,minmax(54px,auto))_auto] gap-2 text-[11px] font-medium">
+        <span>{t('scores.itemQuestion')}</span>
+        <span className="text-right">{t('scores.itemN')}</span>
+        <span className="text-right">{t('scores.itemDifficulty')}</span>
+        <span className="text-right">{t('scores.itemDiscrimination')}</span>
+        <span className="text-right">{t('scores.itemDistractor')}</span>
+        <span className="text-right">{t('scores.itemFlag')}</span>
+      </div>
+      {rows.map((entry) => (
+        <Link
+          key={entry.question_id}
+          to="/quiz/$activityId"
+          params={{ activityId: String(entry.activity_id) }}
+          search={{ from }}
+          className={cn(
+            'hover:bg-subtle grid grid-cols-[1fr_repeat(4,minmax(54px,auto))_auto] items-center gap-2 rounded-md px-1 py-1.5 text-xs',
+            weak(entry) && 'bg-danger/5'
+          )}
+        >
+          <span className="truncate" title={entry.stem_excerpt}>
+            {entry.stem_excerpt || t('scores.itemUntitled')}
+          </span>
+          <span className="text-muted-foreground text-right tabular-nums">
+            {entry.n_attempts}
+          </span>
+          <span className="text-right tabular-nums">{formatPercent(entry.p_correct)}</span>
+          <span
+            className={cn(
+              'text-right tabular-nums',
+              entry.discrimination != null && entry.discrimination < 0.2 && 'text-danger'
+            )}
+          >
+            {entry.discrimination == null ? '—' : entry.discrimination.toFixed(2)}
+          </span>
+          <span className="text-right tabular-nums">
+            {entry.distractor_efficiency == null
+              ? '—'
+              : formatPercent(entry.distractor_efficiency)}
+          </span>
+          <span
+            className={cn(
+              'text-right text-[11px]',
+              weak(entry) ? 'text-danger' : 'text-muted-foreground'
+            )}
+          >
+            {flagLabel(entry)}
+          </span>
+        </Link>
+      ))}
+      <p className="text-muted-foreground text-[11px]">{t('scores.itemLegend')}</p>
+    </div>
+  )
+}
+
 function Recommendations() {
   const { t } = useTranslation()
   const courseId = useWorkspaceStore((state) => state.courseId)
@@ -252,7 +335,27 @@ export function ScoresPage() {
   return (
     <WorkspaceGate>
       <div className="mx-auto max-w-3xl space-y-6 p-8">
-      <h1 className="text-2xl font-semibold">{t('scores.title')}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{t('scores.title')}</h1>
+        <div className="flex gap-2">
+          <a
+            href={analyticsExportUrl('csv', courseId ?? undefined)}
+            download
+            className="border-border hover:bg-subtle inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+          >
+            <Download className="size-3" aria-hidden />
+            {t('scores.exportCsv')}
+          </a>
+          <a
+            href={analyticsExportUrl('json', courseId ?? undefined)}
+            download
+            className="border-border hover:bg-subtle inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+          >
+            <Download className="size-3" aria-hidden />
+            {t('scores.exportJson')}
+          </a>
+        </div>
+      </div>
 
       <div className="flex gap-1">
         {TABS.map((entry) => (
@@ -353,6 +456,17 @@ export function ScoresPage() {
               <SpeedAccuracy />
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <BarChart3 className="size-4" aria-hidden />
+                {t('scores.itemAnalysis')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ItemAnalysis />
+            </CardContent>
+          </Card>
         </div>
       ) : null}
 
@@ -379,22 +493,48 @@ export function ScoresPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {(mistakes.data ?? []).map((mistake) => (
-              <div key={mistake.id} className="rounded-md px-2 py-2 text-sm">
-                <p className="truncate">{mistake.stem_excerpt}</p>
-                <p className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
-                  <span className="truncate">{mistake.activity_title}</span>
-                  {mistake.error_tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-danger/15 text-danger shrink-0 rounded-full px-2 py-0.5 text-[11px]"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </p>
-              </div>
-            ))}
+            {(mistakes.data ?? []).map((mistake) => {
+              const body = (
+                <>
+                  <p className="truncate">{mistake.stem_excerpt}</p>
+                  <p className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
+                    <span className="truncate">{mistake.activity_title}</span>
+                    {mistake.node_title ? (
+                      <span className="bg-subtle shrink-0 rounded-full px-2 py-0.5 text-[11px]">
+                        {mistake.node_title}
+                      </span>
+                    ) : null}
+                    {mistake.error_tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-danger/15 text-danger shrink-0 rounded-full px-2 py-0.5 text-[11px]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </p>
+                </>
+              )
+              return mistake.node_id ? (
+                <Link
+                  key={mistake.id}
+                  to="/courses/$courseId/n/$nodeId"
+                  params={{ courseId: mistake.course_id, nodeId: mistake.node_id }}
+                  className="hover:bg-subtle block rounded-md px-2 py-2 text-sm"
+                >
+                  {body}
+                </Link>
+              ) : (
+                <Link
+                  key={mistake.id}
+                  to="/courses/$courseId"
+                  params={{ courseId: mistake.course_id }}
+                  className="hover:bg-subtle block rounded-md px-2 py-2 text-sm"
+                >
+                  {body}
+                </Link>
+              )
+            })}
             {mistakes.data && mistakes.data.length === 0 ? (
               <EmptyState title={t('scores.emptyMistakes')} />
             ) : null}

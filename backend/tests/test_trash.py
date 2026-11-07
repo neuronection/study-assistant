@@ -24,10 +24,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -41,7 +41,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -54,7 +54,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -63,7 +63,7 @@ def make_client(tmp: Any) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tempfile.mkdtemp(prefix="ca-trash-"))
+    data_dir = Path(tempfile.mkdtemp(prefix="sa-trash-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=Scripted(),
@@ -73,8 +73,8 @@ def make_client(tmp: Any) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Course"}).json()["id"])
 
 
 def test_note_delete_and_restore_round_trip() -> None:
@@ -97,9 +97,7 @@ def test_note_delete_and_restore_round_trip() -> None:
                 "ocr": False,
             },
         )
-        client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "v2", "force_version": True}
-        )
+        client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "v2", "force_version": True})
 
         deleted = client.delete(f"/api/v1/notes/{note_id}")
         assert deleted.status_code == 200, deleted.text
@@ -148,7 +146,7 @@ def test_quiz_delete_and_restore_with_attempts() -> None:
             db.flush()
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "1+1?"}],
                 options=[{"type": "text", "md": "2"}],
                 answer={"index": 0},
@@ -158,11 +156,7 @@ def test_quiz_delete_and_restore_with_attempts() -> None:
             attempt = Attempt(activity_id=activity.id, mode="practice")
             db.add(attempt)
             db.flush()
-            db.add(
-                Answer(
-                    attempt_id=attempt.id, question_id=question.id, correct=False
-                )
-            )
+            db.add(Answer(attempt_id=attempt.id, question_id=question.id, correct=False))
             db.add(Mistake(profile_id=profile_id, question_id=question.id))
             db.commit()
             activity_id = activity.id
@@ -214,11 +208,7 @@ def test_exercise_delete_and_restore_with_review_log() -> None:
                     expected={"answer": "42"},
                 )
             )
-            db.add(
-                ReviewLog(
-                    card_id=exercise.id, rating=3, interval_days=1, elapsed_days=0
-                )
-            )
+            db.add(ReviewLog(card_id=exercise.id, rating=3, interval_days=1, elapsed_days=0))
             db.commit()
             exercise_id = exercise.id
 
@@ -317,9 +307,7 @@ def test_course_delete_requires_confirmed_backup() -> None:
         refused = client.delete(f"/api/v1/courses/{course_id}")
         assert refused.status_code == 409
 
-        deleted = client.delete(
-            f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-        )
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
         assert deleted.status_code == 200
         assert client.get("/api/v1/courses").json() == []
 

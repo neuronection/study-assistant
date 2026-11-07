@@ -7,7 +7,7 @@ from ...ai.tasks import TASKS_BY_NAME
 from ...domain.models import Skill, SkillVersion, utcnow
 from .skills import SkillsError, SkillService
 
-PACK_FORMAT = "ca-skills/v1"
+PACK_FORMAT = "sa-skills/v1"
 RESOLUTIONS = ("replace", "rename", "skip")
 PACK_SKILL_KEYS = ("task", "key", "name", "versions")
 
@@ -145,11 +145,7 @@ def _unique_key(session: Session, key: str) -> str:
 def _write_versions(session: Session, skill: Skill, entry: dict[str, Any]) -> None:
     incoming = [version for version in entry["versions"] if isinstance(version, dict)]
     active_version = next(
-        (
-            version.get("version")
-            for version in incoming
-            if version.get("is_active")
-        ),
+        (version.get("version") for version in incoming if version.get("is_active")),
         None,
     )
     latest = session.scalars(
@@ -162,7 +158,7 @@ def _write_versions(session: Session, skill: Skill, entry: dict[str, Any]) -> No
         .limit(1)
     ).first()
     next_version = latest.version if latest is not None else 0
-    activate_id: int | None = None
+    activate_id: str | None = None
     for version in incoming:
         next_version += 1
         row = SkillVersion(

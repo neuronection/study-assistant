@@ -22,7 +22,6 @@ import { QuizRunner } from '@/features/quiz/QuizRunner'
 import { ScoresPage } from '@/features/scores/ScoresPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
-import { SpikePage } from '@/features/spike/SpikePage'
 import { AboutPage } from '@/features/about/AboutPage'
 
 const rootRoute = createRootRoute({
@@ -71,34 +70,26 @@ const coursesRoute = createRoute({
   component: () => <CoursesPage />,
 })
 
+function asId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value.length > 0 ? value : undefined
+  }
+  return typeof value === 'number' ? String(value) : undefined
+}
+
 function tabSearch(search: Record<string, unknown>): {
   tab?: string
-  note?: number
-  material?: number
-  study?: number | 'new'
-  folder?: number
+  note?: string
+  material?: string
+  study?: string
+  folder?: string
 } {
-  const rawStudy = search.study
-  let study: number | 'new' | undefined
-  if (rawStudy === 'new') {
-    study = 'new'
-  } else if (typeof rawStudy === 'number') {
-    study = rawStudy
-  } else if (typeof rawStudy === 'string' && /^\d+$/.test(rawStudy)) {
-    study = Number(rawStudy)
-  }
-  const rawFolder = search.folder
   return {
     tab: typeof search.tab === 'string' ? search.tab : undefined,
-    note: typeof search.note === 'number' ? search.note : undefined,
-    material: typeof search.material === 'number' ? search.material : undefined,
-    study,
-    folder:
-      typeof rawFolder === 'number'
-        ? rawFolder
-        : typeof rawFolder === 'string' && /^\d+$/.test(rawFolder)
-          ? Number(rawFolder)
-          : undefined,
+    note: asId(search.note),
+    material: asId(search.material),
+    study: asId(search.study),
+    folder: asId(search.folder),
   }
 }
 
@@ -138,10 +129,10 @@ const libraryRoute = createRoute({
   path: '/library',
   validateSearch: (
     search: Record<string, unknown>
-  ): { course?: number; folder?: number; source?: number } => ({
-    course: typeof search.course === 'number' ? search.course : undefined,
-    folder: typeof search.folder === 'number' ? search.folder : undefined,
-    source: typeof search.source === 'number' ? search.source : undefined,
+  ): { course?: string; folder?: string; source?: string } => ({
+    course: asId(search.course),
+    folder: asId(search.folder),
+    source: asId(search.source),
   }),
   component: () => <LibraryPage />,
 })
@@ -166,7 +157,7 @@ const quizRedirectRoute = createRoute({
 
 function QuizRunRoute() {
   const { activityId } = useParams({ from: '/quiz/$activityId' })
-  return <QuizRunner activityId={Number(activityId)} />
+  return <QuizRunner activityId={activityId} />
 }
 
 function focusSearch(search: Record<string, unknown>): {
@@ -250,12 +241,6 @@ const scoresRoute = createRoute({
   component: () => <ScoresPage />,
 })
 
-const spikeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/spike',
-  component: () => <SpikePage />,
-})
-
 const jobsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/jobs',
@@ -276,9 +261,13 @@ const jobsRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
-  validateSearch: (search: Record<string, unknown>): { tab?: string; section?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { tab?: string; section?: string; obs?: string; detail?: string } => ({
     tab: typeof search.tab === 'string' ? search.tab : undefined,
     section: typeof search.section === 'string' ? search.section : undefined,
+    obs: typeof search.obs === 'string' ? search.obs : undefined,
+    detail: typeof search.detail === 'string' ? search.detail : undefined,
   }),
   component: () => <SettingsPage />,
 })
@@ -309,7 +298,6 @@ const routeTree = rootRoute.addChildren([
   noteEditorRedirectRoute,
   flashcardsRedirectRoute,
   scoresRoute,
-  spikeRoute,
   jobsRoute,
   settingsRoute,
   aboutRoute,

@@ -23,12 +23,12 @@ export function NodeRecentStrip({
     }
     const rootId = tree?.[0]?.id
     const entries = getRecentNodes()
-      .filter((entry) => entry.courseId === Number(courseId) && entry.nodeId !== rootId)
+      .filter((entry) => entry.courseId === courseId && entry.nodeId !== rootId)
       .slice(0, 3)
     if (tree === undefined || tree.length === 0 || entries.length === 0) {
       return []
     }
-    return resolveRecentNodes(entries, new Map([[Number(courseId), tree]]), new Map())
+    return resolveRecentNodes(entries, new Map([[courseId, tree]]), new Map())
   }, [courseId, tree, courseJumpBackIn])
   if (rows.length === 0) {
     return null

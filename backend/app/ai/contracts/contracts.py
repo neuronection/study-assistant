@@ -65,24 +65,19 @@ def _citations_in_range(
         return []
     limit = len(chunks)
     out_of_range = [
-        int(match)
-        for match in CITATION_RE.findall(output)
-        if not 1 <= int(match) <= limit
+        int(match) for match in CITATION_RE.findall(output) if not 1 <= int(match) <= limit
     ]
     if out_of_range:
         return [
             Violation(
                 "citations_in_range",
-                f"citations {sorted(set(out_of_range))} exceed the provided sources "
-                f"(1..{limit})",
+                f"citations {sorted(set(out_of_range))} exceed the provided sources (1..{limit})",
             )
         ]
     return []
 
 
-def _max_words(
-    output: str, params: dict[str, Any], context: dict[str, Any]
-) -> list[Violation]:
+def _max_words(output: str, params: dict[str, Any], context: dict[str, Any]) -> list[Violation]:
     limit = int(params.get("n", 400))
     words = _prose_words(output)
     if words > limit:
@@ -118,9 +113,7 @@ def _no_answer_reveal(
     return []
 
 
-def _max_blocks(
-    output: str, params: dict[str, Any], context: dict[str, Any]
-) -> list[Violation]:
+def _max_blocks(output: str, params: dict[str, Any], context: dict[str, Any]) -> list[Violation]:
     limit = int(params.get("n", 3))
     blocks = context.get("blocks") or []
     if len(blocks) > limit:

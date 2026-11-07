@@ -29,22 +29,22 @@ export function ConceptsPanel({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [view, setView] = useState<'list' | 'graph'>(() => {
-    const stored = window.localStorage.getItem(`ca-concepts-view:${courseId}`)
+    const stored = window.localStorage.getItem(`sa-concepts-view:${courseId}`)
     return stored === 'graph' ? 'graph' : 'list'
   })
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const belowLg = useMediaQuery('(max-width: 1023px)')
   const effectiveView = belowLg ? 'list' : view
 
   const setPersistedView = (next: 'list' | 'graph') => {
     setView(next)
-    window.localStorage.setItem(`ca-concepts-view:${courseId}`, next)
+    window.localStorage.setItem(`sa-concepts-view:${courseId}`, next)
   }
 
   const teachBack = useMutation({
-    mutationFn: (concept: { id: number; name: string }) =>
+    mutationFn: (concept: { id: string; name: string }) =>
       createTeachBack({
-        course_id: Number(courseId),
+        course_id: courseId,
         concept_id: concept.id,
         concept: concept.name,
       }),
@@ -58,11 +58,11 @@ export function ConceptsPanel({
 
   const graph = useQuery({
     queryKey: ['concepts', courseId],
-    queryFn: () => conceptGraph(Number(courseId)),
+    queryFn: () => conceptGraph(courseId),
   })
 
   const commit = useMutation({
-    mutationFn: () => commitConcepts(Number(courseId), draft!),
+    mutationFn: () => commitConcepts(courseId, draft!),
     onSuccess: async () => {
       onDraftChange(null)
       await queryClient.invalidateQueries({ queryKey: ['concepts', courseId] })

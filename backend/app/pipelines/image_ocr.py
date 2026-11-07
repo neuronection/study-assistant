@@ -22,7 +22,7 @@ def make_image_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandler:
             raise JobError(f"invalid image_ocr payload: {payload!r}")
 
         report(20, "loading image")
-        image = session.get(MaterialImage, int(image_id))
+        image = session.get(MaterialImage, str(image_id))
         if image is None:
             raise JobError(f"material image {image_id} not found")
         if image.blob_sha is None:
@@ -34,18 +34,16 @@ def make_image_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandler:
         report(40, "transcribing")
         engine = NotesOcrEngine(gateway)
         try:
-            markdown = engine.transcribe(
-                data, image.mime or "image/png", session=session
-            )
+            markdown = engine.transcribe(data, image.mime or "image/png", session=session)
         except (TaskUnassigned, ProviderError) as error:
             raise JobError(str(error)) from error
 
-        ensure_target_exists(session, MaterialImage, int(image_id), "material image")
+        ensure_target_exists(session, MaterialImage, str(image_id), "material image")
         image.ocr_version += 1
         image.ocr_markdown = markdown
         image.ocr_job_id = None
 
-        material = session.get(Material, int(material_id))
+        material = session.get(Material, str(material_id))
         if material is None:
             raise JobError(f"material {material_id} not found")
         service = MaterialsService(session, blobs)

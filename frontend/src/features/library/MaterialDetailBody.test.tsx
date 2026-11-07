@@ -19,16 +19,16 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getMaterial: (id: number) => getMaterial(id),
-    getMaterialLinks: (id: number) => getMaterialLinks(id),
+    getMaterial: (id: string) => getMaterial(id),
+    getMaterialLinks: (id: string) => getMaterialLinks(id),
     listCourses: () => listCourses(),
     listStudyStates: () => listStudyStates(),
-    setStudyState: (id: number, status: string) => setStudyState(id, status),
-    deriveMaterial: (id: number, options?: { nodeId?: number | null }) =>
+    setStudyState: (id: string, status: string) => setStudyState(id, status),
+    deriveMaterial: (id: string, options?: { nodeId?: string | null }) =>
       deriveMaterial(id, options),
-    parseLinkMaterial: (id: number) => parseLinkMaterial(id),
-    getJob: (jobId: number) => getJob(jobId),
-    transcribeLinkAudio: (id: number) => transcribeLinkAudio(id),
+    parseLinkMaterial: (id: string) => parseLinkMaterial(id),
+    getJob: (jobId: string) => getJob(jobId),
+    transcribeLinkAudio: (id: string) => transcribeLinkAudio(id),
   }
 })
 
@@ -79,8 +79,8 @@ vi.mock('@/components/materials/exportMarkdown', () => ({
 
 const MATERIAL = {
   material: {
-    id: 5,
-    course_id: 2,
+    id: '5',
+    course_id: '2',
     title: 'Chain rule worksheet',
     status: 'ready',
     reextract_modes: ['auto', 'text', 'ocr'],
@@ -95,7 +95,7 @@ function renderBody(props: Partial<Parameters<typeof MaterialDetailBody>[0]> = {
   return render(
     <QueryClientProvider client={client}>
       <MaterialDetailBody
-        materialId={5}
+        materialId="5"
         activeTab="extraction"
         onTabChange={vi.fn()}
         {...props}
@@ -112,7 +112,7 @@ function renderBodyWithProbes(
   return render(
     <QueryClientProvider client={client}>
       <MaterialDetailBody
-        materialId={5}
+        materialId="5"
         activeTab="extraction"
         onTabChange={vi.fn()}
         {...props}
@@ -131,14 +131,14 @@ async function openMoreMaterialActions() {
 const EXTRACTION_FIXTURE = {
   ...MATERIAL,
   extraction: {
-    id: 1,
-    material_id: 5,
+    id: '1',
+    material_id: '5',
     version: 2,
     extractor: 'ocr',
-    markdown: 'body ![drawing](ca-drawing://3)',
+    markdown: 'body ![drawing](sa-drawing://3)',
     blocks: [{ type: 'text', md: 'body' }],
   },
-  drawings: [{ id: 3, png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }],
+  drawings: [{ id: '3', png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }],
 }
 
 describe('MaterialDetailBody take-notes', () => {
@@ -155,7 +155,7 @@ describe('MaterialDetailBody take-notes', () => {
     transcribeLinkAudio.mockReset()
     getMaterial.mockResolvedValue(MATERIAL)
     getMaterialLinks.mockResolvedValue([])
-    listCourses.mockResolvedValue([{ id: 2, title: 'Calculus' }])
+    listCourses.mockResolvedValue([{ id: '2', title: 'Calculus' }])
     listStudyStates.mockResolvedValue({})
   })
 
@@ -194,15 +194,15 @@ describe('MaterialDetailBody take-notes', () => {
   })
 
   test('Import & parse runs the job and refreshes the material', async () => {
-    parseLinkMaterial.mockResolvedValue({ job_id: 9 })
+    parseLinkMaterial.mockResolvedValue({ job_id: '9' })
     getJob.mockResolvedValue({
-      id: 9,
+      id: '9',
       type: 'url_import',
       status: 'done',
       progress: 100,
       stage: 'done',
       error: null,
-      material_id: 5,
+      material_id: '5',
       retriable: false,
       stale: false,
       label: 'url import',
@@ -228,8 +228,8 @@ describe('MaterialDetailBody take-notes', () => {
         provenance: { source: 'youtube', video_id: 'abc123', channel: 'Math' },
       },
       extraction: {
-        id: 2,
-        material_id: 5,
+        id: '2',
+        material_id: '5',
         version: 1,
         extractor: 'youtube',
         markdown: '# transcript',
@@ -246,8 +246,8 @@ describe('MaterialDetailBody take-notes', () => {
       name: /import & parse/i,
     })
     fireEvent.click(parseButton)
-    await waitFor(() => expect(parseLinkMaterial).toHaveBeenCalledWith(5))
-    await waitFor(() => expect(getJob).toHaveBeenCalledWith(9))
+    await waitFor(() => expect(parseLinkMaterial).toHaveBeenCalledWith('5'))
+    await waitFor(() => expect(getJob).toHaveBeenCalledWith('9'))
     await waitFor(() =>
       expect(screen.queryByTestId('link-reference-card')).not.toBeInTheDocument(),
     )
@@ -266,15 +266,15 @@ describe('MaterialDetailBody take-notes', () => {
         },
       },
     })
-    transcribeLinkAudio.mockResolvedValue({ job_id: 11 })
+    transcribeLinkAudio.mockResolvedValue({ job_id: '11' })
     getJob.mockResolvedValue({
-      id: 11,
+      id: '11',
       type: 'url_import',
       status: 'done',
       progress: 100,
       stage: 'done',
       error: null,
-      material_id: 5,
+      material_id: '5',
       retriable: false,
       stale: false,
       label: 'url import',
@@ -285,19 +285,19 @@ describe('MaterialDetailBody take-notes', () => {
     renderBody()
     expect(await screen.findByTestId('parse-note')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /transcribe audio/i }))
-    await waitFor(() => expect(transcribeLinkAudio).toHaveBeenCalledWith(5))
-    await waitFor(() => expect(getJob).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(transcribeLinkAudio).toHaveBeenCalledWith('5'))
+    await waitFor(() => expect(getJob).toHaveBeenCalledWith('11'))
   })
 
   test('header band shows the material title, meta chips and view menu together (plan 62-E)', async () => {
     getMaterialLinks.mockResolvedValue([
       {
-        node_id: 9,
+        node_id: '9',
         owner_title: 'Derivatives',
         rationale: null,
         breadcrumb: [
-          { id: 1, title: 'Calculus' },
-          { id: 9, title: 'Derivatives' },
+          { id: '1', title: 'Calculus' },
+          { id: '9', title: 'Derivatives' },
         ],
         is_course_level: false,
       },
@@ -332,8 +332,8 @@ describe('MaterialDetailBody take-notes', () => {
     getMaterial.mockResolvedValue({
       ...MATERIAL,
       extraction: {
-        id: 1,
-        material_id: 5,
+        id: '1',
+        material_id: '5',
         version: 1,
         extractor: 'ocr',
         markdown: 'body',
@@ -367,7 +367,7 @@ describe('MaterialDetailBody take-notes', () => {
     ).not.toBeInTheDocument()
     fireEvent.pointerDown(trigger)
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Studied' }))
-    await waitFor(() => expect(setStudyState).toHaveBeenCalledWith(5, 'studied'))
+    await waitFor(() => expect(setStudyState).toHaveBeenCalledWith('5', 'studied'))
   })
 
   test('Export .md downloads the extraction with embedded drawings (via the ⋯ menu, plan 62-E)', async () => {
@@ -393,8 +393,8 @@ describe('MaterialDetailBody take-notes', () => {
 
     await waitFor(() =>
       expect(exportMarkdownWithDrawings).toHaveBeenCalledWith(
-        'body ![drawing](ca-drawing://3)',
-        [{ id: 3, png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }]
+        'body ![drawing](sa-drawing://3)',
+        [{ id: '3', png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }]
       )
     )
     await waitFor(() => expect(click).toHaveBeenCalled())
@@ -466,8 +466,8 @@ describe('MaterialDetailBody take-notes', () => {
 
   test('derives a new material and offers to open it (plan 62-E)', async () => {
     deriveMaterial.mockResolvedValue({
-      material: { id: 12, title: 'Notes (extracted)' },
-      job_id: 4,
+      material: { id: '12', title: 'Notes (extracted)' },
+      job_id: '4',
       deduped: false,
     })
     getMaterial.mockResolvedValue(EXTRACTION_FIXTURE)
@@ -475,7 +475,7 @@ describe('MaterialDetailBody take-notes', () => {
 
     await openMoreMaterialActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Save as material' }))
-    await waitFor(() => expect(deriveMaterial).toHaveBeenCalledWith(5, { nodeId: null }))
+    await waitFor(() => expect(deriveMaterial).toHaveBeenCalledWith('5', { nodeId: null }))
     expect(
       await screen.findByText('Saved as Notes (extracted)')
     ).toBeInTheDocument()
@@ -487,17 +487,17 @@ describe('MaterialDetailBody take-notes', () => {
 
   test('derive passes the assigned node so the material lands there (plan 62-E)', async () => {
     deriveMaterial.mockResolvedValue({
-      material: { id: 12, title: 'Notes (extracted)' },
-      job_id: 4,
+      material: { id: '12', title: 'Notes (extracted)' },
+      job_id: '4',
       deduped: false,
     })
     getMaterial.mockResolvedValue(EXTRACTION_FIXTURE)
     getMaterialLinks.mockResolvedValue([
       {
-        node_id: 9,
+        node_id: '9',
         owner_title: 'Derivatives',
         rationale: null,
-        breadcrumb: [{ id: 1, title: 'Calculus' }],
+        breadcrumb: [{ id: '1', title: 'Calculus' }],
         is_course_level: false,
       },
     ])
@@ -505,13 +505,13 @@ describe('MaterialDetailBody take-notes', () => {
 
     await openMoreMaterialActions()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Save as material' }))
-    await waitFor(() => expect(deriveMaterial).toHaveBeenCalledWith(5, { nodeId: 9 }))
+    await waitFor(() => expect(deriveMaterial).toHaveBeenCalledWith('5', { nodeId: '9' }))
   })
 
   test('derive refreshes the workspace materials tab and tree without a reload (plan 62-E)', async () => {
     deriveMaterial.mockResolvedValue({
-      material: { id: 12, title: 'Notes (extracted)' },
-      job_id: 4,
+      material: { id: '12', title: 'Notes (extracted)' },
+      job_id: '4',
       deduped: false,
     })
     getMaterial.mockResolvedValue(EXTRACTION_FIXTURE)
@@ -535,7 +535,7 @@ describe('MaterialDetailBody take-notes', () => {
 
   test('derive surfaces the duplicate notice when deduped (plan 62-E)', async () => {
     deriveMaterial.mockResolvedValue({
-      material: { id: 12, title: 'Notes (extracted)' },
+      material: { id: '12', title: 'Notes (extracted)' },
       job_id: null,
       deduped: true,
     })
@@ -578,8 +578,8 @@ describe('MaterialDetailBody text-file tabs', () => {
         description: 'A summary of the chain rule',
       },
       extraction: {
-        id: 1,
-        material_id: 5,
+        id: '1',
+        material_id: '5',
         version: 1,
         extractor: 'text',
         markdown: '# Chain rule\nbody',
@@ -587,7 +587,7 @@ describe('MaterialDetailBody text-file tabs', () => {
       },
     })
     getMaterialLinks.mockResolvedValue([])
-    listCourses.mockResolvedValue([{ id: 2, title: 'Calculus' }])
+    listCourses.mockResolvedValue([{ id: '2', title: 'Calculus' }])
     listStudyStates.mockResolvedValue({})
   })
 
@@ -604,7 +604,7 @@ describe('MaterialDetailBody text-file tabs', () => {
     expect(onTabChange).toHaveBeenCalledWith('raw')
   })
 
-  test('the legacy extraction tab maps onto Formatted for text materials', async () => {
+  test('the older extraction tab maps onto Formatted for text materials', async () => {
     renderBody({ activeTab: 'extraction' })
     expect(await screen.findByTestId('extraction-view')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Switch view' })).toHaveTextContent(

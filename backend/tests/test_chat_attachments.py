@@ -14,7 +14,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -46,14 +46,14 @@ def client(
         yield test_client, gateway, app
 
 
-def make_session(client: TestClient, course_id: int) -> dict[str, Any]:
+def make_session(client: TestClient, course_id: str) -> dict[str, Any]:
     created: dict[str, Any] = client.post(
         "/api/v1/chat/sessions", json={"course_id": course_id}
     ).json()
     return created
 
 
-def insert_quiz(app: FastAPI, course_id: int) -> int:
+def insert_quiz(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     activity = Activity(
@@ -67,7 +67,7 @@ def insert_quiz(app: FastAPI, course_id: int) -> int:
     db.add(
         Question(
             activity_id=activity.id,
-            type="choice",
+            type="single",
             stem=[{"type": "text", "md": "What is $d/dx\\ x^2$?"}],
             options=[
                 {"type": "text", "md": "$2x$"},
@@ -82,7 +82,7 @@ def insert_quiz(app: FastAPI, course_id: int) -> int:
     return activity_id
 
 
-def insert_exercise(app: FastAPI, course_id: int) -> int:
+def insert_exercise(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     exercise = Exercise(
@@ -107,7 +107,7 @@ def insert_exercise(app: FastAPI, course_id: int) -> int:
     return exercise_id
 
 
-def insert_pending_material(app: FastAPI, course_id: int) -> int:
+def insert_pending_material(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     material = Material(
@@ -151,12 +151,9 @@ def test_attachments_register_mentions_and_reach_the_prompt(
         assert f"M{material_id} = " in prompt
         assert (
             "The student attached these items to the message "
-            f"(handles from the referenceable-items manifest): [M{material_id}]"
-            in prompt
+            f"(handles from the referenceable-items manifest): [M{material_id}]" in prompt
         )
-        context = test_client.get(
-            f"/api/v1/chat/sessions/{session['id']}/context"
-        ).json()
+        context = test_client.get(f"/api/v1/chat/sessions/{session['id']}/context").json()
         refs = {entry["ref"] for entry in context["registry"]}
         assert f"M{material_id}" in refs
 
@@ -241,11 +238,9 @@ def test_read_quiz_and_exercise_attachments(
             f"Q{quiz_id}",
             f"E{exercise_id}",
         ]
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "Derivatives check — quiz with 1 questions" in second_prompt
-        assert "Q1 (choice): What is $d/dx\\ x^2$?" in second_prompt
+        assert "Q1 (single): What is $d/dx\\ x^2$?" in second_prompt
         assert "A) $2x$" in second_prompt
         assert "answer: A" in second_prompt
         assert "Chain rule practice — multi_step exercise with 1 steps" in second_prompt
@@ -270,9 +265,7 @@ def test_read_pending_material_reports_processing(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert assistant["reads"] == []
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "still being processed" in second_prompt
 
 
@@ -285,11 +278,11 @@ def test_attach_unknown_id_returns_404_and_unknown_kind_422(
         session = make_session(test_client, course_id)
         missing = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
-            json={"content": "hi", "attachments": [{"kind": "material", "id": 999}]},
+            json={"content": "hi", "attachments": [{"kind": "material", "id": "999"}]},
         )
         assert missing.status_code == 404
         bad_kind = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
-            json={"content": "hi", "attachments": [{"kind": "dragon", "id": 1}]},
+            json={"content": "hi", "attachments": [{"kind": "dragon", "id": "1"}]},
         )
         assert bad_kind.status_code == 422

@@ -1,0 +1,47 @@
+# legacy-markers.txt — C4 vocabulary (plan 23 D2: patterns are data, not code).
+#
+# One grep -E pattern per line; blank lines and `#` comments are ignored.
+# An optional self-test witness may follow `::` — the string the
+# marker-completeness loop (T2) plants to prove "declared ⇒ detected".
+# When omitted the witness defaults to the pattern itself (literal patterns).
+#
+# The family-convergence gate builds its C4 regex from this file at runtime;
+# the gate script itself contains no marker literals, so it can never match
+# its own patterns (the plan-20 F2 self-match defect).
+
+# ca-* legacy scheme vocabulary (pre-plan-20 content addressing)
+ca-drawing
+ca-image
+ca-material
+ca-course
+caq/v
+ca-backup/v
+ca-skills/v
+x-ca-
+
+# legacy kind maps / dual-emit helpers
+LEGACY_[A-Z_]+_MAP :: LEGACY_KIND_MAP
+card_kind_from_legacy
+legacy_kind_from_card
+
+# plan 24 dual-emit chat vocabulary (deleted 2026-10-08..09, commits
+# 6888776 / 2f88bc2 / 59547f4) — EMISSION shapes only. Ruling: turn_error,
+# stream_interrupted, and interview_state live on legitimately as failure
+# codes, persisted metadata keys, and message state, so bare or plainly
+# quoted names are NOT markers; only the wire-emission forms are.
+type['\"]?\s*:\s*['\"]stream_start :: type": "stream_start"
+type['\"]?\s*:\s*['\"]stream_delta :: type": "stream_delta"
+type['\"]?\s*:\s*['\"]assistant_message :: type": "assistant_message"
+type['\"]?\s*:\s*['\"]stream_interrupted :: type": "stream_interrupted"
+type['\"]?\s*:\s*['\"]turn_error :: type": "turn_error"
+emit\(\s*['\"]interview_state :: emit("interview_state"
+event:\s*interview_state :: event: interview_state
+case\s*['\"]stream_start :: case 'stream_start'
+case\s*['\"]stream_delta :: case 'stream_delta'
+case\s*['\"]turn_error :: case 'turn_error'
+\[HITL_TASK\] :: [HITL_TASK]
+\[SESSION_ID\] :: [SESSION_ID]
+to_family_events
+stream_loop_as_sse
+FLOW_EVENT_PREFIX
+flow_events\s*[=:] :: flow_events=true

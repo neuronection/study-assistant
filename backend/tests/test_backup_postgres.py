@@ -36,12 +36,12 @@ from app.services.platform.backup import (
     restore_database_pg,
 )
 
+# gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
 DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(
-        "SA_TEST_DATABASE_URL is not set — the PostgreSQL backup twins "
-        "need a disposable server",
+        "SA_TEST_DATABASE_URL is not set — the PostgreSQL backup twins need a disposable server",
         allow_module_level=True,
     )
 
@@ -145,9 +145,7 @@ def checkpoints_pg(_loopback_sockets: None) -> Iterator[Engine]:
         _drop_database(base, scratch)
 
 
-def test_build_backup_uses_pg_dump_member(
-    migrated_pg: Engine, tmp_path: Path
-) -> None:
+def test_build_backup_uses_pg_dump_member(migrated_pg: Engine, tmp_path: Path) -> None:
     blobs_dir = tmp_path / "blobs"
     blobs_dir.mkdir()
     (blobs_dir / "note.bin").write_bytes(b"blob-bytes")
@@ -194,10 +192,7 @@ def test_pg_dump_restore_round_trip(migrated_pg: Engine, tmp_path: Path) -> None
     restore_database_pg(url, database.data)
 
     with migrated_pg.connect() as conn:
-        emails = {
-            row[0]
-            for row in conn.execute(text("SELECT email FROM users")).fetchall()
-        }
+        emails = {row[0] for row in conn.execute(text("SELECT email FROM users")).fetchall()}
     assert emails == seeded
 
 
@@ -206,7 +201,7 @@ def test_garbage_pg_dump_is_not_healthy() -> None:
 
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        archive.writestr(MANIFEST_NAME, json.dumps({"format": "ca-backup/v1"}))
+        archive.writestr(MANIFEST_NAME, json.dumps({"format": "sa-backup/v1"}))
         archive.writestr(DB_NAME_PG, b"garbage")
     database, _blobs = read_archive(buffer.getvalue())
     assert database.kind == DB_KIND_POSTGRES

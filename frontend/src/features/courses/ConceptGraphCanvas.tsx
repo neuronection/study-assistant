@@ -5,17 +5,17 @@ import type { ConceptGraph } from '@/lib/api'
 import { useMediaQuery } from '@/lib/use-media-query'
 
 export interface LayoutNode {
-  id: number
+  id: string
   name: string
   x: number
   y: number
   radius: number
-  mastery: 'strong' | 'shaky' | 'weak' | null
+  mastery: string | null
 }
 
 export interface LayoutEdge {
-  from: number
-  to: number
+  from: string
+  to: string
   relation: string
 }
 
@@ -42,12 +42,12 @@ export function mulberry32(seed: number): () => number {
 }
 
 export function layoutGraph(graph: ConceptGraph, seed = 42): GraphLayout {
-  const degree = new Map<number, number>()
+  const degree = new Map<string, number>()
   const idByName = new Map(graph.concepts.map((concept) => [concept.name, concept.id]))
   const edges: LayoutEdge[] = []
   for (const link of graph.links) {
-    const from = idByName.get(link.from)
-    const to = idByName.get(link.to)
+    const from = link.from === null ? undefined : idByName.get(link.from)
+    const to = link.to === null ? undefined : idByName.get(link.to)
     if (from === undefined || to === undefined) {
       continue
     }
@@ -60,7 +60,7 @@ export function layoutGraph(graph: ConceptGraph, seed = 42): GraphLayout {
   if (visible.length > MAX_VISIBLE) {
     visible = [...visible]
       .sort(
-        (a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id - b.id,
+        (a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id),
       )
       .slice(0, MAX_VISIBLE)
     const keep = new Set(visible.map((concept) => concept.id))
@@ -151,7 +151,7 @@ export function ConceptGraphCanvas({
   onSelect,
 }: {
   graph: ConceptGraph
-  onSelect: (conceptId: number) => void
+  onSelect: (conceptId: string) => void
 }) {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

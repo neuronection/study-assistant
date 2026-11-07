@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -22,7 +23,7 @@ class RubricError(ValueError):
     pass
 
 
-def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
+def _error_spot_problems(payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     lines = payload.get("lines")
     if not isinstance(lines, list) or not 2 <= len(lines) <= 12:
@@ -41,9 +42,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
             return problems
     if not isinstance(answers_flawed, list) or not isinstance(answers_correct, list):
         return problems
-    for index, (flawed, correct) in enumerate(
-        zip(answers_flawed, answers_correct, strict=False)
-    ):
+    for index, (flawed, correct) in enumerate(zip(answers_flawed, answers_correct, strict=False)):
         if not isinstance(flawed, str) or not isinstance(correct, str):
             problems.append(f"error_spot: line {index} answers must be strings")
             return problems
@@ -53,9 +52,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
         except Exception:
             problems.append(f"error_spot: line {index} answers must parse as math")
             return problems
-    for index, (flawed, correct) in enumerate(
-        zip(answers_flawed, answers_correct, strict=False)
-    ):
+    for index, (flawed, correct) in enumerate(zip(answers_flawed, answers_correct, strict=False)):
         same = equivalent(flawed, correct).equivalent
         if index == flaw_index and same:
             problems.append(
@@ -78,7 +75,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
     return problems
 
 
-def validate_rubric_payload(kind: str, payload: dict[str, Any]) -> list[str]:
+def validate_rubric_payload(kind: str, payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     rows = payload.get("rubric")
     if not isinstance(rows, list) or not 1 <= len(rows) <= 8:
@@ -139,10 +136,10 @@ class RubricGrader:
 
     def grade(
         self,
-        step: ExerciseStep,
-        payload: dict[str, Any],
+        step: ExerciseStep | None,
+        payload: Mapping[str, Any],
         response: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any]:
         rubric_rows = payload.get("rubric", [])
         prompt = (
@@ -150,9 +147,7 @@ class RubricGrader:
             "Question:\n"
             f"{json.dumps(payload.get('prompt_md', ''), ensure_ascii=False)}\n\n"
             "Rubric rows:\n"
-            + "\n".join(
-                f"- {row.get('id', '')}: {row.get('text', '')}" for row in rubric_rows
-            )
+            + "\n".join(f"- {row.get('id', '')}: {row.get('text', '')}" for row in rubric_rows)
             + "\n\nStudent's answer:\n"
             + response[:4000]
         )
@@ -170,9 +165,7 @@ class RubricGrader:
             schema=RubricOut,
         )
         if result.problems:
-            raise RubricError(
-                "grading failed validation: " + "; ".join(result.problems[:6])
-            )
+            raise RubricError("grading failed validation: " + "; ".join(result.problems[:6]))
         draft = result.draft
         raw_score = draft.get("score", 0)
         score = min(max(float(raw_score if raw_score is not None else 0.0), 0.0), 1.0)
@@ -185,7 +178,7 @@ class RubricGrader:
         }
 
 
-def rubric_public_input(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+def rubric_public_input(kind: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     widget = "essay" if kind == "explain" else "lines" if kind == "error_spot" else "math"
     result: dict[str, Any] = {"widget": widget, "kind": kind}
     if kind == "error_spot":
@@ -218,7 +211,7 @@ def _spot_response(response: str) -> dict[str, Any] | None:
     return None
 
 
-def _spot_correct_answer(payload: dict[str, Any]) -> str | None:
+def _spot_correct_answer(payload: Mapping[str, Any]) -> str | None:
     flaw_index = payload.get("flaw_index")
     answers = payload.get("answers_correct")
     if isinstance(flaw_index, int) and isinstance(answers, list) and 0 <= flaw_index < len(answers):
@@ -232,7 +225,7 @@ def _spot_correct_answer(payload: dict[str, Any]) -> str | None:
 
 
 def rubric_deterministic_check(
-    kind: str, payload: dict[str, Any], response: str
+    kind: str, payload: Mapping[str, Any], response: str
 ) -> tuple[bool, str] | None:
     if kind == "error_spot":
         spot = _spot_response(response)

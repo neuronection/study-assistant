@@ -246,8 +246,8 @@ The model may end a chat turn with **up to three** fenced action proposals
   the UI.
 - **Storage** (`chat_proposals`, migration 0024): message, action, payload,
   status `proposed|approved|dismissed|executed|stale|conflict` (the
-  `ChatProposalStatus` vocabulary, plan 78-D), result, timestamps. Surfaced on
-  the messages API and the `assistant_message` WS event.
+  `ChatProposalStatus` vocabulary, plan 78-D), result, timestamps. Surfaced
+  on the messages API (`ProposalOut` cards per message).
 - **Conflict re-diff instead of stale (plan 78-D, ADR-192)**: when an
   edit-in-place proposal is approved after its target changed, the approve
   endpoint refreshes the snapshot, re-resolves anchored `text_edits` against
@@ -520,7 +520,7 @@ Editing `ocr.page` in Settings changes page OCR; the notes/drawing paths
 **OCR payload efficiency (plan 46, ADR-102)**: every image sent to a vision task
 passes through `app/ocr/imaging.prepare_ocr_image` at the engine boundary — the
 long edge is capped (profile preference `ocr_image_max_edge`: Off / 1024 /
-**1568 default** / 2048 px, edited in Settings → Search & OCR) with a LANCZOS
+**1568 default** / 2048 px, edited in Settings → Tools → Search & OCR) with a LANCZOS
 downscale, then the image is re-encoded as flattened-RGB **WebP q85** (JPEG
 fallback). It applies uniformly to drawings, quiz-answer recognition, uploaded
 images and rasterized PDF pages; stored blobs keep their original quality, and a
@@ -538,7 +538,7 @@ while a job is live.
 
 **Material drawings (plan 29, ADR-064)**: text/markdown materials carry drawings
 (`material_drawings`) referenced from the extraction markdown with
-`![drawing](ca-drawing://{id})`. Their OCR text joins the material's FTS and is
+`![drawing](sa-drawing://{id})`. Their OCR text joins the material's FTS and is
 appended to the **chunk source** in `edit_extraction`/ingest, so hybrid retrieval
 (and therefore quiz/exercise/chat generation context) can quote handwriting in
 materials exactly as it does for notes. The same `notes_ocr` engine transcribes
@@ -626,7 +626,8 @@ SQLAlchemy, unchanged), `errors.py` and `setup.py`.
   the preset's `stt_model`, e.g. openai `whisper-1` — live assignments
   never clobbered), and `preset_key` stamping with manual-row adoption
   (same type + base_url, earliest first). Options body (snake_case):
-  `curated_ids[] / bind_chat / bind_vision / bind_stt`.
+  `curated_ids[] / bind_chat / bind_vision / bind_stt / bind_decision`
+  (plan 26).
 - **Error routing** (`app/ai/providers/errors.py` →
   `ProviderErrorCode` StrEnum): `invalid_key | insufficient_credit |
   new_user_quota | region_unavailable | timeout | local_not_running |
@@ -639,16 +640,83 @@ SQLAlchemy, unchanged), `errors.py` and `setup.py`.
   provider → 409; capability guards reuse the task registry (`ocr` needs
   vision, `transcribe` needs stt, `tts` needs tts).
 - **Capability vocabulary** is `text | vision | tools | stt | tts |
-  embeddings` (§15; no `audio`) — `Capability` StrEnum drives
-  `DEFAULT_REQUIRES` seeding; migration 0064 rewrote stored caps/rows.
-  Local engine detection (`GET /providers/detect-local`) remains outside
+  embeddings | decision` (§15 + plan 26; no `audio`) — `Capability`
+  StrEnum drives `DEFAULT_REQUIRES` seeding (the bare `decision`
+  capability is model-only; assignment slots are the four
+  `decision:*` keys); migration 0064 rewrote stored caps/rows. Local
+  engine detection (`GET /providers/detect-local`) remains outside
   the canonical presets (study keeps llama.cpp/LM Studio probes).
+- **Decision presets** (presets v2, schema 2): `decision_models[]` +
+  `decision_default` ride every preset; presets without them create no
+  decision bindings. `bind_decision` gap-fills each **empty**
+  `decision:<cap>` slot the transport declares (never `open-args`, never
+  a live slot). The **`typesafe` preset** (wire type `decision`) is
+  docs-verified and rides `presetOrder` like every preset (the §13.3
+  exposure switch flipped 2026-10-13 — a canonical edit, never a
+  per-repo one); setup accepts it and validates via the **decision
+  probe**, never a catalog fetch. Mixed providers (OpenRouter: pinned
+  `typesafe/jev-1.13` + rolling `~typesafe/jev-latest`, systemone
+  surface pinned via `base_url_override`) and **keyless local presets**
+  (Ollama: `nimble`/`tev1`/`clef`/`clef-flash`, pull-required, v0.35.0+
+  — clef models v0.35.1+) keep their chat wire type and gain the
+  decision rows on setup; keyless decision resolution carries the
+  explicit sentinel key (the official SDK requires a non-empty key).
 - **Gates**: `scripts/check-byok-contract.sh` (vendored byte-identical
   from the dev repo; R1 generated-data drift, R2 no `audio` capability
   literals in backend/app, R3 orchestration confined to
   `app/ai/providers/` + API layer, R4 the 12-case contract-test matrix in
   `tests/test_ai_provider_setup_contract.py`, R5 snake_case options) runs
   in CI beside `check-ai-alignment.sh` (`.github/workflows/byok-contract.yml`).
+
+## Decision models (`app/ai/decide/` — plan 26 Phase 3, ADR-0032)
+
+Study is the family's **Python decision reference**: non-chat decision
+support beside chat (never replacing it), ported in shape from the desktop
+reference (`desktop-assistant src/main/ai/decide/`). A decision model is an
+ordinary provider model — `AiModel.caps` gains the sparse **`decision`**
+capability (explicit only, never inferred) and `AiModel.decision_transport`
+(`systemone` today) is the transport seam; assignment replaces the old
+engine enum via four family slots — `decision:tool-dispatch |
+decision:boolean-gate | decision:choice | decision:score` — stored as
+`DefaultTaskAssignment`/`CourseDefaultTaskAssignment` `requires` rows with
+primary + `fallback_model_id` (§3 slot-storage table; `decision:open-args`
+is vocabulary-reserved, never assignable).
+
+- **Registry** (`decide/registry.py`): one registration per transport
+  (`resolve/create/audit/probe` hooks); resolution reads
+  `decision:<cap>` slot → model row → provider row, **capability routing
+  enforced** (a slot resolves only through a model whose transport declares
+  the capability), `off` is a resolution result (unassigned slot → the
+  point does not run — fail-open), fallback chain primary → fallback →
+  fall-through, and resolution is cached per assignments-revision
+  fingerprint (the study adaptation of desktop's per-config-revision cache;
+  `clear_decision_resolution_cache()` is the test seam).
+- **Typesafe client** (`decide/systemone/client.py`): `typesafe-sdk`
+  behind the `SystemOneClient` seam — typed errors (`TypeSafeError` kinds
+  `auth/rate-limit/overloaded/validation/timeout/unavailable`), 8 s default
+  timeout + SDK `RetryPolicy` backoff, base URL from the provider row with
+  the preset's `base_url_override` winning and chat-style `/v1` suffixes
+  stripped. The SDK import is confined to `app/ai/decide/` (alignment-gate
+  SDK_RE; gate R1 sanctions the whole `app/ai` layer for it).
+- **Projection** (`decide/systemone/projection.py`): tool dispatch as a
+  TypeSafe question set — a `__tool__` Choice that always carries a
+  `__none__` out, plus a question per closed-set/boolean argument; typed
+  questions (`noul`/`choice`/`score`) pass through natively.
+- **Funnel** (`decide/funnel.py` → `run_decision`): resolve → create →
+  decide → audit → band (`act ≥ 0.85 / confirm ≥ 0.5 / refuse`, the desktop
+  defaults — study ships no behavior surface yet, so callers may override
+  the thresholds). One audit row per invocation lands in `ai_interactions`
+  (`context_type='decision'`, `task='decision'`, resolved model, token
+  usage, latency); every non-`decided` status means fall through.
+- **Probe** (`decide/systemone/probe.py`): the decision-only-provider
+  validation (§15/D13/D18) — one minimal typed question under the family
+  10 s abort timeout; classified failure persists nothing.
+- **Conformance** (`tests/test_decide_conformance.py`): the shared suite
+  every shipping transport passes (bounded confidence, one audit row, empty
+  input never throws, transport mocked — no network/keyring), plus slot
+  resolution, D2b routing, caching, and probe cases. Slot separation is
+  enforced both directions at assignment time (`decision`-cap models only
+  satisfy `decision:*` slots and vice versa; matrix cases 19–20).
 
 ## Gateway (`app/ai/gateway.py`)
 
@@ -659,7 +727,13 @@ speaks the provider families through **LangChain chat models** (plan 37A / ADR-0
 
 - **google** — `ChatGoogleGenerativeAI` (`generateContent` / `streamGenerateContent?alt=sse`)
 - **openai_compatible** — `ChatOpenAI` (`chat/completions` + SSE streaming; also covers
-  Ollama's `openai_compatible` preset and `embeddings`)
+  Ollama's `openai_compatible` preset and `embeddings`). The token cap rides
+  the endpoint's wire parameter (ADR-0038): api.openai.com gets
+  `max_completion_tokens`, every other base URL keeps `max_tokens` via
+  `CompatibleCaChatOpenAI` — the SDK's unconditional rename is bypassed, never
+  decided by model id. A model row's `chat_transport='responses'` opts that
+  row into the Responses API (ADR-0039, OpenAI endpoint only, store-less)
+  for families that reject tools + reasoning_effort on completions (gpt-6)
 - **anthropic** — `ChatAnthropic` (`messages` with system + content blocks, SSE streaming)
 
 Messages are typed (`system`/`user`/`assistant` with text or image parts); the gateway
@@ -675,8 +749,11 @@ answered. **Resolution order (ADR-088):** a task's explicit `model_id`/`fallback
 win; any unset slot falls back to its capability's **default** (`default_task_assignments`
 keyed by `requires`), so "inherit default" tasks resolve to the default and partial
 overrides keep the default fallback. Token counts come from the provider's real
-`usage_metadata` (the `len//4`
-estimate is kept only for the offline/mock path). **Native tool calling (37B/ADR-082):** a
+`usage_metadata`; when a call has no usage (offline/mock or the embedding
+endpoint), the `app/ai/tokenizers/accounting.py` seam counts locally with the
+effective embedding tokenizer — the bundled exact `cl100k_base` for curated
+OpenAI embedding models, or the conservative heuristic labelled
+`exact=False` (plan 52 T5a). The character-divisor estimate is gone. **Native tool calling (37B/ADR-082):** a
 `tools`-capable model gets the chat tool schemas bound via `.bind_tools()` — schemas generated
 from the same catalogs as the prompt — and the stream surfaces each complete structured call as
 a `tool_call` event; the chat service runs the same deterministic tool implementations and
@@ -684,7 +761,8 @@ feeds results back as real `ToolMessage`s. Text-only/local models keep the promp
 (`TOOL_LINE_RE`) unchanged. If a `tools`-capped model's endpoint rejects the bound-tools
 payload, the turn **auto-degrades to the prompt grammar for that model** (remembered in-memory
 per provider+model; the Settings `tools` override is the durable fix). A provider failure
-before the first streamed chunk surfaces as a `turn_error` (frontend banner), never an empty
+before the first streamed chunk surfaces as a `flow_failed` event (frontend
+banner), never an empty
 message. Models carry an optional **`reasoning_effort`** setting (Settings → Providers → edit
 model) passed to `ChatOpenAI`/`ChatAnthropic`/`ChatGoogleGenerativeAI` — set `none` on OpenAI
 reasoning models that reject `tools` to re-enable native function calling, or
@@ -696,7 +774,7 @@ wraps `.with_structured_output()` (cap-gated on `tools`) as a fast path for the 
 tasks (quizgen/exgen/flashcards/rubric/pattern.discover) — permissive Pydantic schemas guide
 shape, the deterministic validators still gate content, and any schema-unsupported error
 degrades to the plain generate path. Since plan 38 it calls `.with_structured_output(include_raw=True)`
-so the ledger bills **real `usage_metadata` tokens** (not `len//4` estimates) for structured
+so the ledger bills **real `usage_metadata` tokens** for structured
 tasks, and it **pre-gates the fast path on the model profile**
 (`model.profile["structured_output"]`): a profile that confidently says "unsupported" skips
 the round trip and falls through to the next model, while unknown-profile endpoints keep the
@@ -704,9 +782,13 @@ error-based degrade as the safety net (38B/38C, ADR-086/087). **Prompt caching (
 first system block (the invariant prefix) gets an Anthropic `cache_control` ephemeral hint and
 OpenAI's automatic prefix caching is accounted via `input_token_details.cache_read`; the
 `ai_interactions` ledger records `cached_input_tokens` (migration 0037) and discounts cached
-input at 0.1×. **Query embeddings can be disabled** (Settings → Search global preference +
+input at 0.1×. **Query embeddings can be disabled** (Settings → Tools → Search & OCR semantic-search toggle +
 per-chat ✦ toggle in the chat header, migration 0039): when off, chat retrieval is FTS keyword
-search only and the live query-embedding call is skipped (query text stays local). The suite
+search only and the live query-embedding call is skipped (query text stays local); when it
+runs, the caller tags it `space_id`/`kind=query`/`view` on the ledger. Since plan 51 Q3c3a the
+`ai_interactions` ledger also carries caller-supplied embedding tags
+(`metadata`: `space_id`/`kind`/`view`/`chunk_index`) with a schema-version sibling; the gateway
+writes only what the caller passes and never prompt/document/query text. The suite
 runs with sockets blocked (a conftest guard) so no test can touch the network.
 
 ## Chat-turn graph engine (`app/ai/graphs/` — family AI-alignment Phase 5)
@@ -729,6 +811,18 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   `prepare_turn_contract` / `finalize_turn`, called by the graph nodes —
   the external contract (WS events, proposal cards, message rows,
   `ai_interactions` ledger) is stable and pinned by the chat API/e2e tests.
+- **Transaction boundaries (2026-10-13 incident fix)**: a turn must never
+  hold the SQLite write transaction across a slow await — a provider call
+  that hangs or retries for minutes would otherwise block every concurrent
+  write (each request touches `profiles.last_used_at`) and turn one bad
+  turn into app-wide `database is locked` 500s. The handler commits the
+  pre-engine writes (message chaining) before `turn_engine.run`;
+  `prepare_turn_context`'s one write (the mention-registry refresh)
+  commits immediately instead of flushing into a transaction that would
+  stay open until `contract_guard`; finalize and the failure path commit
+  their own writes. Pinned by `tests/test_chat_turn_lock_scope.py`
+  (blocked-model, blocked-prepare, and retry-window probes from a second
+  connection).
 - **Nodes call the gateway only** for model I/O; retrieval, deterministic
   tools, contracts, and persistence are plain code called from nodes. Node
   bodies run via `asyncio.to_thread` (LangGraph node timeouts require async
@@ -739,7 +833,7 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   app's event loop (integrator ruling 2026-09-04 — `astream_events(version=
   "v3")` is still beta on the pinned langgraph; swapping it in later is a
   one-file change confined to the adapter): `messages` tuples
-  (`AIMessageChunk`, metadata) map onto throttled `stream_delta` WS events
+  (`AIMessageChunk`, metadata) map onto throttled `delta` events
    (tool lines filtered at round boundaries), text and reasoning in
    exact arrival order — the pump's buffers are shared across the node
    worker thread and the event loop, so all mutations run under an RLock
@@ -749,8 +843,8 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
    stream ends so deltas always precede it on the wire) plus the reserved
    `__interrupt__` mapping point for `interrupt()`-based proposals (today's
    proposals remain the fence protocol — external contract frozen).
-   `stream_start`/`phase`/`tool_call` carry turn-semantic payloads with no
-   LangGraph projection, so nodes emit them through the same `Emitter` the
+   `flow_started`/`node_started`/`tool_call` carry turn-semantic payloads with
+   no LangGraph projection, so nodes emit them through the same `Emitter` the
    job handler wires. `thread_id` = chat session id.
 - **Checkpointer** (dual-mode): dialect-picked in `graphs/checkpointer.py` —
   `AsyncSqliteSaver` on `data_dir/checkpoints.db` (desktop) or
@@ -764,24 +858,40 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   and a retry policy that only retries raw transport leaks (`httpx.HTTPError`)
   over the gateway's own retries — `ProviderError` (already retried with
   fallback inside the gateway) is never double-retried. Failures bubble to the
-  job handler, which emits `turn_error`.
+  job handler, which emits `flow_failed`.
 
-## Family event vocabulary (Phase 6.2)
+## Chat stream vocabulary (family §5, plan 24 V2)
 
-Chat turns emit the **family event vocabulary** additively alongside the
-turn-semantic WS event names, on the same `chat:{session_id}` topic — one pure
-mapper (`app/agui/family.py`), applied to every turn event: `stream_start` →
-`flow_started` (flow `chat`, run_id, canonical
-steps thinking/tools/answer) · `phase` → `node_started` · `tool_call` →
-`node_finished` (`tool:{phase}` id, outcome + result detail) ·
-`stream_delta` → `delta` (`kind: reasoning` when reasoning) ·
-`assistant_message` → `flow_finished` (result ref = message id) ·
-`turn_error` → `flow_failed` (retryable false). `stream_interrupted` has no
-family equivalent and maps to nothing. Event names are the closed
-`FlowEvent` StrEnum (`core/vocab.py`). The turn-semantic names stay the chat
-panel's contract (its handler ignores unknown types); the family stream feeds
-`FlowStatusCard` surfaces — adopted first in the shared editor's AI helper
-(Phase 6.3), with `TraceTimeline` unchanged for the rich chat view.
+Chat turns emit the **family event vocabulary natively** on the
+`chat:{session_id}` WS topic — one vocabulary, no legacy names, no
+dual-emit. Event names are the closed `FlowEvent` StrEnum
+(`core/vocab.py`); payload fields follow the frozen §5 table
+(`ai/flow_events.py` builders, unit-pinned by `tests/test_family_events.py`
+including the vocabulary wall: every event type on the chat topic must be
+a family event):
+
+- `flow_started` — flow `chat`, `run_id`, canonical steps
+  thinking/tools/answer
+- `node_started` — `node` id only (thinking / repairing / reading /
+  plotting / computing); labels are applied client-side (i18n)
+- `delta` — `text` chunk, `kind: reasoning` when reasoning
+- `tool_call` — `id` (`{name}@{start_ms}`), `name`, `status`, `args`,
+  optional `result` / `title` / `duration_ms`; a projection of the
+  persisted tool entry (`chat_messages.tool_calls` keeps its own storage
+  shape with `argument`/`phase`/`start_ms`/`quiz`)
+- `flow_finished` — `run_id`, `result_ref` (message id), optional
+  `model` / `total_ms` / `tool_count`
+- `flow_interrupted` — terminal server-broadcast stop
+  (`reason: user | server`, `partial`); replaces the legacy
+  `stream_interrupted` which no consumer could render — the library
+  reducer maps it to `status: interrupted, stopped: true`
+- `flow_failed` — `code` (`turn_error` | `ai_not_configured`), `message`,
+  `retryable: true` (the regenerate affordance)
+
+The frontend consumes these directly (`features/chat/chatTransport.ts`)
+with per-turn run-id gating; the persisted turn `trace` block and REST
+message shapes are unchanged — history renders from the DB, the live
+events only feed the streaming tail.
 
 ## Features built on the gateway
 
@@ -851,7 +961,19 @@ The chat system prompt teaches single-line tools the model may emit:
   2-per-turn budget. Unconfigured → an honest error line the model can relay.
 - `DISCOVER <query|here>` — external material discovery over the plan-73-C
   provider registry (plan 73-F, ADR-167/170): web + YouTube + site presets
-  with provider badges, up to 5 results, 2-per-turn budget. `DISCOVER here`
+  with provider badges, up to 5 results, 2-per-turn budget. **Plan 85 A
+  (ADR-211)** adds three key-free scholarly providers beside the YouTube
+  class — arXiv (Atom), OpenAlex and Crossref (DOI metadata, OpenAlex
+  preferred, Crossref the fallback) — whose rows carry typed
+  `DiscoveryKind.paper|dataset|reference` values and citation metadata
+  (doi/authors/year/container/kind) in the suggestion's `meta`. Every request
+  crosses the vendored polite perimeter; provider failures are reported per
+  provider, never as a failed search. **Plan 85 E** adds the key-free site
+  presets Wikipedia (`en.wikipedia.org`), MIT OpenCourseWare (`ocw.mit.edu`)
+  and OpenStax (`openstax.org`) beside Khan Academy — data in
+  `DEFAULT_SITE_PRESETS`, exposed as profile defaults and selectable per
+  search (they ride the configured web-search provider; zero new runtime
+  path). `DISCOVER here`
   builds its query **deterministically** from the session's study context —
   node title + summary + `ai_hint` + up to 4 node concepts, falling back to
   the course title + description on course-level sessions; a session with no

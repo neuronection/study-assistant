@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -45,10 +48,23 @@ jobs:
           sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
       - run: uv sync --frozen
       - run: uv run --directory backend ruff check .
+      - run: uv run --directory backend ruff format --check .
+      - name: STATUS version header gate (plan 83 B / ADR-206)
+        run: scripts/check-status-version.sh
       - run: uv run --directory backend mypy .
-      - run: uv run --directory backend pytest
+      - name: Schema inventory drift gate (plan 81 A)
+        run: uv run --directory backend python ../scripts/schema_inventory.py --check
+      - name: Test suite (coverage is report-only — no floor until a month of numbers exists, plan 84 D)
+        run: uv run --directory backend pytest --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - name: Upload backend coverage (report-only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: ignore
       - name: Contract drift gate (identity-auth §18)
         run: uv run --directory backend pytest -m contract
         env:
@@ -71,6 +87,15 @@ jobs:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
           SA_TEST_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:postgres@localhost:5432/neuronection_study_test
         run: |
+          # Client tools must match the pg16 service: the runner image ships a
+          # newer pg_dump, whose preamble carries settings pg16 cannot parse
+          # ("transaction_timeout"). Run the image's own binaries instead.
+          mkdir -p "$RUNNER_TEMP/pg16-bin"
+          for tool in pg_dump pg_restore psql; do
+            printf '#!/usr/bin/env bash\nexec docker run --rm -i --network host -e PGPASSWORD="$PGPASSWORD" -v /tmp:/tmp pgvector/pgvector:pg16 %s "$@"\n' "$tool" > "$RUNNER_TEMP/pg16-bin/$tool"
+            chmod +x "$RUNNER_TEMP/pg16-bin/$tool"
+          done
+          export PATH="$RUNNER_TEMP/pg16-bin:$PATH"
           set +e
           uv run --directory backend pytest tests/ -k postgres
           code=$?
@@ -79,7 +104,16 @@ jobs:
           # modules are still landing) — tolerate that and nothing else.
           if [ "$code" -ne 0 ] && [ "$code" -ne 5 ]; then exit "$code"; fi
       - name: OpenAPI schema drift guard
+        # Exporting the schema boots the app: dev-mode skips the production
+        # boot guards (nx_auth §8 pins), and entrypoint-owned migrations
+        # (plan 20 Phase 4) mean create_app no longer migrates — so build the
+        # schema in a scratch datastore first (the export script forces its
+        # own throwaway data_dir, hence SA_DATABASE_URL).
+        env:
+          SA_APP_ENV: development
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-data/openapi-export.sqlite3
         run: |
+          uv run --directory backend alembic upgrade head
           uv run --directory backend python ../scripts/export-openapi.py
           git diff --exit-code -- frontend/openapi.json
 
@@ -102,13 +136,31 @@ jobs:
           pnpm --filter frontend exec openapi-typescript openapi.json -o src/lib/api-schema.d.ts
           git diff --exit-code -- frontend/src/lib/api-schema.d.ts
       - run: pnpm --filter frontend lint
+      - run: pnpm --filter frontend check:api-types
       - run: pnpm --filter frontend typecheck
-      - run: pnpm --filter frontend test
+      - name: Frontend test suite (coverage is report-only — plan 84 D)
+        run: pnpm --filter frontend coverage
+      - name: Upload frontend coverage (report-only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: ignore
       - run: pnpm --filter frontend build
 
   e2e:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    # Same Track-A collateral as the drift guard above: the Playwright
+    # global-setup boots the app via e2e/run_backend.py, which needs (a) a
+    # non-production boot — the nx_auth §8 guard fatals on missing key pins
+    # for production server boots — and (b) a migrated datastore, because
+    # entrypoint-owned migrations (plan 20 Phase 4) mean create_app no longer
+    # migrates. The per-run mkdtemp --data-dir keeps blobs/config; the
+    # datastore itself comes from SA_DATABASE_URL, fresh on every runner.
+    env:
+      SA_APP_ENV: test
     steps:
       - uses: actions/checkout@v4
       - name: Provide family auth-kit (editable path dep)
@@ -133,8 +185,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
+      - name: Prepare e2e datastore (migrations)
+        env:
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
+        run: uv run --directory backend alembic upgrade head
       - run: pnpm --filter frontend exec playwright install --with-deps chromium
       - run: pnpm --filter frontend e2e
+        env:
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

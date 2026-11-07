@@ -15,7 +15,7 @@ export function NodeSettingsMenu({
   examDate,
 }: {
   courseId: string
-  node: { id: number; title: string; summary: string | null; ai_hint: string | null; is_root: boolean }
+  node: { id: string; title: string; summary: string | null; ai_hint: string | null; is_root: boolean }
   examDate?: string | null
 }) {
   const { t } = useTranslation()
@@ -44,7 +44,7 @@ export function NodeSettingsMenu({
     mutationFn: async () => {
       if (node.is_root) {
         if (title !== node.title || description !== (node.summary ?? '') || examChanged) {
-          await updateCourse(Number(courseId), {
+          await updateCourse(courseId, {
             ...(title !== node.title ? { title } : {}),
             ...(description !== (node.summary ?? '') ? { description } : {}),
             ...(examChanged ? { exam_date: examDraft.trim() === '' ? null : examDraft } : {}),

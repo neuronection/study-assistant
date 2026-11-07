@@ -38,7 +38,18 @@ import {
   isTableFillInput,
   tableGridComplete,
 } from '@/components/answers/TableFillAnswer'
+import {
+  ExerciseStructuralInput,
+  isStructuralInput,
+  structuralResponseComplete,
+  type StructuralResponse,
+} from '@/components/exercise-inputs/ExerciseInput'
+import {
+  RubricStepInput,
+  rubricResponseComplete,
+} from '@/components/exercise-inputs/RubricInputs'
 import type { Block } from '@/components/blocks/types'
+import type { ExerciseStepInput } from '@/lib/api'
 import { CountdownChip } from '@/features/quiz/CountdownChip'
 import { QuizPrintPaper } from '@/features/quiz/QuizPrintPaper'
 import { Button } from '@/components/ui/button'
@@ -73,7 +84,7 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export function QuizRunner({ activityId }: { activityId: number }) {
+export function QuizRunner({ activityId }: { activityId: string }) {
   const search = useRouterState({ select: (state) => state.location.search as { print?: string } })
   if (search.print === 'paper' || search.print === 'key') {
     return <QuizPrintPaper activityId={activityId} mode={search.print} />
@@ -81,7 +92,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   return <QuizRunnerInner activityId={activityId} />
 }
 
-function QuizRunnerInner({ activityId }: { activityId: number }) {
+function QuizRunnerInner({ activityId }: { activityId: string }) {
   const { t } = useTranslation()
   const presets = useMotionPresets()
   const from = useRouterState({ select: (state) => (state.location.search as { from?: string }).from })
@@ -113,6 +124,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
   const [compositeParts, setCompositeParts] = useState<string[] | null>(null)
   const [graphResponse, setGraphResponse] = useState<GraphReadResponse | null>(null)
   const [codeResponse, setCodeResponse] = useState<CodeRunPayload | null>(null)
+  const [structural, setStructural] = useState<StructuralResponse | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -145,7 +157,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
   const questionsForAttempt = useMemo(() => {
     const list = questions.data ?? []
     if (!shuffleOn || list.length === 0) {
-      return { order: list, optionMaps: new Map<number, number[]>() }
+      return { order: list, optionMaps: new Map<string, number[]>() }
     }
     const seeded = (seed: number) => {
       let state = seed >>> 0
@@ -156,7 +168,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     }
     const rng = seeded(shuffleNonce + list.length)
     const order = [...list].sort(() => rng() - 0.5)
-    const optionMaps = new Map<number, number[]>()
+    const optionMaps = new Map<string, number[]>()
     for (const question of order) {
       if (question.options && (question.type === 'single' || question.type === 'multi')) {
         const indexed = question.options.map((_, index) => index)
@@ -193,6 +205,9 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     }
     if (current.type === 'code') {
       return codeResponse
+    }
+    if (['matching', 'ordering', 'cloze'].includes(current.type)) {
+      return structural
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -374,6 +389,15 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
       (question.type === 'code' &&
         isCodeInput(question.input) &&
         codeResponseComplete(codeResponse, question.input)) ||
+      (['matching', 'ordering', 'cloze'].includes(question.type) &&
+        isStructuralInput(question.input as ExerciseStepInput | null) &&
+        structuralResponseComplete(
+          question.input as ExerciseStepInput,
+          structural
+        )) ||
+      (question.type === 'essay' &&
+        question.input?.widget === 'essay' &&
+        rubricResponseComplete(question.input as ExerciseStepInput, typed)) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -582,6 +606,25 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
                 />
               ) : null}
 
+              {['matching', 'ordering', 'cloze'].includes(question.type) &&
+              isStructuralInput(question.input as ExerciseStepInput | null) ? (
+                <ExerciseStructuralInput
+                  input={question.input as ExerciseStepInput}
+                  value={structural}
+                  onChange={setStructural}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
+              {question.type === 'essay' && question.input?.widget === 'essay' ? (
+                <RubricStepInput
+                  input={question.input as ExerciseStepInput}
+                  value={typed}
+                  onChange={setTyped}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
               {question.type === 'equation' ? (
                 <div
                   className={cn(
@@ -728,6 +771,11 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
                         {t('quiz.verifiedBySymPy')}
                       </span>
                     ) : null}
+                    {feedback.graded_by === 'rubric' ? (
+                      <span className="text-muted-foreground ml-auto text-[11px]">
+                        {t('quiz.aiGraded')}
+                      </span>
+                    ) : null}
                   </p>
                   <div className="text-sm">
                     <BlockRenderer blocks={feedback.explanation as Block[]} />
@@ -791,6 +839,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
                       setIndex(index + 1)
                       setChoice(null)
                       setTyped('')
+                      setStructural(null)
                       setNumberline(null)
                       setTableGrid(null)
                       setCompositeParts(null)

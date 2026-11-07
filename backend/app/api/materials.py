@@ -2,7 +2,7 @@ import base64
 import mimetypes
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..core.profile_context import active_user_id
 from ..core.vocab import (
+    CitationKind,
     DeriveOutcome,
     ExtractionMode,
     MaterialKind,
     MaterialStatus,
+    PreprocessMode,
     applicable_extraction_modes,
 )
 from ..domain.models import (
@@ -29,10 +31,20 @@ from ..domain.models import (
     Profile,
     utcnow,
 )
+from ..domain.payloads import StrokeList
 from ..jobs.payloads import UrlImportPayload
 from ..jobs.runner import JobRunner
+from ..services.content.bibliography import BibliographyError
+from ..services.content.citations import (
+    CitationError,
+    citation_text,
+    export_bibtex,
+    import_bibliography,
+)
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
+    apply_drawing_view,
+    drawing_view,
     enqueue_drawing_ocr,
     pending_ocr_job_id,
     strip_drawing_refs,
@@ -49,6 +61,7 @@ from ..services.platform.profiles import ensure_default_profile
 from .courses_schemas import ViaFolderOut
 from .deps import content_disposition, get_session
 from .schemas import (
+    CitationAuthorOut,
     DrawingIn,
     DrawingOut,
     ExtractionEdit,
@@ -70,12 +83,12 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class MaterialDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 class TextFileIn(BaseModel):
-    course_id: int
-    folder_id: int | None = None
+    course_id: str
+    folder_id: str | None = None
     filename: str = Field(min_length=1, max_length=300)
     content: str = Field(default="", max_length=2_000_000)
     description: str | None = Field(default=None, max_length=2_000)
@@ -89,27 +102,27 @@ class MaterialPatch(BaseModel):
 
 
 class MaterialMove(BaseModel):
-    folder_id: int | None = None
+    folder_id: str | None = None
 
 
 class MaterialCopyIn(BaseModel):
-    folder_id: int | None = None
+    folder_id: str | None = None
 
 
 class MaterialDeriveIn(BaseModel):
-    folder_id: int | None = None
-    node_id: int | None = None
+    folder_id: str | None = None
+    node_id: str | None = None
 
 
 class MaterialBatchDeriveIn(BaseModel):
-    material_ids: list[int] = Field(min_length=1, max_length=200)
+    material_ids: list[str] = Field(min_length=1, max_length=200)
 
 
 class DeriveResultOut(BaseModel):
-    material_id: int
+    material_id: str
     outcome: DeriveOutcome
     material: MaterialOut | None = None
-    job_id: int | None = None
+    job_id: str | None = None
 
 
 class MaterialBatchDeriveOut(BaseModel):
@@ -126,15 +139,14 @@ REINGESTABLE_KINDS = frozenset(
 
 class ReingestOptionsIn(BaseModel):
     mode: ExtractionMode | None = None
+    preprocess: PreprocessMode | None = None
 
 
 def _service(request: Request, session: Session) -> MaterialsService:
     return MaterialsService(session, request.app.state.blobs)
 
 
-def _to_out(
-    material: Material, has_extraction: bool = False, link_count: int = 0
-) -> MaterialOut:
+def _to_out(material: Material, has_extraction: bool = False, link_count: int = 0) -> MaterialOut:
     return MaterialOut(
         id=material.id,
         title=material.title,
@@ -145,16 +157,29 @@ def _to_out(
         mime=material.mime,
         pages=material.pages,
         course_id=material.course_id,
-        group_id=material.group_id,
         folder_id=material.folder_id,
         blob_sha=material.blob_sha,
-        provenance=material.provenance,
+        provenance=cast(dict[str, Any] | None, material.provenance),
         created_at=material.created_at,
         source_url=material.source_url,
         has_extraction=has_extraction,
         tags=list(material.tags or []),
         starred=material.starred,
         link_count=link_count,
+        citation_title=material.citation_title,
+        citation_authors=[
+            CitationAuthorOut(
+                name=str(entry.get("name", "")),
+                affiliation=entry.get("affiliation"),
+            )
+            for entry in material.citation_authors or []
+        ]
+        or None,
+        citation_year=material.citation_year,
+        citation_doi=material.citation_doi,
+        citation_container=material.citation_container,
+        citation_kind=CitationKind(material.citation_kind) if material.citation_kind else None,
+        citation_text=citation_text(material),
     )
 
 
@@ -163,8 +188,8 @@ def _drawings_out(session: Session, material: Material) -> list[DrawingOut]:
         DrawingOut(
             id=drawing.id,
             png_sha=drawing.png_sha,
-            strokes=drawing.strokes,
-            view=ViewBox(**drawing.view) if drawing.view else None,
+            strokes=cast(list[dict[str, Any]], drawing.strokes),
+            view=ViewBox(**resolved) if (resolved := drawing_view(drawing)) else None,
             ocr_version=drawing.ocr_version,
             ocr_markdown=drawing.ocr_markdown,
             ocr_job_id=pending_ocr_job_id(session, drawing),
@@ -188,7 +213,7 @@ def _material_detail(
                 version=extraction.version,
                 extractor=extraction.extractor,
                 markdown=extraction.markdown,
-                blocks=extraction.blocks,
+                blocks=cast(list[dict[str, Any]], extraction.blocks),
             )
             if extraction is not None
             else None
@@ -225,9 +250,9 @@ def _material_detail(
 async def upload_material(
     request: Request,
     file: UploadFile,
-    course_id: int,
-    folder_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str,
+    folder_id: str | None = None,
+    node_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
     data = await file.read()
@@ -262,7 +287,7 @@ async def upload_material(
             )
         except CourseError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
@@ -290,17 +315,17 @@ def accepted_types() -> AcceptedTypesOut:
 
 
 class ComposeIn(BaseModel):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     kind: str = "study_guide"
     title: str | None = Field(default=None, max_length=300)
     instructions: str | None = Field(default=None, max_length=4000)
     extra_md: str | None = Field(default=None, max_length=20000)
     scope: str = "subtree"
-    include_material_ids: list[int] = Field(default_factory=list)
-    exclude_material_ids: list[int] = Field(default_factory=list)
-    note_ids: list[int] = Field(default_factory=list)
-    concept_ids: list[int] = Field(default_factory=list)
+    include_material_ids: list[str] = Field(default_factory=list)
+    exclude_material_ids: list[str] = Field(default_factory=list)
+    note_ids: list[str] = Field(default_factory=list)
+    concept_ids: list[str] = Field(default_factory=list)
     context_hint: str | None = Field(default=None, max_length=2000)
     regenerate: bool = False
     include_unassigned: bool = False
@@ -343,14 +368,10 @@ def compose_material(
     from ..services.content.materials import MaterialsService
     from ..services.knowledge.tree import TreeService
 
-    placement_node_id = (
-        bundle.node.id if bundle.node is not None else body.node_id
-    )
+    placement_node_id = bundle.node.id if bundle.node is not None else body.node_id
     if placement_node_id is None:
         placement_node_id = TreeService(session).ensure_root(body.course_id).id
-    live = find_live_artifact(
-        session, body.course_id, placement_node_id, body.kind
-    )
+    live = find_live_artifact(session, body.course_id, placement_node_id, body.kind)
     existing_md: str | None = None
     if live is not None and not body.regenerate:
         raise HTTPException(
@@ -362,14 +383,12 @@ def compose_material(
             ),
         )
     if live is not None:
-        extraction = (
-            session.scalars(
-                select(Extraction)
-                .where(Extraction.material_id == live.id)
-                .order_by(Extraction.version.desc())
-                .limit(1)
-            ).first()
-        )
+        extraction = session.scalars(
+            select(Extraction)
+            .where(Extraction.material_id == live.id)
+            .order_by(Extraction.version.desc())
+            .limit(1)
+        ).first()
         existing_md = extraction.markdown if extraction is not None else None
     try:
         material = ComposeService(session, request.app.state.gateway).compose(
@@ -398,7 +417,7 @@ def compose_material(
 
 
 class ComposeQueuedOut(BaseModel):
-    job_id: int
+    job_id: str
 
 
 @router.post("/compose/async", response_model=ComposeQueuedOut)
@@ -503,7 +522,7 @@ class ExtractionVersionOut(BaseModel):
 
 @router.get("/{material_id}/extractions", response_model=list[ExtractionVersionOut])
 def list_extraction_versions(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> list[ExtractionVersionOut]:
@@ -537,9 +556,7 @@ class ExtractionDiffOut(BaseModel):
     diff: str
 
 
-def _resolve_extraction_ref(
-    rows_by_version: dict[int, Extraction], ref: str
-) -> tuple[str, str]:
+def _resolve_extraction_ref(rows_by_version: dict[int, Extraction], ref: str) -> tuple[str, str]:
     if ref == "current":
         latest = max(rows_by_version)
         return rows_by_version[latest].markdown, f"v{latest}"
@@ -557,7 +574,7 @@ def _resolve_extraction_ref(
 
 @router.get("/{material_id}/extractions/diff", response_model=ExtractionDiffOut)
 def diff_extraction_versions(
-    material_id: int,
+    material_id: str,
     request: Request,
     from_ref: str = Query(alias="from"),
     to_ref: str = Query(alias="to"),
@@ -590,7 +607,7 @@ def diff_extraction_versions(
 
 @router.get("/{material_id}/extractions/{version}", response_model=ExtractionOut)
 def get_extraction_version(
-    material_id: int,
+    material_id: str,
     version: int,
     request: Request,
     session: Session = Depends(get_session),
@@ -615,7 +632,7 @@ def get_extraction_version(
 
 @router.post("/{material_id}/mindmap-edit", response_model=MindmapEditOut)
 def mindmap_edit(
-    material_id: int,
+    material_id: str,
     body: MindmapEditIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -660,8 +677,8 @@ def mindmap_edit(
 @router.get("", response_model=list[MaterialOut])
 def list_materials(
     request: Request,
-    course_id: int | None = None,
-    folder_id: int | None = None,
+    course_id: str | None = None,
+    folder_id: str | None = None,
     unfiled: bool = False,
     tag: str | None = None,
     starred: bool = False,
@@ -677,7 +694,7 @@ def list_materials(
         tag=tag,
         starred=starred,
     )
-    extraction_ids: set[int] = set()
+    extraction_ids: set[str] = set()
     if materials:
         extraction_ids = set(
             session.scalars(
@@ -686,7 +703,7 @@ def list_materials(
                 )
             )
         )
-    link_counts: dict[int, int] = {}
+    link_counts: dict[str, int] = {}
     if materials:
         for material_id, count in session.execute(
             select(MaterialLink.material_id, func.count())
@@ -705,28 +722,26 @@ def list_materials(
 
 
 class LinkBreadcrumbOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class MaterialLinkInfoOut(BaseModel):
-    node_id: int
+    node_id: str
     owner_title: str
     breadcrumb: list[LinkBreadcrumbOut]
     is_course_level: bool
-    course_id: int
+    course_id: str
     course_title: str
     auto_assigned: bool
     rationale: str | None
     via_folder: ViaFolderOut | None
 
 
-@router.get(
-    "/{material_id}/links", response_model=list[MaterialLinkInfoOut]
-)
+@router.get("/{material_id}/links", response_model=list[MaterialLinkInfoOut])
 def material_links(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
@@ -740,17 +755,17 @@ _URL_IMPORTS_IN_FLIGHT: set[str] = set()
 
 
 class UrlImportIn(BaseModel):
-    course_id: int
+    course_id: str
     url: str = Field(min_length=8, max_length=2_000)
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 class LinkIn(BaseModel):
-    course_id: int
+    course_id: str
     url: str = Field(min_length=8, max_length=2_048)
     title: str | None = Field(default=None, max_length=300)
-    node_id: int | None = None
-    folder_id: int | None = None
+    node_id: str | None = None
+    folder_id: str | None = None
 
 
 @router.post("/link", response_model=MaterialUploadOut)
@@ -777,7 +792,7 @@ def create_link_material(
 
 @router.post("/{material_id}/parse", response_model=MaterialJobOut)
 def parse_link_material(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialJobOut:
@@ -787,9 +802,7 @@ def parse_link_material(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     if material.source_url is None:
-        raise HTTPException(
-            status_code=422, detail="only URL references can be parsed"
-        )
+        raise HTTPException(status_code=422, detail="only URL references can be parsed")
     registry = build_registry(
         getattr(request.app.state, "search_transport", None),
         language=material.language,
@@ -813,7 +826,7 @@ def parse_link_material(
 
 @router.post("/{material_id}/transcribe-audio", response_model=MaterialJobOut)
 def transcribe_link_audio(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialJobOut:
@@ -823,9 +836,7 @@ def transcribe_link_audio(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     if material.source_url is None or not is_youtube_url(material.source_url):
-        raise HTTPException(
-            status_code=422, detail="only YouTube references can be transcribed"
-        )
+        raise HTTPException(status_code=422, detail="only YouTube references can be transcribed")
     job = JobRunner.enqueue(
         session,
         "url_import",
@@ -844,14 +855,12 @@ def import_url_material(
 ) -> MaterialUploadOut:
     from urllib.parse import urlparse
 
-    from ..search.provider import SearchError, perform_fetch
+    from ..extensions.search.provider import SearchError, perform_fetch
 
     service = _service(request, session)
     profile = ensure_default_profile(session)
     if profile.id in _URL_IMPORTS_IN_FLIGHT:
-        raise HTTPException(
-            status_code=409, detail="a URL import is already running"
-        )
+        raise HTTPException(status_code=409, detail="a URL import is already running")
     parsed = urlparse(body.url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status_code=422, detail="expecting an http(s) URL")
@@ -866,12 +875,7 @@ def import_url_material(
             raise HTTPException(status_code=422, detail=str(error)) from None
         today = utcnow().date().isoformat()
         markdown = (
-            "---\n"
-            "source: web\n"
-            f"url: {body.url.strip()}\n"
-            f"imported: {today}\n"
-            "---\n\n"
-            f"{content}\n"
+            f"---\nsource: web\nurl: {body.url.strip()}\nimported: {today}\n---\n\n{content}\n"
         )
         host = parsed.netloc.split(":")[0]
         path_name = parsed.path.rstrip("/").rsplit("/", 1)[-1] or host
@@ -888,9 +892,7 @@ def import_url_material(
         material.provenance = {"source": "web", "url": body.url.strip()}
         if body.node_id is not None:
             try:
-                node_id = TreeService(session).placement_node(
-                    body.course_id, body.node_id
-                )
+                node_id = TreeService(session).placement_node(body.course_id, body.node_id)
             except TreeError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
             session.add(
@@ -902,13 +904,11 @@ def import_url_material(
                 )
             )
             session.flush()
-        job_id: int | None = None
+        job_id: str | None = None
         if not deduped:
             job_id = service.queue_ingest(material, request.app.state.jobs)
         session.commit()
-        return MaterialUploadOut(
-            material=_to_out(material), job_id=job_id, deduped=deduped
-        )
+        return MaterialUploadOut(material=_to_out(material), job_id=job_id, deduped=deduped)
     finally:
         _URL_IMPORTS_IN_FLIGHT.discard(profile.id)
 
@@ -932,17 +932,93 @@ def create_text_file(
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
     return MaterialUploadOut(material=_to_out(material), job_id=job_id, deduped=deduped)
 
 
+class BibliographyImportOut(BaseModel):
+    created: int
+    deduped: int
+    skipped: list[str] = Field(default_factory=list)
+    materials: list[MaterialOut] = Field(default_factory=list)
+
+
+@router.post("/import-bibliography", response_model=BibliographyImportOut)
+async def import_bibliography_file(
+    request: Request,
+    file: UploadFile,
+    course_id: str,
+    node_id: str | None = None,
+    session: Session = Depends(get_session),
+) -> BibliographyImportOut:
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="bibliography file is empty")
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="bibliography exceeds the 5 MB limit")
+    service = _service(request, session)
+    profile = ensure_default_profile(session)
+    try:
+        report = import_bibliography(
+            session,
+            service,
+            profile_id=profile.id,
+            course_id=course_id,
+            filename=file.filename or "bibliography.bib",
+            data=data,
+            node_id=node_id,
+        )
+    except (BibliographyError, CitationError) as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    rows = [
+        session.get(Material, material_id) for material_id in dict.fromkeys(report.material_ids)
+    ]
+    return BibliographyImportOut(
+        created=report.created,
+        deduped=report.deduped,
+        skipped=report.skipped,
+        materials=[_to_out(row) for row in rows if row is not None],
+    )
+
+
+@router.get("/bibliography.bib")
+def export_bibliography(
+    ids: list[str] | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> Response:
+    ids = ids or []
+    if not ids:
+        raise HTTPException(status_code=422, detail="select at least one material")
+    if len(ids) > 500:
+        raise HTTPException(status_code=422, detail="at most 500 materials per export")
+    profile = ensure_default_profile(session)
+    rows = list(
+        session.scalars(
+            select(Material).where(
+                Material.profile_id == profile.id,
+                Material.id.in_(ids),
+            )
+        )
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="no matching materials")
+    text = export_bibtex(rows)
+    return Response(
+        content=text,
+        media_type="application/x-bibtex",
+        headers={"Content-Disposition": 'attachment; filename="citations.bib"'},
+    )
+
+
 @router.patch("/{material_id}", response_model=MaterialOut)
 def update_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialPatch,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -965,15 +1041,13 @@ def update_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        material, has_extraction=service.latest_extraction(material.id) is not None
-    )
+    return _to_out(material, has_extraction=service.latest_extraction(material.id) is not None)
 
 
 @router.post("/{material_id}/reingest", response_model=MaterialUploadOut)
 def reingest_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     options: ReingestOptionsIn | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
@@ -999,7 +1073,15 @@ def reingest_material(
                 f"(allowed: {allowed})"
             ),
         )
-    job_id = service.queue_ingest(material, request.app.state.jobs, mode=mode.value)
+    preprocess = (
+        PreprocessMode.AUTO if options is None or options.preprocess is None else options.preprocess
+    )
+    job_id = service.queue_ingest(
+        material,
+        request.app.state.jobs,
+        mode=mode.value,
+        preprocess=preprocess.value,
+    )
     session.commit()
     return MaterialUploadOut(
         material=_to_out(
@@ -1013,7 +1095,7 @@ def reingest_material(
 @router.patch("/{material_id}/move", response_model=MaterialOut)
 def move_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialMove,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -1027,15 +1109,13 @@ def move_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        material, has_extraction=service.latest_extraction(material.id) is not None
-    )
+    return _to_out(material, has_extraction=service.latest_extraction(material.id) is not None)
 
 
 @router.post("/{material_id}/copy", response_model=MaterialOut, status_code=201)
 def copy_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialCopyIn,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -1049,9 +1129,7 @@ def copy_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        copy, has_extraction=service.latest_extraction(copy.id) is not None
-    )
+    return _to_out(copy, has_extraction=service.latest_extraction(copy.id) is not None)
 
 
 @router.post("/derive", response_model=MaterialBatchDeriveOut, status_code=201)
@@ -1083,7 +1161,7 @@ def derive_materials_batch(
 @router.post("/{material_id}/derive", response_model=MaterialUploadOut, status_code=201)
 def derive_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialDeriveIn,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
@@ -1096,7 +1174,7 @@ def derive_material(
         derived, deduped = service.derive(material, body.folder_id, body.node_id)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(derived, request.app.state.jobs)
     session.commit()
@@ -1106,7 +1184,7 @@ def derive_material(
 @router.delete("/{material_id}", response_model=MaterialDeletedOut)
 def delete_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     service = _service(request, session)
@@ -1116,9 +1194,7 @@ def delete_material(
         raise HTTPException(status_code=404, detail="material not found")
     from ..services.platform import trash
 
-    deleted_item_id = trash.snapshot(
-        session, "material", material.id, material.title, profile.id
-    )
+    deleted_item_id = trash.snapshot(session, "material", material.id, material.title, profile.id)
     purge_material(session, material)
     session.commit()
     return {"deleted_item_id": deleted_item_id}
@@ -1127,7 +1203,7 @@ def delete_material(
 @router.get("/{material_id}", response_model=MaterialDetailOut)
 def get_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:
     service = _service(request, session)
@@ -1152,7 +1228,7 @@ def _extraction_to_out(extraction: Any) -> ExtractionOut:
 @router.patch("/{material_id}/extraction", response_model=ExtractionOut)
 def edit_extraction(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: ExtractionEdit,
     session: Session = Depends(get_session),
 ) -> ExtractionOut:
@@ -1162,7 +1238,7 @@ def edit_extraction(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     try:
-        extraction, old_chunk_ids = service.edit_extraction(material, body.markdown)
+        extraction, replaced_chunk_ids = service.edit_extraction(material, body.markdown)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     JobRunner.enqueue(
@@ -1171,7 +1247,7 @@ def edit_extraction(
         {
             "material_id": material.id,
             "extraction_id": extraction.id,
-            "old_chunk_ids": old_chunk_ids,
+            "replaced_chunk_ids": replaced_chunk_ids,
         },
     )
     session.commit()
@@ -1179,9 +1255,7 @@ def edit_extraction(
     return _extraction_to_out(extraction)
 
 
-def _refresh_material_fts(
-    session: Session, service: MaterialsService, material: Material
-) -> None:
+def _refresh_material_fts(session: Session, service: MaterialsService, material: Material) -> None:
     latest = service.latest_extraction(material.id)
     markdown = latest.markdown if latest is not None else ""
     from ..storage.fts import sync_material_fts
@@ -1206,8 +1280,8 @@ def _store_material_drawing(
         material_id=material.id,
         strokes=body.strokes,
         png_sha=stored.sha256,
-        view=body.view.model_dump() if body.view is not None else None,
     )
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     session.add(drawing)
     session.flush()
     if run_ocr:
@@ -1222,7 +1296,7 @@ def _store_material_drawing(
 
 @router.post("/{material_id}/drawings", response_model=MaterialDetailOut, status_code=201)
 def add_material_drawing(
-    material_id: int,
+    material_id: str,
     body: DrawingIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1239,8 +1313,8 @@ def add_material_drawing(
 
 @router.put("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
 def update_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     body: DrawingIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1258,9 +1332,9 @@ def update_material_drawing(
     except (ValueError, TypeError) as error:
         raise HTTPException(status_code=422, detail="invalid png_base64") from error
     stored = request.app.state.blobs.put(png, mime="image/png", session=session)
-    drawing.strokes = body.strokes
+    drawing.strokes = cast(StrokeList, body.strokes)
     drawing.png_sha = stored.sha256
-    drawing.view = body.view.model_dump() if body.view is not None else None
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     if body.ocr:
         drawing.ocr_job_id = enqueue_drawing_ocr(
             session, kind="material", owner_id=material.id, drawing_id=drawing.id
@@ -1277,8 +1351,8 @@ def update_material_drawing(
 
 @router.post("/{material_id}/drawings/{drawing_id}/reocr", response_model=MaterialDetailOut)
 def reocr_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:
@@ -1303,8 +1377,8 @@ def reocr_material_drawing(
 
 @router.delete("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
 def delete_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:
@@ -1385,9 +1459,7 @@ def get_blob(
     mime = blob_row.mime
     filename: str | None = None
     if not mime or mime == "application/octet-stream":
-        material = session.scalars(
-            select(Material).where(Material.blob_sha == sha256)
-        ).first()
+        material = session.scalars(select(Material).where(Material.blob_sha == sha256)).first()
         if material is not None:
             filename = material.filename
             guessed = mimetypes.guess_type(material.filename)[0]

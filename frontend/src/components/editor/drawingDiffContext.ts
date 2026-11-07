@@ -6,8 +6,8 @@ export interface DrawingOcrDiff {
 }
 
 export interface DrawingDiffStore {
-  diffs: ReadonlyMap<number, DrawingOcrDiff>
-  dismiss: (drawingId: number) => void
+  diffs: ReadonlyMap<string, DrawingOcrDiff>
+  dismiss: (drawingId: string) => void
 }
 
 export const DrawingDiffContext = createContext<DrawingDiffStore | null>(null)

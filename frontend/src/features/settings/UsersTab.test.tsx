@@ -10,6 +10,8 @@ const listAdminUsers = vi.fn()
 const patchAdminUser = vi.fn()
 const resetAdminUserPassword = vi.fn()
 const forceLogoutUser = vi.fn()
+const updateInstanceMode = vi.fn()
+const getInstanceConfig = vi.fn()
 const getCurrentUser = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -22,6 +24,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
     resetAdminUserPassword: (...args: unknown[]) =>
       resetAdminUserPassword(...(args as [string, string])),
     forceLogoutUser: (...args: unknown[]) => forceLogoutUser(...(args as [string])),
+    updateInstanceMode: (...args: unknown[]) =>
+      updateInstanceMode(...(args as [string, string])),
+    getInstanceConfig: () => getInstanceConfig(),
   }
 })
 
@@ -76,6 +81,31 @@ describe('UsersTab', () => {
     })
     listAdminUsers.mockResolvedValue(USERS)
     patchAdminUser.mockResolvedValue(USERS[0])
+    updateInstanceMode.mockResolvedValue(undefined)
+    getInstanceConfig.mockResolvedValue({
+      demo_mode: false,
+      auth_mode: 'authenticated',
+      registration_enabled: true,
+    })
+  })
+
+  test('drives the §4.5 instance transition through the api layer', async () => {
+    listAdminUsers.mockResolvedValueOnce([USERS[0]])
+    renderTab()
+    await screen.findByText('ada@example.com')
+
+    const submit = screen.getByRole('button', { name: 'Disable login' })
+    fireEvent.click(submit)
+    expect(updateInstanceMode).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'current-secret-pw' },
+    })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(submit)
+    await waitFor(() =>
+      expect(updateInstanceMode).toHaveBeenCalledWith('open', 'current-secret-pw'),
+    )
   })
 
   test('renders rows with "(you)", activity count, role and status', async () => {

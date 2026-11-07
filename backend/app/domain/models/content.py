@@ -1,3 +1,51 @@
+from ...core.vocab import (
+    AuthKind as AuthKind,
+)
+from ...core.vocab import (
+    CitationKind as CitationKind,
+)
+from ...core.vocab import (
+    ConceptRelation as ConceptRelation,
+)
+from ...core.vocab import (
+    DiscoveryKind as DiscoveryKind,
+)
+from ...core.vocab import (
+    ExternalSourceKind as ExternalSourceKind,
+)
+from ...core.vocab import (
+    MaterialKind as MaterialKind,
+)
+from ...core.vocab import (
+    MaterialStatus as MaterialStatus,
+)
+from ...core.vocab import (
+    SourcePreset as SourcePreset,
+)
+from ...core.vocab import (
+    StudyStatus as StudyStatus,
+)
+from ...core.vocab import (
+    SuggestionStatus as SuggestionStatus,
+)
+from ..documents import (
+    DOCUMENT_SCHEMA_VERSION as DOCUMENT_SCHEMA_VERSION,
+)
+from ..documents import (
+    validate_document as validate_document,
+)
+from ..payloads import (
+    AuthorList,
+    BlockList,
+    ExternalSourceCursorDocument,
+    ExternalSourceOptions,
+    ExtractionConfidence,
+    MaterialProvenance,
+    StringList,
+    StrokeList,
+    SuggestionMeta,
+)
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -44,7 +92,13 @@ from .core import (
     datetime as datetime,
 )
 from .core import (
+    false as false,
+)
+from .core import (
     mapped_column as mapped_column,
+)
+from .core import (
+    new_uuid as new_uuid,
 )
 from .core import (
     relationship as relationship,
@@ -54,6 +108,9 @@ from .core import (
 )
 from .core import (
     utcnow as utcnow,
+)
+from .core import (
+    validates as validates,
 )
 
 
@@ -66,20 +123,23 @@ class Blob(Base):
     mime: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class Concept(Base):
     __tablename__ = "concepts"
-    __table_args__ = (
-        Index("uq_concepts_course_name", "course_id", "name", unique=True),
-    )
+    __table_args__ = (Index("uq_concepts_course_name", "course_id", "name", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
-    aliases: Mapped[list[str] | None] = mapped_column(JSON)
+    aliases: Mapped[StringList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 CONCEPT_RELATIONS = ("prereq-of", "part-of", "related-to")
+
 
 class ConceptLink(Base):
     __tablename__ = "concept_links"
@@ -91,27 +151,34 @@ class ConceptLink(Base):
             "relation",
             unique=True,
         ),
+        vocab_check("relation", ConceptRelation),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    from_concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
-    to_concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    from_concept_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("concepts.id", ondelete="CASCADE")
+    )
+    to_concept_id: Mapped[str] = mapped_column(_UUID, ForeignKey("concepts.id", ondelete="CASCADE"))
     relation: Mapped[str] = mapped_column(String(30))
 
     from_concept: Mapped[Concept] = relationship(foreign_keys=[from_concept_id])
     to_concept: Mapped[Concept] = relationship(foreign_keys=[to_concept_id])
 
+
 class NodeConcept(Base):
     __tablename__ = "node_concepts"
     __table_args__ = (Index("uq_node_concepts", "node_id", "concept_id", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    node_id: Mapped[int] = mapped_column(
-        ForeignKey("tree_nodes.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    node_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("tree_nodes.id", ondelete="CASCADE"), index=True
     )
-    concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
+    concept_id: Mapped[str] = mapped_column(_UUID, ForeignKey("concepts.id", ondelete="CASCADE"))
     weight: Mapped[float | None] = mapped_column(Float)
+
 
 class MaterialLink(Base):
     __tablename__ = "material_links"
@@ -119,19 +186,22 @@ class MaterialLink(Base):
         Index("uq_material_links_node", "node_id", "material_id", unique=True),
         Index("ix_material_links_node", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    node_id: Mapped[int] = mapped_column(Integer)
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    extraction_id: Mapped[int | None] = mapped_column(
-        ForeignKey("extractions.id", ondelete="CASCADE")
+    node_id: Mapped[str] = mapped_column(_UUID)
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    )
+    extraction_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("extractions.id", ondelete="CASCADE")
     )
     rationale: Mapped[str | None] = mapped_column(Text)
     auto_assigned: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -140,24 +210,26 @@ class MaterialLink(Base):
 
     material: Mapped["Material"] = relationship()
 
+
 class MaterialFolderLink(Base):
     __tablename__ = "material_folder_links"
     __table_args__ = (
-        Index(
-            "uq_material_folder_links_node", "node_id", "folder_id", unique=True
-        ),
+        Index("uq_material_folder_links_node", "node_id", "folder_id", unique=True),
         Index("ix_material_folder_links_node", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    node_id: Mapped[int] = mapped_column(Integer)
-    folder_id: Mapped[int] = mapped_column(
-        ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str] = mapped_column(_UUID)
+    folder_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
     )
     rationale: Mapped[str | None] = mapped_column(Text)
     auto_assigned: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -166,15 +238,17 @@ class MaterialFolderLink(Base):
 
     folder: Mapped["MaterialFolder"] = relationship()
 
+
 class MaterialStudyState(Base):
     __tablename__ = "material_study_state"
     __table_args__ = (
         Index("uq_material_study_state", "material_id", "profile_id", unique=True),
+        vocab_check("status", StudyStatus),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
@@ -182,6 +256,7 @@ class MaterialStudyState(Base):
     status: Mapped[str] = mapped_column(String(20), default="unread")
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class MaterialFolder(Base):
     __tablename__ = "material_folders"
@@ -196,20 +271,23 @@ class MaterialFolder(Base):
         Index("uq_material_folders_source_id", "source_id", unique=True),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    parent_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(String(200))
     path: Mapped[str] = mapped_column(String(1000))
-    source_id: Mapped[int | None] = mapped_column(
-        ForeignKey("material_sources.id", ondelete="CASCADE"), unique=False
+    source_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("material_sources.id", ondelete="CASCADE"), unique=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class Material(Base):
     __tablename__ = "materials"
@@ -232,28 +310,28 @@ class Material(Base):
             "course_id",
             "source_url_norm",
             unique=True,
-            sqlite_where=text(
-                "kind = 'link' AND source_url_norm IS NOT NULL"
-            ),
+            sqlite_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
             postgresql_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
         ),
+        vocab_check("kind", MaterialKind),
+        vocab_check("status", MaterialStatus),
+        vocab_check("citation_kind", CitationKind, nullable=True),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    group_id: Mapped[int | None] = mapped_column(
-        ForeignKey("material_groups.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    folder_id: Mapped[int | None] = mapped_column(
-        ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
+    folder_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
     )
     kind: Mapped[str] = mapped_column(String(30))
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str | None] = mapped_column(Text)
-    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     filename: Mapped[str] = mapped_column(String(500))
     mime: Mapped[str | None] = mapped_column(String(120))
     pages: Mapped[int | None] = mapped_column(Integer)
@@ -261,13 +339,19 @@ class Material(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     phash: Mapped[str | None] = mapped_column(String(24))
-    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
-    starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    provenance: Mapped[MaterialProvenance | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
+    citation_title: Mapped[str | None] = mapped_column(String(500))
+    citation_authors: Mapped[AuthorList | None] = mapped_column(JSON)
+    citation_year: Mapped[int | None] = mapped_column(Integer)
+    citation_doi: Mapped[str | None] = mapped_column(String(255))
+    citation_container: Mapped[str | None] = mapped_column(String(300))
+    citation_kind: Mapped[str | None] = mapped_column(String(30))
+    starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     source_url: Mapped[str | None] = mapped_column(String(2048))
     source_url_norm: Mapped[str | None] = mapped_column(String(2048))
-    source_id: Mapped[int | None] = mapped_column(Integer)
+    source_id: Mapped[str | None] = mapped_column(_UUID)
     external_path: Mapped[str | None] = mapped_column(String(1000))
     file_mtime: Mapped[float | None] = mapped_column(Float)
     file_size: Mapped[int | None] = mapped_column(Integer)
@@ -290,16 +374,16 @@ class Material(Base):
 class MaterialImage(Base):
     __tablename__ = "material_images"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
     position: Mapped[int] = mapped_column(Integer, default=0)
-    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     mime: Mapped[str | None] = mapped_column(String(120))
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
-    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
+    ocr_job_id: Mapped[str | None] = mapped_column(_UUID)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     material: Mapped[Material] = relationship(back_populates="images")
@@ -308,16 +392,17 @@ class MaterialImage(Base):
 class Extraction(Base):
     __tablename__ = "extractions"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
     version: Mapped[int] = mapped_column(Integer, default=1)
     extractor: Mapped[str] = mapped_column(String(50))
     model: Mapped[str | None] = mapped_column(String(120))
-    blocks: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    blocks: Mapped[BlockList] = mapped_column(JSON)
+    blocks_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     markdown: Mapped[str] = mapped_column(Text)
-    confidence: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    confidence: Mapped[ExtractionConfidence | None] = mapped_column(JSON)
     language: Mapped[str | None] = mapped_column(String(10))
     token_in: Mapped[int | None] = mapped_column(Integer)
     token_out: Mapped[int | None] = mapped_column(Integer)
@@ -331,12 +416,18 @@ class Extraction(Base):
         back_populates="extraction", order_by="Chunk.ordinal"
     )
 
+    @validates("blocks")
+    def _validate_blocks(self, key: str, value: Any) -> Any:
+        self.blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("extractions.blocks", value)
+
+
 class Chunk(Base):
     __tablename__ = "chunks"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    extraction_id: Mapped[int] = mapped_column(
-        ForeignKey("extractions.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    extraction_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("extractions.id", ondelete="CASCADE"), index=True
     )
     ordinal: Mapped[int] = mapped_column(Integer)
     text: Mapped[str] = mapped_column(Text)
@@ -344,35 +435,59 @@ class Chunk(Base):
 
     extraction: Mapped[Extraction] = relationship(back_populates="chunks")
 
+
 class MaterialDrawing(Base):
     __tablename__ = "material_drawings"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
-    strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
-    view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    strokes: Mapped[StrokeList] = mapped_column(JSON)
+    strokes_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
+    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
+    view_x: Mapped[float | None] = mapped_column(Float)
+    view_y: Mapped[float | None] = mapped_column(Float)
+    view_width: Mapped[float | None] = mapped_column(Float)
+    view_height: Mapped[float | None] = mapped_column(Float)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
-    ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    ocr_blocks: Mapped[BlockList | None] = mapped_column(JSON)
+    ocr_blocks_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
-    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
+    ocr_job_id: Mapped[str | None] = mapped_column(_UUID)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     material: Mapped[Material] = relationship(back_populates="drawings")
 
+    @validates("strokes")
+    def _validate_strokes(self, key: str, value: Any) -> Any:
+        self.strokes_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("material_drawings.strokes", value)
+
+    @validates("ocr_blocks")
+    def _validate_ocr_blocks(self, key: str, value: Any) -> Any:
+        self.ocr_blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        if value is None:
+            return None
+        return validate_document("material_drawings.ocr_blocks", value)
+
+
 class MaterialIndexCard(Base):
     __tablename__ = "material_index_cards"
 
-    material_id: Mapped[int] = mapped_column(
-        ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True
+    material_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True
     )
     summary: Mapped[str | None] = mapped_column(Text)
-    topics: Mapped[list[str] | None] = mapped_column(JSON)
-    key_terms: Mapped[list[str] | None] = mapped_column(JSON)
+    topics: Mapped[StringList | None] = mapped_column(JSON)
+    key_terms: Mapped[StringList | None] = mapped_column(JSON)
     reading_minutes: Mapped[int | None] = mapped_column(Integer)
     difficulty: Mapped[int | None] = mapped_column(Integer)
+
 
 class Note(Base):
     __tablename__ = "notes"
@@ -380,24 +495,33 @@ class Note(Base):
         Index("ix_notes_owner", "owner_type", "owner_id"),
         Index("ix_notes_node_id", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     owner_type: Mapped[str] = mapped_column(String(30), default="standalone")
-    owner_id: Mapped[int | None] = mapped_column(Integer)
+    owner_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
-    body: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    body: Mapped[BlockList] = mapped_column(JSON)
+    body_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     search_text: Mapped[str] = mapped_column(Text, default="")
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    source_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("material_sources.id", ondelete="SET NULL"), index=True
+    )
+    external_path: Mapped[str | None] = mapped_column(String(1000))
+    file_mtime: Mapped[float | None] = mapped_column(Float)
+    file_size: Mapped[int | None] = mapped_column(Integer)
+    content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -407,75 +531,170 @@ class Note(Base):
         back_populates="note", cascade="all, delete-orphan"
     )
 
+    @validates("body")
+    def _validate_body(self, key: str, value: Any) -> Any:
+        self.body_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("notes.body", value)
+
+
+class NoteLink(Base):
+    __tablename__ = "note_links"
+    __table_args__ = (
+        Index("uq_note_links_from_target", "from_note_id", "target", unique=True),
+        Index("ix_note_links_to_note", "to_note_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
+    from_note_id: Mapped[str] = mapped_column(_UUID, ForeignKey("notes.id", ondelete="CASCADE"))
+    to_note_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("notes.id", ondelete="CASCADE")
+    )
+    target: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class NoteDrawing(Base):
     __tablename__ = "note_drawings"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    note_id: Mapped[int] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
-    strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
-    view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    note_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("notes.id", ondelete="CASCADE"), index=True
+    )
+    strokes: Mapped[StrokeList] = mapped_column(JSON)
+    strokes_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
+    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
+    view_x: Mapped[float | None] = mapped_column(Float)
+    view_y: Mapped[float | None] = mapped_column(Float)
+    view_width: Mapped[float | None] = mapped_column(Float)
+    view_height: Mapped[float | None] = mapped_column(Float)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
-    ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    ocr_blocks: Mapped[BlockList | None] = mapped_column(JSON)
+    ocr_blocks_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
-    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
+    ocr_job_id: Mapped[str | None] = mapped_column(_UUID)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     note: Mapped[Note] = relationship(back_populates="drawings")
+
+    @validates("strokes")
+    def _validate_strokes(self, key: str, value: Any) -> Any:
+        self.strokes_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("note_drawings.strokes", value)
+
+    @validates("ocr_blocks")
+    def _validate_ocr_blocks(self, key: str, value: Any) -> Any:
+        self.ocr_blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        if value is None:
+            return None
+        return validate_document("note_drawings.ocr_blocks", value)
+
 
 class NoteVersion(Base):
     __tablename__ = "note_versions"
     __table_args__ = (Index("ix_note_versions_note", "note_id", "id"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    note_id: Mapped[int] = mapped_column(
-        ForeignKey("notes.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    note_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("notes.id", ondelete="CASCADE"), index=True
     )
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(300))
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
-    body: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
+    body: Mapped[BlockList] = mapped_column(JSON)
+    body_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     cause: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+    @validates("body")
+    def _validate_body(self, key: str, value: Any) -> Any:
+        self.body_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("note_versions.body", value)
+
+
 class MaterialSource(Base):
     __tablename__ = "material_sources"
+    __table_args__ = (vocab_check("preset", SourcePreset),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
     label: Mapped[str] = mapped_column(String(200))
     path: Mapped[str] = mapped_column(String(1000))
+    preset: Mapped[str] = mapped_column(String(20), default="folder", server_default="folder")
     recursive: Mapped[bool] = mapped_column(Boolean, default=True)
-    include_globs: Mapped[list[str] | None] = mapped_column(JSON)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    include_globs: Mapped[StringList | None] = mapped_column(JSON)
+    course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class ExternalSource(Base):
     __tablename__ = "external_sources"
+    __table_args__ = (
+        vocab_check("kind", ExternalSourceKind),
+        vocab_check("auth_kind", AuthKind),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
     kind: Mapped[str] = mapped_column(String(30))
+    provider: Mapped[str] = mapped_column(String(64), default="")
+    auth_kind: Mapped[str] = mapped_column(String(20), default="none")
+    account_ref: Mapped[str | None] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(String(2048))
     label: Mapped[str | None] = mapped_column(String(200))
-    options: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    options: Mapped[ExternalSourceOptions | None] = mapped_column(JSON)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    cursor: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    cursor: Mapped[ExternalSourceCursorDocument | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ExternalReviewEvent(Base):
+    __tablename__ = "external_review_events"
+    __table_args__ = (
+        Index(
+            "uq_external_review_events_source_card_time",
+            "source_id",
+            "remote_card_id",
+            "reviewed_at",
+            unique=True,
+        ),
+        Index("ix_external_review_events_remote_card", "remote_card_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    source_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("external_sources.id", ondelete="CASCADE"), index=True
+    )
+    remote_card_id: Mapped[str] = mapped_column(String(64))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    rating: Mapped[int] = mapped_column(Integer)
+    interval_days: Mapped[float] = mapped_column(Float, default=0.0)
+    elapsed_days: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -489,28 +708,33 @@ class MaterialSuggestion(Base):
             unique=True,
         ),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
+        vocab_check("kind", DiscoveryKind),
+        vocab_check("status", SuggestionStatus),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int | None] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     provider: Mapped[str] = mapped_column(String(100))
     url: Mapped[str] = mapped_column(String(2048))
     url_norm: Mapped[str] = mapped_column(String(2048))
     title: Mapped[str] = mapped_column(String(300))
     snippet: Mapped[str | None] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(30), default="article")
-    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    meta: Mapped[SuggestionMeta | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="suggested")
-    material_id: Mapped[int | None] = mapped_column(ForeignKey("materials.id", ondelete="CASCADE"))
+    material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

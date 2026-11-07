@@ -24,7 +24,7 @@ class FakeGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         raise TaskUnassigned(task)
 
@@ -33,7 +33,7 @@ class FakeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         if self.error is not None:
@@ -43,7 +43,7 @@ class FakeGateway(LLMGateway):
 
 @contextlib.contextmanager
 def make_client(gateway: FakeGateway) -> Iterator[TestClient]:
-    tmp = Path(tempfile.mkdtemp(prefix="ca-ocr-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-ocr-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(settings, gateway=gateway, ocr=GatewayOcr(gateway))
     with TestClient(app) as client:
@@ -59,10 +59,10 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient) -> int:
+def make_course(client: TestClient) -> str:
     created = client.post("/api/v1/courses", json={"title": "OCR"})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def blank_pdf(pages: int = 2) -> bytes:
@@ -73,9 +73,7 @@ def blank_pdf(pages: int = 2) -> bytes:
 
 
 def test_scanned_pdf_goes_through_ocr_pipeline() -> None:
-    gateway = FakeGateway(
-        "```markdown\n# Scanned page\n\nThe **chain rule**: $f'(g(x))g'(x)$\n```"
-    )
+    gateway = FakeGateway("```markdown\n# Scanned page\n\nThe **chain rule**: $f'(g(x))g'(x)$\n```")
     with make_client(gateway) as client:
         upload = client.post(
             "/api/v1/materials",
@@ -85,8 +83,10 @@ def test_scanned_pdf_goes_through_ocr_pipeline() -> None:
         assert upload.status_code == 200
         material_id = upload.json()["material"]["id"]
         wait_until(
-            lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-            in ("ready", "failed")
+            lambda: (
+                client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
+                in ("ready", "failed")
+            )
         )
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         assert detail["material"]["status"] == "ready"
@@ -109,8 +109,10 @@ def test_image_material_uses_ocr() -> None:
         )
         material_id = upload.json()["material"]["id"]
         wait_until(
-            lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-            in ("ready", "failed")
+            lambda: (
+                client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
+                in ("ready", "failed")
+            )
         )
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         assert detail["material"]["status"] == "ready"
@@ -128,8 +130,10 @@ def test_unassigned_ocr_task_fails_material_with_clear_message() -> None:
         )
         material_id = upload.json()["material"]["id"]
         wait_until(
-            lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-            == "failed"
+            lambda: (
+                client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
+                == "failed"
+            )
         )
         listing = client.get("/api/v1/materials")
         assert listing.status_code == 200

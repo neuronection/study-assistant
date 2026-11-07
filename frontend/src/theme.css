@@ -23,7 +23,10 @@
 .dark {
   --as-primary: var(--primary);
   --as-primary-fg: var(--primary-foreground);
-  --as-secondary: var(--subtle);
+  /* Dedicated hover/highlight tint — a step lighter than the raised
+   * surface. Mapping it to --subtle made hovered menu items pixel-
+   * identical to the panel behind them. */
+  --as-secondary: oklch(0.34 0.012 260);
   --as-secondary-fg: var(--foreground);
   --as-surface: var(--surface);
   --as-surface-raised: var(--subtle);

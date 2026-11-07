@@ -29,12 +29,10 @@ export function DefaultsStep() {
     mutationFn: ({
       requires,
       modelId,
-      fallbackModelId,
     }: {
       requires: string
-      modelId: number | null
-      fallbackModelId: number | null
-    }) => assignTaskDefault(requires, modelId, fallbackModelId),
+      modelId: string | null
+    }) => assignTaskDefault(requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['task-defaults'] })
       await queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -65,9 +63,7 @@ export function DefaultsStep() {
               <div key={requires} className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">
-                    {t('settings.defaultModelLabel', {
-                      cap: t(`settings.caps.${requires}`),
-                    })}
+                    {t(`settings.caps.${requires}`)}
                   </p>
                 </div>
                 <select
@@ -79,15 +75,12 @@ export function DefaultsStep() {
                     assign.mutate(
                       {
                         requires,
-                        modelId: value === '' ? null : Number(value),
-                        fallbackModelId: entry?.fallback_model_id ?? null,
+                        modelId: value === '' ? null : value,
                       },
                       { onError: (err: Error) => setError(err.message) }
                     )
                   }}
-                  aria-label={t('settings.defaultModelLabel', {
-                    cap: t(`settings.caps.${requires}`),
-                  })}
+                  aria-label={t(`settings.caps.${requires}`)}
                 >
                   <option value="">{t('settings.unassigned')}</option>
                   {options.map((model) => (

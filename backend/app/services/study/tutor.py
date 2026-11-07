@@ -1,4 +1,5 @@
 import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...ai.contracts.contracts import Constraint, validate
 from ...ai.gateway import LLMGateway, Message
+from ...ai.tokenizers import TokenAccounting, embedding_accounting, token_count
 from ...domain.models import (
     AiInteraction,
     Attempt,
@@ -38,11 +40,11 @@ class TutorError(ValueError):
     pass
 
 
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+def _count_tokens(text: str, accounting: TokenAccounting) -> int:
+    return token_count(text, accounting)
 
 
-def _blocks_md(blocks: list[dict[str, Any]] | None) -> str:
+def _blocks_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
     if not blocks:
         return ""
     parts = []
@@ -136,16 +138,12 @@ class TutorService:
                         StepAttempt.session_id == exercise_session.id,
                         StepAttempt.step_idx == exercise_session.current_step_idx,
                     )
-                    .order_by(StepAttempt.id.desc())
+                    .order_by(StepAttempt.created_at.desc(), StepAttempt.id.desc())
                 )
             )
-            highest_used = max(
-                (attempt.hint_level_used or 0 for attempt in previous), default=0
-            )
+            highest_used = max((attempt.hint_level_used or 0 for attempt in previous), default=0)
             if level > highest_used + 1:
-                raise TutorError(
-                    "the ladder does not skip levels — request the next level first"
-                )
+                raise TutorError("the ladder does not skip levels — request the next level first")
 
         expected_spec = step.expected or {}
         expected = expected_spec.get("value")
@@ -173,18 +171,18 @@ class TutorService:
 
             system_prompt = TUTOR_SYSTEM
             constraints = [
-                        Constraint("no_answer_reveal"),
-                        Constraint("max_words", {"n": LADDER_WORDS[level]}),
-                    ]
+                Constraint("no_answer_reveal"),
+                Constraint("max_words", {"n": LADDER_WORDS[level]}),
+            ]
             skill_version_id = None
         else:
             system_prompt, _user = skills.render(
                 version,
-                    {
-                        "hint_level": str(level),
-                        "step_prompt": _blocks_md(step.prompt),
-                        "last_response": last_response or "",
-                    }
+                {
+                    "hint_level": str(level),
+                    "step_prompt": _blocks_md(step.prompt),
+                    "last_response": last_response or "",
+                },
             )
             constraints = skills.constraints(version, {"hint_level": level})
             skill_version_id = version.id
@@ -222,6 +220,7 @@ class TutorService:
             feedback = validation.feedback()
         latency_ms = int((time.monotonic() - started) * 1000)
 
+        accounting = embedding_accounting(self._session)
         self._session.add(
             AiInteraction(
                 context_type="tutor",
@@ -229,9 +228,10 @@ class TutorService:
                 direction=f"hint level {level}",
                 model=model_name,
                 skill_version_id=skill_version_id,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(output),
+                input_tokens=_count_tokens(prompt, accounting),
+                output_tokens=_count_tokens(output, accounting),
                 latency_ms=latency_ms,
+                metadata_json=accounting.metadata(),
             )
         )
         self._session.flush()
@@ -268,9 +268,9 @@ class TutorService:
 
             system_prompt = QUIZ_HELP_SYSTEM
             constraints = [
-                        Constraint("no_answer_reveal"),
-                        Constraint("max_words", {"n": LADDER_WORDS[level]}),
-                    ]
+                Constraint("no_answer_reveal"),
+                Constraint("max_words", {"n": LADDER_WORDS[level]}),
+            ]
             skill_version_id = None
         else:
             system_prompt, _user = skills.render(
@@ -320,6 +320,7 @@ class TutorService:
             feedback = validation.feedback()
         latency_ms = int((time.monotonic() - started) * 1000)
 
+        accounting = embedding_accounting(self._session)
         self._session.add(
             AiInteraction(
                 context_type="quiz_help",
@@ -327,9 +328,10 @@ class TutorService:
                 direction=f"hint level {level} q{question.id}",
                 model=model_name,
                 skill_version_id=skill_version_id,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(output),
+                input_tokens=_count_tokens(prompt, accounting),
+                output_tokens=_count_tokens(output, accounting),
                 latency_ms=latency_ms,
+                metadata_json=accounting.metadata(),
             )
         )
         self._session.flush()

@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest'
 vi.mock('@/lib/api', () => ({
   dueFlashcards: vi.fn(async () => [
     {
-      id: 1,
+      id: '1',
       front: [{ type: 'math', latex: 'x^2', display: true }],
       back: [{ type: 'text', md: 'two' }],
     },

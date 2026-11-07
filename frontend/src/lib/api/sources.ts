@@ -1,43 +1,20 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
 import type { ImportResult } from './quiz'
 
-export interface BrowseEntry {
-  name: string
-}
+type Schemas = components['schemas']
 
-export interface BrowseMaterial {
-  id: number
-  title: string
-  kind: string
-  status: string
-  filename: string
-  relpath: string
-}
-
-export interface BrowsePending {
-  name: string
-  relpath: string
-  size_bytes: number
-  mtime: number
-}
-
-export interface BrowseResult {
-  source_id: number
-  label: string
-  path: string
-  subdir: string
-  missing_target: boolean
-  enabled: boolean
-  scan_interval_sec: number | null
-  last_scan_error: string | null
-  last_scanned_at: string | null
-  subdirs: BrowseEntry[]
-  materials: BrowseMaterial[]
-  uningested: BrowsePending[]
-}
+export type BrowseEntry = Schemas['SourceSubdirOut']
+export type BrowseMaterial = Schemas['SourceMaterialOut']
+export type BrowsePending = Schemas['UningestedFileOut']
+export type BrowseResult = Schemas['SourceBrowseOut']
+export type LinkedSource = Schemas['SourceOut']
+export type ScanResult = Schemas['ScanResult']
+export type InboxEntryInfo = Schemas['InboxEntryOut']
 
 export async function browseSource(
-  sourceId: number,
+  sourceId: string,
   subdir = ''
 ): Promise<BrowseResult> {
   const params = subdir ? `?subdir=${encodeURIComponent(subdir)}` : ''
@@ -46,18 +23,18 @@ export async function browseSource(
 }
 
 export async function ingestSourceFile(
-  sourceId: number,
+  sourceId: string,
   relpath: string
-): Promise<{ material_id: number; job_id: number | null; deduped: boolean }> {
+): Promise<{ material_id: string; job_id: string | null; deduped: boolean }> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ relpath }),
   })
-  return json<{ material_id: number; job_id: number | null; deduped: boolean }>(response)
+  return json<{ material_id: string; job_id: string | null; deduped: boolean }>(response)
 }
 
-export async function relinkSource(sourceId: number, path: string): Promise<LinkedSource> {
+export async function relinkSource(sourceId: string, path: string): Promise<LinkedSource> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -66,39 +43,13 @@ export async function relinkSource(sourceId: number, path: string): Promise<Link
   return json<LinkedSource>(response)
 }
 
-export async function revealSource(sourceId: number): Promise<void> {
+export async function revealSource(sourceId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/reveal`, {
     method: 'POST',
   })
   if (!response.ok && response.status !== 204) {
     throw new Error(`reveal failed: ${response.status}`)
   }
-}
-
-export interface LinkedSource {
-  id: number
-  label: string
-  path: string
-  recursive: boolean
-  include_globs: string[] | null
-  course_id: number
-  enabled: boolean
-  mirror_subdirs?: boolean
-  material_count: number
-  last_scanned_at: string | null
-}
-
-export interface ScanResult {
-  stats: {
-    new: number
-    updated: number
-    unchanged: number
-    missing: number
-    backfilled?: number
-    mirrored_dirs?: number
-  }
-  queued_jobs: number
-  new_relpaths?: string[]
 }
 
 export async function listSources(): Promise<LinkedSource[]> {
@@ -109,8 +60,9 @@ export async function listSources(): Promise<LinkedSource[]> {
 export async function addSource(body: {
   label: string
   path: string
-  course_id: number
+  course_id: string
   recursive?: boolean
+  preset?: 'folder' | 'vault'
 }): Promise<LinkedSource> {
   const response = await apiFetch('/api/v1/sources', {
     method: 'POST',
@@ -120,13 +72,13 @@ export async function addSource(body: {
   return json<LinkedSource>(response)
 }
 
-export async function scanSource(sourceId: number): Promise<ScanResult> {
+export async function scanSource(sourceId: string): Promise<ScanResult> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/scan`, { method: 'POST' })
   return json<ScanResult>(response)
 }
 
 export async function setSourceMirror(
-  sourceId: number,
+  sourceId: string,
   mirrorSubdirs: boolean
 ): Promise<LinkedSource> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/mirror`, {
@@ -137,27 +89,18 @@ export async function setSourceMirror(
   return json<LinkedSource>(response)
 }
 
-export async function mirrorBackfillSource(sourceId: number): Promise<ScanResult> {
+export async function mirrorBackfillSource(sourceId: string): Promise<ScanResult> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/mirror-backfill`, {
     method: 'POST',
   })
   return json<ScanResult>(response)
 }
 
-export async function deleteSource(sourceId: number): Promise<void> {
+export async function deleteSource(sourceId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}`, { method: 'DELETE' })
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
   }
-}
-
-export interface InboxEntryInfo {
-  filename: string
-  kind: string
-  title: string
-  ok: boolean
-  problems: string[]
-  question_count: number
 }
 
 export async function scanInbox(): Promise<InboxEntryInfo[]> {
@@ -172,7 +115,7 @@ export async function inboxPath(): Promise<string> {
 
 export async function importInboxFile(
   filename: string,
-  courseId: number
+  courseId: string
 ): Promise<ImportResult> {
   const params = new URLSearchParams({ course_id: String(courseId) })
   const response = await apiFetch(

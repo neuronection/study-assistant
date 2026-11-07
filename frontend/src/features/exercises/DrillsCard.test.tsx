@@ -16,10 +16,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    drillPatterns: (courseId: number) => drillPatterns(courseId),
-    startDrill: (pattern: string, courseId: number) => startDrill(pattern, courseId),
-    proposePatterns: (courseId: number) => proposePatterns(courseId),
-    createPattern: (courseId: number, proposal: unknown) => createPattern(courseId, proposal),
+    drillPatterns: (courseId: string) => drillPatterns(courseId),
+    startDrill: (pattern: string, courseId: string) => startDrill(pattern, courseId),
+    proposePatterns: (courseId: string) => proposePatterns(courseId),
+    createPattern: (courseId: string, proposal: unknown) => createPattern(courseId, proposal),
     listCourses: () => listCourses(),
   }
 })
@@ -30,7 +30,7 @@ vi.mock('@tanstack/react-router', () => ({
     select({ location: { href: '/', search: {} } }),
 }))
 
-function renderCard(courseId?: number) {
+function renderCard(courseId?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -63,7 +63,7 @@ const PATTERNS = [
   },
 ]
 
-const COURSE = (id: number, title: string) => ({
+const COURSE = (id: string, title: string) => ({
   id,
   title,
   subject: null,
@@ -82,19 +82,19 @@ describe('DrillsCard', () => {
     createPattern.mockReset()
     listCourses.mockReset()
     drillPatterns.mockResolvedValue(PATTERNS)
-    listCourses.mockResolvedValue([COURSE(1, 'Calculus I'), COURSE(2, 'Linear Algebra')])
+    listCourses.mockResolvedValue([COURSE('1', 'Calculus I'), COURSE('2', 'Linear Algebra')])
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
   })
 
   test('lists seeded and discovered patterns with counts, drills against the bound course', async () => {
-    startDrill.mockResolvedValue({ id: 7, step_count: 3 })
-    renderCard(4)
+    startDrill.mockResolvedValue({ id: '7', step_count: 3 })
+    renderCard('4')
     expect(await screen.findByText('Sign slip')).toBeInTheDocument()
     expect(screen.getByText('3 mistakes')).toBeInTheDocument()
     expect(screen.getByText('Discovered for this course type')).toBeInTheDocument()
     fireEvent.click(screen.getAllByRole('button', { name: /drill/i })[1])
     await waitFor(() =>
-      expect(startDrill).toHaveBeenCalledWith('missing_chain_rule_factor', 4)
+      expect(startDrill).toHaveBeenCalledWith('missing_chain_rule_factor', '4')
     )
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
@@ -106,13 +106,13 @@ describe('DrillsCard', () => {
   })
 
   test('without a course prop falls back to the workspace course', async () => {
-    useWorkspaceStore.setState({ courseId: 12, hydrated: true })
-    listCourses.mockResolvedValue([COURSE(12, 'Calculus I')])
-    startDrill.mockResolvedValue({ id: 8, step_count: 2 })
+    useWorkspaceStore.setState({ courseId: '12', hydrated: true })
+    listCourses.mockResolvedValue([COURSE('12', 'Calculus I')])
+    startDrill.mockResolvedValue({ id: '8', step_count: 2 })
     renderCard()
     const drillButtons = await screen.findAllByRole('button', { name: /drill/i })
     fireEvent.click(drillButtons[0])
-    await waitFor(() => expect(startDrill).toHaveBeenCalledWith('sign_slip', 12))
+    await waitFor(() => expect(startDrill).toHaveBeenCalledWith('sign_slip', '12'))
   })
 
   test('proposes, approves and dismisses discovered patterns', async () => {
@@ -126,7 +126,7 @@ describe('DrillsCard', () => {
       },
     ])
     createPattern.mockResolvedValue({ ...PATTERNS[2], occurrences: 0 })
-    renderCard(4)
+    renderCard('4')
     expect(
       screen.queryByText('No error patterns yet. Wrong answers from quizzes will build this list.')
     ).not.toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('DrillsCard', () => {
     expect(await screen.findByText('Forgot product second term')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /approve/i }))
     await waitFor(() =>
-      expect(createPattern).toHaveBeenCalledWith(4, {
+      expect(createPattern).toHaveBeenCalledWith('4', {
         key: 'forgot_product_second_term',
         name: 'Forgot product second term',
         description: 'dropping the second term of the product rule',
@@ -155,7 +155,7 @@ describe('DrillsCard', () => {
         description: 'dropping the second term of the product rule',
       },
     ])
-    renderCard(4)
+    renderCard('4')
     fireEvent.click(await screen.findByRole('button', { name: /find more patterns/i }))
     expect(await screen.findByText('Forgot product second term')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }))
@@ -168,7 +168,7 @@ describe('DrillsCard', () => {
   test('empty state hides the list and find-more shows a no-proposals note', async () => {
     drillPatterns.mockResolvedValue([])
     proposePatterns.mockResolvedValue([])
-    renderCard(4)
+    renderCard('4')
     expect(
       await screen.findByText('No error patterns yet. Wrong answers from quizzes will build this list.')
     ).toBeInTheDocument()

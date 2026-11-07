@@ -1,20 +1,20 @@
 from fastapi.testclient import TestClient
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
 def make_card(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     front: str,
-    node_id: int | None = None,
-) -> int:
+    node_id: str | None = None,
+) -> str:
     response = client.post(
         "/api/v1/flashcards",
         json={
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": front,
             "back_md": f"back of {front}",
             "course_id": course_id,
@@ -22,7 +22,7 @@ def make_card(
         },
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
 def test_review_due_groups_by_course(client: TestClient) -> None:
@@ -76,9 +76,7 @@ def test_review_due_excludes_scratch_and_reviewed_cards(client: TestClient) -> N
         empty = client.get("/api/v1/review/due").json()
         assert empty["total_due"] == 1
 
-        reviewed = client.post(
-            f"/api/v1/flashcards/{card_id}/review", json={"rating": 3}
-        )
+        reviewed = client.post(f"/api/v1/flashcards/{card_id}/review", json={"rating": 3})
         assert reviewed.status_code == 200
         assert reviewed.json()["interval_days"] > 0
 

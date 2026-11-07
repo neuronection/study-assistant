@@ -1,40 +1,12 @@
+import type { components } from '@/lib/api-schema'
+
 import { apiFetch, expectOk, json } from './client'
+import type { AdminUser, AdminUserPatch, PublicUser, UserSession } from './hand-types'
 
-/** `PublicUser` (identity-auth §12) — what `/api/v1/auth/me` and
- * `PATCH /api/v1/me/password` return. Never hashes/counters/stamps. */
-export interface PublicUser {
-  id: string
-  email: string
-  full_name: string
-  is_admin: boolean
-  is_active: boolean
-}
+type Schemas = components['schemas']
 
-/** Admin row shape of `GET /api/v1/admin/users` (identity-auth §12). */
-export interface AdminUser {
-  id: string
-  email: string
-  full_name: string
-  is_admin: boolean
-  is_active: boolean
-  created_at: string
-  activity_count: number
-}
-
-export interface AdminUserPatch {
-  is_active?: boolean
-  is_admin?: boolean
-}
-
-/** Entry of `GET /api/v1/me/sessions`. */
-export interface UserSession {
-  id: string
-  client_label: string
-  created_at: string | null
-  expires_at: string
-  revoked_at: string | null
-  current: boolean
-}
+export type { AdminUser, AdminUserPatch, PublicUser, UserSession } from './hand-types'
+export type InstanceAuthMode = NonNullable<Schemas['InstanceUpdateIn']['auth_mode']>
 
 export async function listAdminUsers(): Promise<AdminUser[]> {
   const response = await apiFetch('/api/v1/admin/users')
@@ -68,6 +40,22 @@ export async function resetAdminUserPassword(
 export async function forceLogoutUser(userId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/admin/users/${userId}/force-logout`, {
     method: 'POST',
+  })
+  await expectOk(response)
+}
+
+/** `PATCH /api/v1/admin/instance` (identity-auth §4.5): the audited
+ * `auth_mode` transition — admin + password; `open → authenticated` sets
+ * the owner credentials in the same call, `authenticated → open` is
+ * refused while other accounts exist. */
+export async function updateInstanceMode(
+  authMode: InstanceAuthMode,
+  password: string,
+): Promise<void> {
+  const response = await apiFetch('/api/v1/admin/instance', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ auth_mode: authMode, password }),
   })
   await expectOk(response)
 }

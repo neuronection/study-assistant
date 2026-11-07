@@ -4,9 +4,9 @@ export type ClipboardMode = 'copy' | 'cut'
 
 export interface LibraryClipboard {
   kind: 'library'
-  courseId: number
-  folderIds: number[]
-  materialIds: number[]
+  courseId: string
+  folderIds: string[]
+  materialIds: string[]
   mode: ClipboardMode
 }
 

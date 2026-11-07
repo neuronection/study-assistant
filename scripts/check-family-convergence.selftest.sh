@@ -1,0 +1,565 @@
+#!/usr/bin/env bash
+# Self-test suite for the family-convergence gate (plan 23 D4 / T1–T6,
+# T13–T16; plan 21 C7 security-surface cases; T18 path resolution).
+#
+# Fixtures are materialized at runtime into mktemp -d from heredoc builders —
+# no committed fixture trees, so vendoring four copies stays cheap and
+# byte-identity stays meaningful. Coverage is per-gate and per-marker:
+# every C-check has a conforming tree that must pass and a violating tree
+# that must fail (asserting *which* gate fired and that the exit code says
+# so), and the marker-completeness loop plants one string per vocabulary
+# entry and asserts the matching gate trips ("declared ⇒ detected").
+#
+# The planted lists below are pinned TEST DATA on purpose: they must stay in
+# 1:1 correspondence with scripts/gate-patterns/*.txt (asserted at runtime).
+# Deleting a vocabulary line therefore breaks two cases — the correspondence
+# and that entry's trip — so the loop has teeth.
+#
+# Usage: bash check-family-convergence.selftest.sh   (or the gate's --self-test)
+# Exit: non-zero on any surprise; one `ok`/`FAIL` line per case.
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GATE="$HERE/check-family-convergence.sh"
+PATTERNS_DIR="$HERE/gate-patterns"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+# Sourcing exposes check_repo / c*_ / vocab_file for the in-process cases
+# (the gate's main() is guarded against source-time execution).
+# shellcheck source=check-family-convergence.sh
+source "$GATE"
+
+PASS=0
+FAIL=0
+
+ok_case()   { PASS=$((PASS + 1)); echo "ok   $1"; }
+fail_case() { FAIL=$((FAIL + 1)); echo "FAIL $1"; echo "$2" | sed 's/^/     /'; }
+
+# run_self DIR -- run the gate's --self mode inside DIR; sets RUN_OUT/RUN_RC.
+# --self roots the check at the VENDORED COPY's repo (one level above the
+# script), so the tree under test runs its own planted copy — gate_artifacts()
+# puts one in every fixture (same discipline as the byok selftest).
+run_self() {
+  RUN_OUT="$(cd "$1" && bash "$1/scripts/check-family-convergence.sh" --self 2>&1)"
+  RUN_RC=$?
+}
+
+# run_family COPY -- run the gate's no-arg (family scan) mode using the copy
+# at COPY/scripts/... from an unrelated cwd; sets RUN_OUT/RUN_RC. Path
+# resolution is the property under test, so the cwd must not matter.
+run_family() {
+  RUN_OUT="$(cd "$WORK" && bash "$1/scripts/check-family-convergence.sh" 2>&1)"
+  RUN_RC=$?
+}
+
+# expect NAME WANT_RC WANT_RE [REJECT_RE] -- assert on RUN_OUT/RUN_RC.
+expect() {
+  local name="$1" want_rc="$2" want_re="$3" reject_re="${4:-}" bad=""
+  [ "$RUN_RC" != "$want_rc" ] && bad="rc=$RUN_RC want=$want_rc"
+  grep -qE -- "$want_re" <<<"$RUN_OUT" || bad="$bad; missing /$want_re/"
+  if [ -n "$reject_re" ] && grep -qE -- "$reject_re" <<<"$RUN_OUT"; then
+    bad="$bad; unexpected /$reject_re/"
+  fi
+  if [ -n "$bad" ]; then fail_case "$name" "$bad"$'\n'"$RUN_OUT"; else ok_case "$name"; fi
+}
+
+# expect_lines NAME NEEDLE... -- assert every NEEDLE appears in RUN_OUT.
+expect_lines() {
+  local name="$1" bad="" needle
+  shift
+  for needle in "$@"; do
+    grep -qF -- "$needle" <<<"$RUN_OUT" || bad="$bad; missing '$needle'"
+  done
+  if [ -n "$bad" ]; then fail_case "$name" "$bad"$'\n'"$RUN_OUT"; else ok_case "$name"; fi
+}
+
+# ---------------------------------------------------------------------------
+# pinned planted strings (test data — must mirror scripts/gate-patterns/*.txt)
+# ---------------------------------------------------------------------------
+PLANTED_MARKERS=(
+  "ca-drawing" "ca-image" "ca-material" "ca-course" "caq/v" "ca-backup/v"
+  "ca-skills/v" "x-ca-" "LEGACY_KIND_MAP" "card_kind_from_legacy"
+  "legacy_kind_from_card"
+  'type": "stream_start"' 'type": "stream_delta"'
+  'type": "assistant_message"' 'type": "stream_interrupted"'
+  'type": "turn_error"' 'emit("interview_state"'
+  "event: interview_state" "case 'stream_start'" "case 'stream_delta'"
+  "case 'turn_error'" "[HITL_TASK]" "[SESSION_ID]" "to_family_events"
+  "stream_loop_as_sse" "FLOW_EVENT_PREFIX" "flow_events=true"
+)
+PLANTED_ENV=(
+  "DATABASE_URL" "APP_ENV" "DATA_DIR" "UPLOAD_DIR" "SPA_DIST" "API_HOST"
+  "API_PORT" "CORS_ORIGINS" "IDENTITY_MODE" "AUTH_MODE" "DEMO_MODE"
+  "REGISTRATION_ENABLED" "COOKIE_SECURE" "TRUSTED_PROXY_COUNT"
+  "RATE_LIMIT_ENABLED" "AUTH_RATE_LIMIT" "AUTH_EMAIL_RATE_LIMIT"
+  "SESSION_KEY" "REFRESH_KEY" "DATA_KEY"
+)
+PLANTED_MIGRATIONS=(
+  "command.upgrade" "run_migrations"
+)
+PLANTED_SECURITY=(
+  "class SlidingWindowRateLimiter" "class RateLimitMiddleware"
+  "class SecurityHeadersMiddleware"
+  'BUCKETS = ("AUTH", "AUTH_EMAIL", "AI", "MCP", "DEFAULT")'
+)
+
+# ---------------------------------------------------------------------------
+# fixture builders (heredoc materialization into mktemp -d)
+# ---------------------------------------------------------------------------
+
+# gate_artifacts DIR -- copy the gate's own artifacts into the fixture, so
+# every case doubles as the F2 regression case (T1): a conformant tree that
+# *contains copies of the gate scripts with their pattern vocabulary* must
+# still pass C4 — the plan-20 self-match defect is structurally impossible.
+gate_artifacts() {
+  mkdir -p "$1/scripts/gate-patterns"
+  cp "$GATE" "$HERE/check-family-convergence.selftest.sh" "$1/scripts/"
+  cp "$PATTERNS_DIR/"*.txt "$1/scripts/gate-patterns/"
+}
+
+# fixture_conformant DIR -- a tree that passes C1–C7 (incl. T3 prefixed-env
+# negatives and T1/T6; C7 holds because no limiter/headers class or bucket
+# constant is declared product-side).
+fixture_conformant() {
+  local d="$1"
+  mkdir -p "$d/backend/app" "$d/backend/tests" "$d/frontend/src" \
+           "$d/scripts" "$d/docker" "$d/.github/workflows"
+  cat > "$d/pyproject.toml" <<'EOF'
+[project]
+name = "fixture"
+EOF
+  cat > "$d/uv.lock" <<'EOF'
+version = 1
+EOF
+  cat > "$d/backend/pyproject.toml" <<'EOF'
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.ruff.lint.flake8-bugbear]
+
+[tool.pytest.ini_options]
+markers = ["contract: family contract drift gate"]
+EOF
+  cat > "$d/backend/app/local.py" <<'EOF'
+def run_migrations():
+    command.upgrade  # migrations live here and nowhere else (C3)
+EOF
+  cat > "$d/backend/app/other.py" <<'EOF'
+VALUE = 1
+EOF
+  cat > "$d/backend/tests/test_ok.py" <<'EOF'
+def test_ok():
+    assert True
+EOF
+  cat > "$d/scripts/run.sh" <<'EOF'
+#!/usr/bin/env bash
+# T3: product-prefixed names are fine (boundary anchoring, no blanket filter).
+export SA_APP_ENV=development
+export SA_AUTH_MODE=authenticated
+export CAREER_DATABASE_URL=postgresql://x/y
+export HA_APP_ENV=production
+EOF
+  cat > "$d/docker/docker-compose.yml" <<'EOF'
+services:
+  app:
+    environment:
+      HA_APP_ENV: production
+      SA_DATABASE_URL: postgresql://x/y
+  worker:
+    environment:
+      - CAREER_AUTH_MODE=authenticated
+EOF
+  cat > "$d/.github/workflows/ci.yml" <<'EOF'
+jobs:
+  test:
+    steps:
+      - run: pytest -m contract
+EOF
+  gate_artifacts "$d"
+}
+
+# fixture_unprefixed_env DIR -- T4: the three unprefixed read/write forms.
+fixture_unprefixed_env() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/backend/app/reader.py" <<'EOF'
+import os
+DATA_KEY = os.environ["DATA_KEY"]
+EOF
+  cat > "$d/scripts/exporter.sh" <<'EOF'
+#!/usr/bin/env bash
+export APP_ENV=production
+EOF
+  cat > "$d/backend/app/getter.py" <<'EOF'
+import os
+MODE = os.getenv("AUTH_MODE")
+EOF
+}
+
+# fixture_compose_env DIR -- T13: YAML/compose assignment forms (the exact
+# surface the HA_APP_ENV rename spread through).
+fixture_compose_env() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/docker/docker-compose.yml" <<'EOF'
+services:
+  app:
+    environment:
+      APP_ENV: production
+      SA_DATABASE_URL: postgresql://x/y
+EOF
+  cat > "$d/docker/docker-compose.db.yml" <<'EOF'
+services:
+  db:
+    environment:
+      - DATA_KEY=abc123
+EOF
+}
+
+# fixture_gate_allow_pragma DIR WITH_PRAGMA -- T14: a bare name on a
+# pragma'd line passes; the same line without the pragma trips C2.
+fixture_gate_allow_pragma() {
+  local d="$1" with="$2" pragma=""
+  fixture_conformant "$d"
+  [ "$with" = 1 ] && pragma='  # gate-allow: COOKIE_SECURE'
+  cat > "$d/backend/tests/test_inert.py" <<EOF
+def test_old_name_is_inert():
+    monkeypatch.setenv("COOKIE_SECURE", "0")${pragma}
+    monkeypatch.setenv("COOKIE_SECURE", "0")
+EOF
+}
+
+# fixture_migrations_elsewhere DIR -- T5/C3.
+fixture_migrations_elsewhere() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/backend/app/migrate.py" <<'EOF'
+def upgrade():
+    command.upgrade
+EOF
+}
+
+# fixture_restore_migration_site DIR -- T15/F12 positive: app/local.py
+# migrates and the declared restore-flow site passes — restore is a
+# declared ops action that migrates (reference-architecture §4).
+fixture_restore_migration_site() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/backend/app/backup.py" <<'EOF'
+def restore():
+    from .local import run_migrations  # gate-allow: run_migrations (F12 restore)
+    run_migrations()  # gate-allow: run_migrations (F12 restore)
+EOF
+}
+
+# fixture_migration_call_in_main DIR -- T16/F12 negative: the same restore
+# call, undeclared, in app/main.py still fails.
+fixture_migration_call_in_main() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/backend/app/main.py" <<'EOF'
+def create_app():
+    from .local import run_migrations
+    run_migrations()
+EOF
+}
+
+# fixture_requirements_txt DIR -- T5/C5.
+fixture_requirements_txt() {
+  local d="$1"
+  fixture_conformant "$d"
+  echo "fastapi==0.115" > "$d/backend/requirements.txt"
+}
+
+# fixture_missing_contract_ci DIR -- T5/C6.
+fixture_missing_contract_ci() {
+  local d="$1"
+  fixture_conformant "$d"
+  cat > "$d/.github/workflows/ci.yml" <<'EOF'
+jobs:
+  test:
+    steps:
+      - run: pytest -q
+EOF
+}
+
+# fixture_family DIR -- T18: a real family layout. DIR carries the four
+# repos the REPOS table names (each a conformant tree with its own gate
+# copy) plus dev/, which holds only the gate artifacts: the two copy depths
+# a no-arg scan can be launched from.
+fixture_family() {
+  local fam="$1" r
+  for r in study-assistant career-assistant auth-kit; do
+    fixture_conformant "$fam/$r"
+  done
+  fixture_conformant "$fam/health-assistant/core"
+  # auth-kit is root-packaged (its REPOS entry is pyproject.toml), so the
+  # family ruff block + contract marker live in the root file — the same
+  # shape C1 compares for every repo.
+  cat > "$fam/auth-kit/pyproject.toml" <<'EOF'
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.ruff.lint.flake8-bugbear]
+
+[tool.pytest.ini_options]
+markers = ["contract: family contract drift gate"]
+EOF
+  mkdir -p "$fam/dev"
+  gate_artifacts "$fam/dev"
+}
+
+# ---------------------------------------------------------------------------
+# cases
+# ---------------------------------------------------------------------------
+
+echo "== family-convergence gate self-test =="
+
+# T1 + T3 + T6: conformant tree (prefixed env, gate-script copies present)
+# passes every gate, exit 0, RESULT: OK.
+d="$WORK/t1-conformant"; fixture_conformant "$d"
+run_self "$d"
+expect "T1+T3+T6 conformant tree with gate copies -> RESULT: OK" 0 "RESULT: OK" "FAIL"
+
+# T2a: marker completeness — one planted string per vocabulary entry trips C4.
+for marker in "${PLANTED_MARKERS[@]}"; do
+  d="$WORK/t2-c4"; rm -rf "$d"; fixture_conformant "$d"
+  printf 'PLANTED = %s\n' "\"$marker\"" > "$d/backend/app/planted.py"
+  run_self "$d"
+  expect "T2 C4 trips for planted marker '$marker'" 1 "FAIL C4"
+done
+
+# T2b: env-name completeness — one planted string per vocabulary entry trips C2.
+for name in "${PLANTED_ENV[@]}"; do
+  d="$WORK/t2-c2"; rm -rf "$d"; fixture_conformant "$d"
+  printf 'VALUE = os.environ["%s"]\n' "$name" > "$d/backend/app/planted.py"
+  run_self "$d"
+  expect "T2 C2 trips for planted env name '$name'" 1 "FAIL C2"
+done
+
+# T2d: migration-surface completeness — one planted reference per
+# migration vocabulary entry trips C3.
+for name in "${PLANTED_MIGRATIONS[@]}"; do
+  d="$WORK/t2-c3"; rm -rf "$d"; fixture_conformant "$d"
+  printf 'PLANTED = %s\n' "\"$name\"" > "$d/backend/app/planted.py"
+  run_self "$d"
+  expect "T2 C3 trips for planted migration surface '$name'" 1 "FAIL C3"
+done
+
+# T2e: security-surface completeness — one planted copy per vocabulary
+# entry trips C7 (a product-local class or bucket-constant copy).
+for marker in "${PLANTED_SECURITY[@]}"; do
+  d="$WORK/t2-c7"; rm -rf "$d"; fixture_conformant "$d"
+  if [ "$marker" = "class SlidingWindowRateLimiter" ]; then
+    printf 'class SlidingWindowRateLimiter:\n    pass\n' > "$d/backend/app/planted.py"
+  elif [ "$marker" = "class RateLimitMiddleware" ]; then
+    printf 'class RateLimitMiddleware:\n    pass\n' > "$d/backend/app/planted.py"
+  elif [ "$marker" = "class SecurityHeadersMiddleware" ]; then
+    printf 'class SecurityHeadersMiddleware:\n    pass\n' > "$d/backend/app/planted.py"
+  else
+    printf 'PLANTED = %s\n' "$marker" > "$d/backend/app/planted.py"
+  fi
+  run_self "$d"
+  expect "T2 C7 trips for planted security copy '$marker'" 1 "FAIL C7"
+done
+
+# T17/plan-21: a product-local headers middleware anywhere under backend
+# (app or tests) is a named C7 finding.
+d="$WORK/t17-headers-copy"; fixture_conformant "$d"
+cat > "$d/backend/tests/test_headers_copy.py" <<'EOF2'
+class SecurityHeadersMiddleware:  # a stale local copy smuggled into tests
+    pass
+EOF2
+run_self "$d"
+expect "T17 product-local headers copy in tests -> FAIL C7" 1 "FAIL C7"
+
+# T2c: correspondence — the pinned planted lists must stay 1:1 with the
+# vocabulary files (this is the case that fails when a vocabulary line is
+# deleted — the completeness loop must have teeth).
+vocab_markers="$(vocab_file "$PATTERNS_DIR/legacy-markers.txt" | cut -f2 | sort)"
+vocab_env="$(vocab_file "$PATTERNS_DIR/env-names.txt" | cut -f2 | sort)"
+vocab_migrations="$(vocab_file "$PATTERNS_DIR/migration-sites.txt" | cut -f2 | sort)"
+vocab_security="$(vocab_file "$PATTERNS_DIR/security-surface.txt" | cut -f2 | sort)"
+pinned_markers="$(printf '%s\n' "${PLANTED_MARKERS[@]}" | sort)"
+pinned_env="$(printf '%s\n' "${PLANTED_ENV[@]}" | sort)"
+pinned_migrations="$(printf '%s\n' "${PLANTED_MIGRATIONS[@]}" | sort)"
+pinned_security="$(printf '%s\n' "${PLANTED_SECURITY[@]}" | sort)"
+if [ "$vocab_markers" = "$pinned_markers" ] && [ "$vocab_env" = "$pinned_env" ] \
+  && [ "$vocab_migrations" = "$pinned_migrations" ] && [ "$vocab_security" = "$pinned_security" ]; then
+  ok_case "T2 vocabulary <-> planted-list correspondence (1:1)"
+else
+  fail_case "T2 vocabulary <-> planted-list correspondence (1:1)" \
+    "markers vocab: $vocab_markers / pinned: $pinned_markers
+env vocab: $vocab_env / pinned: $pinned_env
+migrations vocab: $vocab_migrations / pinned: $pinned_migrations
+security vocab: $vocab_security / pinned: $pinned_security"
+fi
+
+# T4: unprefixed read/write forms trip C2 and name file:line.
+d="$WORK/t4-unprefixed"; fixture_unprefixed_env "$d"
+run_self "$d"
+expect "T4 unprefixed env forms -> FAIL C2" 1 "FAIL C2"
+expect_lines "T4 output names file:line for all three forms" \
+  "backend/app/reader.py:2:" "scripts/exporter.sh:2:" "backend/app/getter.py:2:"
+
+# T13: YAML/compose assignment forms trip C2 (the F1 root-cause surface).
+d="$WORK/t13-compose"; fixture_compose_env "$d"
+run_self "$d"
+expect "T13 compose YAML env forms -> FAIL C2" 1 "FAIL C2"
+expect_lines "T13 output names both compose lines" \
+  "docker/docker-compose.yml:4:" "docker/docker-compose.db.yml:4:"
+
+# T14a: without the pragma the bare name trips C2 and the finding names it.
+d="$WORK/t14-no-pragma"; fixture_gate_allow_pragma "$d" 0
+run_self "$d"
+expect "T14 bare name without pragma -> FAIL C2" 1 "FAIL C2"
+expect_lines "T14 finding names the offending line" "backend/tests/test_inert.py:3:"
+
+# T14b: with the pragma the same line passes; the un-pragma'd twin is still
+# caught (the pragma names one line, it does not silence the file).
+d="$WORK/t14-pragma"; fixture_gate_allow_pragma "$d" 1
+run_self "$d"
+expect "T14 pragma'd line passes, twin still caught" 1 "FAIL C2"
+expect_lines "T14 output names only the un-pragma'd line" "backend/tests/test_inert.py:3:"
+if grep -qF "backend/tests/test_inert.py:2:" <<<"$RUN_OUT"; then
+  fail_case "T14 pragma'd line 2 is not reported" "$RUN_OUT"
+else
+  ok_case "T14 pragma'd line 2 is not reported"
+fi
+
+# T14c: a pragma on a comment-only line covers the line below it (for
+# surfaces where trailing comments are unsafe — Dockerfile ENV lines).
+for with in 1 0; do
+  d="$WORK/t14-above"; rm -rf "$d"; fixture_conformant "$d"
+  pragma=""
+  [ "$with" = 1 ] && pragma='# gate-allow: SPA_DIST — declared deferral
+'
+  cat > "$d/docker/Dockerfile" <<EOF
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 \\
+${pragma}    SPA_DIST=/app/frontend/dist
+EOF
+  run_self "$d"
+  if [ "$with" = 1 ]; then
+    expect "T14 comment-line pragma covers the next line" 0 "RESULT: OK" "FAIL C2"
+  else
+    expect "T14 next line without the comment pragma -> FAIL C2" 1 "FAIL C2"
+  fi
+done
+
+# T5/C1: tool-config drift between two repos is a named C1 finding
+# (in-process: family parity needs two check_repo calls in one process).
+d="$WORK/t5-c1-a"; fixture_conformant "$d"
+e="$WORK/t5-c1-b"; fixture_conformant "$e"
+sed -i 's/line-length = 100/line-length = 88/' "$e/backend/pyproject.toml"
+CANON_RUFF=''
+combined="$(
+  CANON_RUFF=''
+  check_repo "$d" backend/pyproject.toml 2>&1
+  printf '<<<C1SEP>>>\n'
+  check_repo "$e" backend/pyproject.toml 2>&1
+)"
+out_a="${combined%%<<<C1SEP>>>*}"
+out_b="${combined#*<<<C1SEP>>>}"
+RUN_OUT="$out_a"; RUN_RC=0
+expect "T5/C1 conformant block compared first" 0 "^$" "FAIL C1"
+RUN_OUT="$out_b"
+expect "T5/C1 ruff block drift -> FAIL C1" 0 "FAIL C1"
+
+# T5/C3: command.upgrade outside app/local.py.
+d="$WORK/t5-c3"; fixture_migrations_elsewhere "$d"
+run_self "$d"
+expect "T5/C3 migrations outside app/local.py -> FAIL C3" 1 "FAIL C3"
+
+# T15/F12 positive: app/local.py migrates AND the declared restore-flow
+# site passes — the D6 restore exception (pragma'd, exactly one site).
+d="$WORK/t15-restore-site"; fixture_restore_migration_site "$d"
+run_self "$d"
+expect "T15 declared restore migrations site -> RESULT: OK" 0 "RESULT: OK" "FAIL"
+
+# T16/F12 negative: the same restore call, undeclared, in app/main.py
+# still fails (the allowance names lines, never files or patterns).
+d="$WORK/t16-main-call"; fixture_migration_call_in_main "$d"
+run_self "$d"
+expect "T16 undeclared migrations call in app/main.py -> FAIL C3" 1 "FAIL C3"
+expect_lines "T16 findings name the offending lines" \
+  "backend/app/main.py:2:" "backend/app/main.py:3:"
+
+# T5/C5: requirements.txt present.
+d="$WORK/t5-c5"; fixture_requirements_txt "$d"
+run_self "$d"
+expect "T5/C5 requirements.txt present -> FAIL C5" 1 "FAIL C5"
+
+# T5/C6: no '-m contract' in CI.
+d="$WORK/t5-c6"; fixture_missing_contract_ci "$d"
+run_self "$d"
+expect "T5/C6 missing contract gate in CI -> FAIL C6" 1 "FAIL C6"
+
+# T18/plan 21 path resolution: a no-arg family scan launched from an
+# unrelated cwd must resolve the REAL family root from either copy depth.
+# The vendored copy at <family>/health-assistant/core used to resolve
+# <family>/health-assistant (dirname of dirname of dirname), where every
+# table entry missed — the very repo the gate lives in reported a false
+# "FAIL C5: missing backend/pyproject.toml".
+fam="$WORK/t18-family"; fixture_family "$fam"
+run_family "$fam/health-assistant/core"
+expect "T18 vendored copy no-arg resolves the family root" 0 "RESULT: OK" "FAIL"
+expect_lines "T18 vendored copy scans every table repo" \
+  "== family convergence: study-assistant" \
+  "== family convergence: career-assistant" \
+  "== family convergence: health-assistant/core" \
+  "== family convergence: auth-kit"
+if grep -qF "health-assistant/health-assistant" <<<"$RUN_OUT"; then
+  fail_case "T18 vendored copy never probes <family>/health-assistant/health-assistant" "$RUN_OUT"
+else
+  ok_case "T18 vendored copy never probes <family>/health-assistant/health-assistant"
+fi
+
+# T18b: the same scan hosted by the dev canonical copy (<family>/dev).
+run_family "$fam/dev"
+expect "T18 dev-canonical copy no-arg resolves the family root" 0 "RESULT: OK" "FAIL"
+
+# T18c: a lone copy with no siblings cannot run a family scan — loud
+# failure, never a vacuous "RESULT: OK".
+lone="$WORK/t18-lone/core"; fixture_conformant "$lone"
+run_family "$lone"
+if [ "$RUN_RC" -ne 0 ] && grep -qF "cannot locate the family root" <<<"$RUN_OUT" \
+  && ! grep -qF "RESULT: OK" <<<"$RUN_OUT"; then
+  ok_case "T18 lone copy no-arg fails loud (no vacuous RESULT: OK)"
+else
+  fail_case "T18 lone copy no-arg fails loud (no vacuous RESULT: OK)" \
+    "rc=$RUN_RC"$'\n'"$RUN_OUT"
+fi
+
+# T18d: a table repo that is not checked out is a named failure, not a
+# silent skip.
+fam2="$WORK/t18-missing"; fixture_family "$fam2"; rm -rf "$fam2/career-assistant"
+run_family "$fam2/health-assistant/core"
+expect "T18 missing family repo -> FAIL C5" 1 "FAIL C5: repo not checked out at .*career-assistant"
+
+# D2/F2 structural: the gate script must contain no vocabulary literal —
+# patterns are data, so the gate can never match its own patterns.
+gate_text="$(cat "$GATE")"
+missing_lit=""
+for marker in "${PLANTED_MARKERS[@]}" "${PLANTED_ENV[@]}" "${PLANTED_MIGRATIONS[@]}" "${PLANTED_SECURITY[@]}"; do
+  if grep -qF -- "$marker" <<<"$gate_text"; then
+    missing_lit="$missing_lit $marker"
+  fi
+done
+if [ -z "$missing_lit" ]; then
+  ok_case "D2 gate script contains no vocabulary literals"
+else
+  fail_case "D2 gate script contains no vocabulary literals" "literals:$missing_lit"
+fi
+
+echo "--"
+echo "self-test: $PASS passed, $FAIL failed"
+[ "$FAIL" = 0 ] || exit 1
+exit 0

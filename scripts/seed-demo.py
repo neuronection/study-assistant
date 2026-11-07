@@ -63,6 +63,8 @@ from sqlalchemy import delete, func, inspect, select  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.core.vocab import StudyStatus  # noqa: E402
+
 from app.domain.models import (  # noqa: E402
     AuthSession,
     Chunk,
@@ -121,7 +123,7 @@ def demo_id(kind: str, key: str) -> str:
 class CardSpec:
     front: str
     back: str
-    kind: str = "basic"
+    kind: str = "card_basic"
     due_in_days: int = 0
 
 
@@ -135,7 +137,7 @@ class MaterialSpec:
     key_terms: tuple[str, ...]
     reading_minutes: int = 12
     difficulty: int = 2
-    study_status: str = "unread"
+    study_status: str = StudyStatus.UNREAD.value
     study_progress: float = 0.0
     chapter: str = ""
 
@@ -216,7 +218,7 @@ LINEAR_ALGEBRA = CourseSpec(
             summary="Axioms, examples and the subspace test for vector spaces.",
             topics=("vector spaces", "subspaces", "axioms"),
             key_terms=("vector space", "subspace", "closure", "field"),
-            study_status="read",
+            study_status=StudyStatus.STUDIED.value,
             study_progress=1.0,
             chapter="Vector spaces",
         ),
@@ -238,7 +240,7 @@ LINEAR_ALGEBRA = CourseSpec(
             summary="Mechanics and pitfalls of matrix multiplication.",
             topics=("matrices", "transpose"),
             key_terms=("matrix product", "transpose", "non-commutative"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.5,
             chapter="Matrix calculus",
         ),
@@ -273,8 +275,8 @@ LINEAR_ALGEBRA = CourseSpec(
     cards=(
         CardSpec("What are the two closure axioms of a subspace?", "Closure under addition and closure under scalar multiplication", due_in_days=-1),
         CardSpec("State the transpose rule for a matrix product.", "$(AB)^{\\mathsf{T}} = B^{\\mathsf{T}} A^{\\mathsf{T}}$", due_in_days=0),
-        CardSpec("Does $AB = 0$ imply $A = 0$ or $B = 0$?", "No — non-zero matrices can multiply to zero.", kind="reverse", due_in_days=2),
-        CardSpec("A non-empty subset closed under addition and scalar multiplication is …", "a subspace", kind="cloze", due_in_days=5),
+        CardSpec("Does $AB = 0$ imply $A = 0$ or $B = 0$?", "No — non-zero matrices can multiply to zero.", kind="card_reverse", due_in_days=2),
+        CardSpec("A non-empty subset closed under addition and scalar multiplication is …", "a subspace", kind="card_cloze", due_in_days=5),
     ),
 )
 
@@ -325,7 +327,7 @@ DATABASES = CourseSpec(
     cards=(
         CardSpec("State the one-line rule for 3NF.", "Every non-key attribute depends on the key, the whole key, and nothing but the key.", due_in_days=1),
         CardSpec("What does 1NF forbid?", "Repeating groups and non-atomic values.", due_in_days=3),
-        CardSpec("A partial dependency violates …", "2NF", kind="cloze", due_in_days=6),
+        CardSpec("A partial dependency violates …", "2NF", kind="card_cloze", due_in_days=6),
     ),
 )
 
@@ -356,7 +358,7 @@ GREEK_A2 = CourseSpec(
             summary="Aorist stems and the three irregular verbs that matter at A2.",
             topics=("past tense", "verbs"),
             key_terms=("αόριστος", "aorist", "irregular verbs"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.3,
             chapter="Past tense",
         ),
@@ -374,7 +376,7 @@ GREEK_A2 = CourseSpec(
         ),
     ),
     cards=(
-        CardSpec("Translate: «πήγα».", "I went", kind="reverse", due_in_days=0),
+        CardSpec("Translate: «πήγα».", "I went", kind="card_reverse", due_in_days=0),
         CardSpec("What is the aorist of «βλέπω»?", "είδα", due_in_days=2),
         CardSpec("Translate: «Τι έκανες χθες;»", "What did you do yesterday?", due_in_days=4),
     ),
@@ -428,7 +430,7 @@ CONSTITUTIONAL_LAW = CourseSpec(
     cards=(
         CardSpec("State the *Halloran* holding in one sentence.", "Delegated rule-making is valid only under intelligible principles set by the legislature.", due_in_days=1),
         CardSpec("Name the three branches.", "Legislature, executive, judiciary.", due_in_days=2),
-        CardSpec("Ultra vires means …", "beyond one's legal power", kind="cloze", due_in_days=7),
+        CardSpec("Ultra vires means …", "beyond one's legal power", kind="card_cloze", due_in_days=7),
     ),
 )
 
@@ -476,7 +478,7 @@ LEGAL_WRITING = CourseSpec(
     ),
     cards=(
         CardSpec("What are the four parts of a one-page brief?", "Question presented, short answer, reasoning, conclusion.", due_in_days=3),
-        CardSpec("IRAC expands to …", "Issue, Rule, Application, Conclusion", kind="cloze", due_in_days=5),
+        CardSpec("IRAC expands to …", "Issue, Rule, Application, Conclusion", kind="card_cloze", due_in_days=5),
     ),
 )
 
@@ -521,7 +523,7 @@ APPELLATE_ADVOCACY = CourseSpec(
     ),
     cards=(
         CardSpec("What do you do first when the bench asks a question?", "Answer the question, then explain.", due_in_days=0),
-        CardSpec("How long is the opening roadmap?", "About 30 seconds.", kind="reverse", due_in_days=2),
+        CardSpec("How long is the opening roadmap?", "About 30 seconds.", kind="card_reverse", due_in_days=2),
     ),
 )
 
@@ -553,7 +555,7 @@ STATISTICS = CourseSpec(
             summary="p-values, the two error types, and the phrasing that keeps marks.",
             topics=("p-value", "errors"),
             key_terms=("p-value", "Type I error", "Type II error", "H_0"),
-            study_status="read",
+            study_status=StudyStatus.STUDIED.value,
             study_progress=1.0,
             chapter="Hypothesis testing",
         ),
@@ -590,9 +592,9 @@ STATISTICS = CourseSpec(
     ),
     cards=(
         CardSpec("Define a p-value.", "The probability, assuming H_0, of data at least as extreme as observed.", due_in_days=-2),
-        CardSpec("A Type I error is …", "rejecting a true null hypothesis", kind="cloze", due_in_days=0),
+        CardSpec("A Type I error is …", "rejecting a true null hypothesis", kind="card_cloze", due_in_days=0),
         CardSpec("What does the slope estimate in $y = \\beta_0 + \\beta_1 x$?", "The change in y per unit change in x.", due_in_days=1),
-        CardSpec("Why not say \"accept H_0\"?", "Failing to reject is not evidence that H_0 is true.", kind="reverse", due_in_days=4),
+        CardSpec("Why not say \"accept H_0\"?", "Failing to reject is not evidence that H_0 is true.", kind="card_reverse", due_in_days=4),
     ),
 )
 
@@ -640,7 +642,7 @@ MOLECULAR_BIOLOGY = CourseSpec(
     cards=(
         CardSpec("State the central dogma.", "DNA → RNA → protein.", due_in_days=2),
         CardSpec("Which enzyme copies DNA into mRNA?", "RNA polymerase.", due_in_days=3),
-        CardSpec("Reverse transcription copies …", "RNA into DNA", kind="cloze", due_in_days=6),
+        CardSpec("Reverse transcription copies …", "RNA into DNA", kind="card_cloze", due_in_days=6),
     ),
 )
 
@@ -671,7 +673,7 @@ SPANISH_B2 = CourseSpec(
             summary="The trigger categories and three fixed phrases.",
             topics=("subjunctive",),
             key_terms=("subjuntivo", "ojalá", "para que"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.6,
             chapter="Subjunctive",
         ),
@@ -689,8 +691,8 @@ SPANISH_B2 = CourseSpec(
         ),
     ),
     cards=(
-        CardSpec("Translate: «Ojalá llueva mañana.»", "I hope it rains tomorrow.", kind="reverse", due_in_days=1),
-        CardSpec("«para que» triggers which mood?", "the subjunctive", kind="cloze", due_in_days=3),
+        CardSpec("Translate: «Ojalá llueva mañana.»", "I hope it rains tomorrow.", kind="card_reverse", due_in_days=1),
+        CardSpec("«para que» triggers which mood?", "the subjunctive", kind="card_cloze", due_in_days=3),
         CardSpec("Complete: «Quiero que ___ (venir).»", "vengas", due_in_days=5),
     ),
 )
@@ -1015,7 +1017,7 @@ def _ensure_course(
 
 
 def _ensure_chapter(
-    session: Session, tree: TreeService, course: Course, root_id: int, title: str
+    session: Session, tree: TreeService, course: Course, root_id: str, title: str
 ) -> tuple[TreeNode, bool]:
     row = session.scalar(
         select(TreeNode).where(

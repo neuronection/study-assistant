@@ -154,6 +154,15 @@ directory** (and in the setup wizard). Rules:
 - The `SA_DATA_DIR` environment variable (or `backend/.env`) always wins over the
   UI setting — it stays the power-user escape hatch.
 
+### Update notices
+
+The app checks the project's GitHub Releases page (latest release tag only) at
+most every six hours and shows a dismissible banner when a newer version exists.
+The banner links to the release page; it never downloads or installs anything —
+installing remains a manual step from the release assets. Offline checks fail
+silently (no banner), and dismissing a version keeps it hidden until a newer one
+appears.
+
 ```bash
 pnpm dev --reset                # prompt before wiping db + blobs + cache + thumbnails + inbox
 pnpm dev --reset --yes          # skip the confirmation
@@ -162,8 +171,7 @@ pnpm dev --reset --all --yes    # also delete backups/
 
 `--reset` works the same on `pnpm webapp` and `pnpm app`. It resolves the exact
 location from the `SA_DATA_DIR` environment variable, else `XDG_DATA_HOME`, else
-`~/.local/share/StudyAssistant`. If an old `~/.local/share/CourseAssistant`
-folder exists (pre-rename), it is renamed automatically on the next launch.
+`~/.local/share/StudyAssistant`.
 **API keys are not here** — they live in your
 operating system's keyring, referenced by the provider rows in `app.db`.
 

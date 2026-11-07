@@ -1,5 +1,6 @@
 import random
 import re
+from collections.abc import Mapping
 from typing import Any
 
 STRUCT_KINDS = ("matching", "ordering", "categorize", "fill_blank")
@@ -14,7 +15,7 @@ def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def validate_structural_payload(kind: str, payload: dict[str, Any]) -> list[str]:
+def validate_structural_payload(kind: str, payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
@@ -83,14 +84,10 @@ def validate_structural_payload(kind: str, payload: dict[str, Any]) -> list[str]
         blanks = [int(match) for match in BLANK_RE.findall(prompt_md)]
         expected = list(range(1, len(blanks) + 1))
         if not blanks or sorted(blanks) != expected:
-            problems.append(
-                "fill_blank: prompt blanks must be {{1}}..{{n}} with no gaps"
-            )
+            problems.append("fill_blank: prompt blanks must be {{1}}..{{n}} with no gaps")
             return problems
         if len(answers) != len(blanks):
-            problems.append(
-                f"fill_blank: {len(blanks)} answers required, got {len(answers)}"
-            )
+            problems.append(f"fill_blank: {len(blanks)} answers required, got {len(answers)}")
             return problems
         for index, answer in enumerate(answers):
             accepted = answer if isinstance(answer, list) else [answer]
@@ -100,6 +97,10 @@ def validate_structural_payload(kind: str, payload: dict[str, Any]) -> list[str]
     else:
         problems.append(f"unknown structural kind: {kind}")
     return problems
+
+
+def _seed_value(seed: str) -> int:
+    return int(seed.replace("-", "")[:16], 16)
 
 
 def _index_list(response: Any, length: int) -> list[int] | None:
@@ -113,9 +114,7 @@ def _index_list(response: Any, length: int) -> list[int] | None:
     return result
 
 
-def check_structural(
-    kind: str, payload: dict[str, Any], response: Any
-) -> tuple[bool, str]:
+def check_structural(kind: str, payload: Mapping[str, Any], response: Any) -> tuple[bool, str]:
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
         picks = _index_list(response, len(pairs))
@@ -146,8 +145,7 @@ def check_structural(
         hits = sum(
             1
             for index, pick in enumerate(picks)
-            if isinstance(entries[index], dict) and picks[index]
-            == entries[index].get("category")
+            if isinstance(entries[index], dict) and picks[index] == entries[index].get("category")
         )
         return hits == len(entries), (
             "categorize: correct"
@@ -174,8 +172,8 @@ def check_structural(
     return False, f"unknown structural kind: {kind}"
 
 
-def public_input(kind: str, payload: dict[str, Any], seed: int) -> dict[str, Any]:
-    rnd = random.Random(seed)
+def public_input(kind: str, payload: Mapping[str, Any], seed: str) -> dict[str, Any]:
+    rnd = random.Random(_seed_value(seed))
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
         rights = list(range(len(pairs)))
@@ -184,8 +182,7 @@ def public_input(kind: str, payload: dict[str, Any], seed: int) -> dict[str, Any
             "widget": "matching",
             "lefts": [str(pair.get("left", "")) for pair in pairs],
             "rights": [
-                {"index": index, "label": str(pairs[index].get("right", ""))}
-                for index in rights
+                {"index": index, "label": str(pairs[index].get("right", ""))} for index in rights
             ],
         }
     if kind == "ordering":
@@ -194,17 +191,13 @@ def public_input(kind: str, payload: dict[str, Any], seed: int) -> dict[str, Any
         rnd.shuffle(order)
         return {
             "widget": "ordering",
-            "items": [
-                {"id": index, "label": str(items[index])} for index in order
-            ],
+            "items": [{"id": index, "label": str(items[index])} for index in order],
         }
     if kind == "categorize":
         return {
             "widget": "categorize",
             "categories": [str(entry) for entry in _as_list(payload.get("categories"))],
-            "items": [
-                str(entry.get("label", "")) for entry in _as_list(payload.get("items"))
-            ],
+            "items": [str(entry.get("label", "")) for entry in _as_list(payload.get("items"))],
         }
     if kind == "fill_blank":
         prompt_md = str(payload.get("prompt_md", ""))

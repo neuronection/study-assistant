@@ -21,6 +21,7 @@ describe('DemoBanner', () => {
     mockedConfig.mockResolvedValue({
       demo_mode: true,
       auth_mode: 'authenticated',
+      identity_mode: 'server',
       registration_enabled: false,
     })
     render(<DemoBanner />)
@@ -33,6 +34,7 @@ describe('DemoBanner', () => {
     mockedConfig.mockResolvedValue({
       demo_mode: false,
       auth_mode: 'authenticated',
+      identity_mode: 'server',
       registration_enabled: true,
     })
     const { container } = render(<DemoBanner />)
@@ -51,6 +53,7 @@ describe('DemoBanner', () => {
     mockedConfig.mockResolvedValue({
       demo_mode: true,
       auth_mode: 'authenticated',
+      identity_mode: 'server',
       registration_enabled: false,
     })
     const first = render(<DemoBanner />)

@@ -23,6 +23,8 @@ class ScanScheduler:
         publish: Callable[[str, dict[str, Any]], None],
         interval_sec: int = 300,
         startup_delay_sec: float = 5.0,
+        inbox_dir: Path | None = None,
+        retrieval_alerts: Callable[[], dict[str, Any]] | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._blobs_dir = Path(blobs_dir)
@@ -30,6 +32,10 @@ class ScanScheduler:
         self._publish = publish
         self._interval = interval_sec
         self._startup_delay = startup_delay_sec
+        self._inbox_dir = Path(inbox_dir) if inbox_dir is not None else None
+        self._retrieval_alerts = retrieval_alerts
+        self._inbox_last_scan: datetime | None = None
+        self._inbox_signature: tuple[tuple[str, int], ...] = ()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._cycle = threading.Event()
@@ -57,16 +63,14 @@ class ScanScheduler:
     def wake(self) -> None:
         self._cycle.set()
 
-    def scan_all(self, *, force: bool = False) -> dict[int, dict[str, int]]:
-        results: dict[int, dict[str, int]] = {}
+    def scan_all(self, *, force: bool = False) -> dict[str, dict[str, int]]:
+        results: dict[str, dict[str, int]] = {}
         now = datetime.now(UTC)
         with self._session_factory() as session:
             sources = list(
-                session.scalars(
-                    select(MaterialSource).where(MaterialSource.enabled.is_(True))
-                )
+                session.scalars(select(MaterialSource).where(MaterialSource.enabled.is_(True)))
             )
-            due: list[tuple[str, int]] = []
+            due: list[tuple[str, str]] = []
             for source in sources:
                 if force or source.last_scanned_at is None:
                     due.append((source.profile_id, source.id))
@@ -78,9 +82,69 @@ class ScanScheduler:
             stats = self._scan_one(profile_id, source_id)
             if stats is not None:
                 results[source_id] = stats
+        self.scan_inbox(force=force)
+        self.scan_retrieval_alerts()
         return results
 
-    def _scan_one(self, profile_id: str, source_id: int) -> dict[str, int] | None:
+    def scan_retrieval_alerts(self) -> dict[str, Any] | None:
+        """Evaluate the bounded retrieval alerts on the existing periodic seam."""
+        if self._retrieval_alerts is None:
+            return None
+        try:
+            return self._retrieval_alerts()
+        except Exception:
+            return None
+
+    def scan_inbox(self, *, force: bool = False) -> list[dict[str, Any]]:
+        if self._inbox_dir is None:
+            return []
+        now = datetime.now(UTC)
+        if (
+            not force
+            and self._inbox_last_scan is not None
+            and self._inbox_last_scan + timedelta(seconds=self._interval) > now
+        ):
+            return []
+        self._inbox_last_scan = now
+        try:
+            from ..study.inbox import InboxService
+
+            entries = InboxService(self._inbox_dir).scan()
+        except (OSError, ValueError):
+            return []
+        signature = tuple((entry.filename, entry.modified_at) for entry in entries)
+        if signature != self._inbox_signature:
+            self._inbox_signature = signature
+            self._publish(
+                WsTopic.inbox(),
+                {
+                    "event": "staged",
+                    "count": len(entries),
+                    "entries": [
+                        {
+                            "filename": entry.filename,
+                            "kind": entry.kind,
+                            "title": entry.title,
+                            "ok": entry.ok,
+                            "question_count": entry.question_count,
+                        }
+                        for entry in entries
+                    ],
+                },
+            )
+        return [
+            {
+                "filename": entry.filename,
+                "kind": entry.kind,
+                "title": entry.title,
+                "ok": entry.ok,
+                "question_count": entry.question_count,
+                "problems": entry.problems,
+            }
+            for entry in entries
+        ]
+
+    def _scan_one(self, profile_id: str, source_id: str) -> dict[str, int] | None:
         try:
             with self._session_factory() as session:
                 service = SourcesService(session, self._blobs_dir)

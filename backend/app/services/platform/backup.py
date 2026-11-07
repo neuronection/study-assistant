@@ -11,7 +11,7 @@ from contextlib import suppress
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import structlog
@@ -25,7 +25,7 @@ MANIFEST_NAME = "manifest.json"
 DB_NAME = "database.sqlite"
 DB_NAME_PG = "database.dump"
 BLOBS_PREFIX = "blobs/"
-BACKUP_FORMAT = "ca-backup/v1"
+BACKUP_FORMAT = "sa-backup/v1"
 STAMP_PATTERN = re.compile(r"^(auto|manual)-(\d{8}-\d{6})\.zip$")
 
 DB_KIND_SQLITE = "sqlite"
@@ -71,6 +71,52 @@ def pg_connection(database_url: str) -> tuple[list[str], dict[str, str]]:
     if url.password:
         env["PGPASSWORD"] = url.password
     return args, env
+
+
+def postgres_schema_revision(database_url: str) -> str | None:
+    """The datastore's `alembic_version` (best-effort; None when unknown)."""
+    args, env = pg_connection(database_url)
+    try:
+        result = subprocess.run(
+            ["psql", "-tAc", "SELECT version_num FROM alembic_version", *args],
+            capture_output=True,
+            env=env,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    value = result.stdout.decode(errors="replace").strip()
+    return value or None
+
+
+def sqlite_schema_revision(data: bytes) -> str | None:
+    """The datastore's `alembic_version` inside a SQLite snapshot."""
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=True) as handle:
+        handle.write(data)
+        handle.flush()
+        try:
+            connection = sqlite3.connect(handle.name)
+        except sqlite3.DatabaseError:
+            return None
+        try:
+            row = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+        except sqlite3.DatabaseError:
+            return None
+        finally:
+            connection.close()
+    return str(row[0]) if row else None
+
+
+def current_schema_revision(db_path: Path, database_url: str | None = None) -> str | None:
+    """The live datastore's revision, for the backup manifest (best-effort)."""
+    pg_url = postgres_url(database_url)
+    if pg_url is not None:
+        return postgres_schema_revision(pg_url)
+    try:
+        return sqlite_schema_revision(Path(db_path).read_bytes())
+    except OSError:
+        return None
 
 
 def dump_database_pg(database_url: str) -> bytes:
@@ -186,7 +232,7 @@ def _snapshot_database(db_path: Path) -> bytes:
 
 
 def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = None) -> bytes:
-    """Build a `ca-backup/v1` archive.
+    """Build a `sa-backup/v1` archive.
 
     The database member depends on the dialect: SQLite deployments get the
     online-backup snapshot as `database.sqlite`, PostgreSQL deployments a
@@ -196,6 +242,7 @@ def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = N
     manifest = {
         "format": BACKUP_FORMAT,
         "app_version": __version__,
+        "schema": current_schema_revision(db_path, database_url),
         "created_at": datetime.now(UTC).isoformat(),
     }
     pg_url = postgres_url(database_url)
@@ -216,20 +263,45 @@ def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = N
     return buffer.getvalue()
 
 
-def read_archive(data: bytes) -> tuple[DatabaseDump, dict[str, bytes]]:
-    try:
-        archive = zipfile.ZipFile(BytesIO(data))
-    except zipfile.BadZipFile as error:
-        raise BackupError("not a backup archive") from error
-    names = archive.namelist()
+def _safe_blob_member(name: str) -> str | None:
+    """The blob's relative path, or None when the archive smuggles a traversal."""
+    rel = name[len(BLOBS_PREFIX) :]
+    if not rel or "\\" in rel or "\x00" in rel:
+        return None
+    path = PurePosixPath(rel)
+    if path.is_absolute() or any(part in ("..", ".") for part in path.parts):
+        return None
+    return path.as_posix()
+
+
+def _manifest_of(archive: zipfile.ZipFile, names: list[str]) -> dict[str, Any]:
     if MANIFEST_NAME not in names:
         raise BackupError("backup archive is incomplete")
     try:
         manifest = json.loads(archive.read(MANIFEST_NAME))
     except ValueError as error:
         raise BackupError("unreadable manifest") from error
-    if manifest.get("format") != BACKUP_FORMAT:
+    if not isinstance(manifest, dict) or manifest.get("format") != BACKUP_FORMAT:
         raise BackupError("unsupported backup format")
+    return manifest
+
+
+def read_manifest(data: bytes) -> dict[str, Any]:
+    """The archive's manifest (format-validated), for pre-flight checks."""
+    try:
+        archive = zipfile.ZipFile(BytesIO(data))
+    except zipfile.BadZipFile as error:
+        raise BackupError("not a backup archive") from error
+    return _manifest_of(archive, archive.namelist())
+
+
+def read_archive(data: bytes) -> tuple[DatabaseDump, dict[str, bytes]]:
+    try:
+        archive = zipfile.ZipFile(BytesIO(data))
+    except zipfile.BadZipFile as error:
+        raise BackupError("not a backup archive") from error
+    names = archive.namelist()
+    _manifest_of(archive, names)
     if DB_NAME_PG in names:
         database = DatabaseDump(DB_KIND_POSTGRES, archive.read(DB_NAME_PG))
     elif DB_NAME in names:
@@ -239,7 +311,10 @@ def read_archive(data: bytes) -> tuple[DatabaseDump, dict[str, bytes]]:
     blobs: dict[str, bytes] = {}
     for name in names:
         if name.startswith(BLOBS_PREFIX) and not name.endswith("/"):
-            blobs[name[len(BLOBS_PREFIX) :]] = archive.read(name)
+            rel_path = _safe_blob_member(name)
+            if rel_path is None:
+                raise BackupError("backup archive contains an unsafe path")
+            blobs[rel_path] = archive.read(name)
     return database, blobs
 
 
@@ -255,9 +330,7 @@ def _sqlite_is_healthy(database: bytes) -> bool:
             integrity = connection.execute("PRAGMA integrity_check").fetchone()
             if not integrity or integrity[0] != "ok":
                 return False
-            version = connection.execute(
-                "SELECT version_num FROM alembic_version"
-            ).fetchone()
+            version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
             return version is not None
         except sqlite3.DatabaseError:
             return False
@@ -322,9 +395,7 @@ def _parse_stamp(path: Path) -> datetime | None:
         return None
 
 
-def apply_retention(
-    target_dir: Path, keep_daily: int, keep_weekly: int
-) -> list[Path]:
+def apply_retention(target_dir: Path, keep_daily: int, keep_weekly: int) -> list[Path]:
     if not target_dir.is_dir():
         return []
     stamped = sorted(
@@ -360,17 +431,17 @@ def list_backups(target_dir: Path) -> list[dict[str, Any]]:
             size = path.stat().st_size
         except OSError:
             continue
-        entries.append(
-            {"name": path.name, "size": size, "created_at": stamp.isoformat()}
-        )
+        entries.append({"name": path.name, "size": size, "created_at": stamp.isoformat()})
     entries.sort(key=lambda entry: entry["created_at"], reverse=True)
     return entries
 
 
 def last_backup_time(target_dir: Path) -> datetime | None:
-    stamps = [
-        stamp for path in target_dir.iterdir() if (stamp := _parse_stamp(path))
-    ] if target_dir.is_dir() else []
+    stamps = (
+        [stamp for path in target_dir.iterdir() if (stamp := _parse_stamp(path))]
+        if target_dir.is_dir()
+        else []
+    )
     return max(stamps) if stamps else None
 
 
@@ -441,10 +512,17 @@ def boot_integrity_check(
             if _parse_stamp(path) is not None:
                 candidates.append(path)
     candidates.sort(key=lambda path: path.name, reverse=True)
+    from ...local import head_revision
+
+    expected_schema = head_revision()
     for candidate in candidates:
         try:
-            database, blobs = read_archive(candidate.read_bytes())
+            payload = candidate.read_bytes()
+            database, blobs = read_archive(payload)
+            manifest = read_manifest(payload)
         except (BackupError, OSError):
+            continue
+        if manifest.get("schema") != expected_schema:
             continue
         if database.kind != DB_KIND_SQLITE:
             continue
@@ -452,8 +530,11 @@ def boot_integrity_check(
             continue
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.write_bytes(database.data)
+        blobs_root = blobs_dir.resolve()
         for rel, data in blobs.items():
-            target = blobs_dir / rel
+            target = (blobs_dir / rel).resolve()
+            if not target.is_relative_to(blobs_root) or target == blobs_root:
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         recovery["from_backup"] = candidate.name
@@ -500,9 +581,7 @@ class BackupScheduler:
     def start(self) -> None:
         if self._thread is not None:
             return
-        self._thread = threading.Thread(
-            target=self._run, name="backup-scheduler", daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name="backup-scheduler", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -550,9 +629,7 @@ class BackupScheduler:
                 now=self._clock(),
                 database_url=self._database_url,
             )
-            apply_retention(
-                self._backups_dir, effective.keep_daily, effective.keep_weekly
-            )
+            apply_retention(self._backups_dir, effective.keep_daily, effective.keep_weekly)
             if effective.sync_dir:
                 sync_dir = Path(effective.sync_dir).expanduser()
                 sync_to_dir(path, sync_dir)

@@ -3,20 +3,21 @@ import json
 import threading
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
-from ..agui.family import to_family_events
-from ..agui.state import apply_patch
+from ..ai.flow_events_chat import flow_failed_event
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..core.errors import sanitize_error_detail
 from ..core.events import EventBus
+from ..core.jsonpatch import apply_patch
 from ..core.vocab import ChatProposalStatus, WsTopic
 from ..domain.models import (
     AiInteraction,
@@ -28,9 +29,12 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
+from ..domain.payloads import ChatTrace, ProposalPayload, ProposalResult, TurnFailure
+from ..domain.proposal_contract import ProposalPayloadError, validate_proposal_payload
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
-from ..services.platform.chat import ChatError, ChatService, proposal_out
+from ..services.platform.chat.errors import ChatError
+from ..services.platform.chat.service import ChatService, proposal_out
 from ..services.platform.profiles import ensure_default_profile
 from ..services.platform.proposal_actions import (
     POSTPROCESS_ACTIONS,
@@ -38,6 +42,13 @@ from ..services.platform.proposal_actions import (
     ProposalContext,
     execute_proposal,
     mark_stale,
+    proposal_full_payload,
+)
+from ..services.platform.quizme import (
+    clear_pending,
+    pending_state,
+    quiz_public_state,
+    store_pending,
 )
 from .deps import get_session
 
@@ -45,8 +56,8 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 class SessionCreate(BaseModel):
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
     title: str = "New chat"
     use_embeddings: bool | None = None
 
@@ -57,22 +68,32 @@ class SessionUpdate(BaseModel):
     quizme: bool | None = None
 
 
+class QuizPendingOut(BaseModel):
+    question: str | None = None
+    choices: list[str] | None = None
+    answered: bool = False
+    verdict: str | None = None
+    verdict_detail: str | None = None
+    student_answer: str | None = None
+    expected_display: str | None = None
+
+
 class SessionOut(BaseModel):
-    id: int
+    id: str
     public_id: str
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     title: str
     use_embeddings: bool | None
     quizme: bool = False
-    quiz_pending: dict[str, Any] | None = None
+    quiz_pending: QuizPendingOut | None = None
     created_at: datetime
 
 
 class CitationOut(BaseModel):
     index: int
-    chunk_id: int
-    material_id: int
+    chunk_id: str
+    material_id: str
     title: str
     quote: str
 
@@ -80,18 +101,18 @@ class CitationOut(BaseModel):
 class MentionOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     summary: str | None = None
 
 
 class ReadOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     chars: int
 
 
@@ -108,13 +129,13 @@ class ToolCallOut(BaseModel):
 
 
 class ProposalOut(BaseModel):
-    id: int
+    id: str
     action: str
     payload: dict[str, Any]
     status: str
-    result: dict[str, Any] | None
-    message_id: int | None = None
-    session_id: int | None = None
+    result: ProposalResult | None
+    message_id: str | None = None
+    session_id: str | None = None
 
 
 class ProposalListOut(BaseModel):
@@ -123,7 +144,7 @@ class ProposalListOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    id: int
+    id: str
     role: str
     markdown: str
     blocks: list[dict[str, Any]]
@@ -133,13 +154,13 @@ class MessageOut(BaseModel):
     tool_calls: list[ToolCallOut]
     proposals: list[ProposalOut]
     grounded: bool | None
-    trace: dict[str, Any] | None = None
+    trace: ChatTrace | None = None
     warnings: list[str] = Field(default_factory=list)
-    parent_id: int | None = None
+    parent_id: str | None = None
     state: dict[str, Any] | None = None
     variant_index: int = 1
     variant_count: int = 1
-    sibling_ids: list[int] = Field(default_factory=list)
+    sibling_ids: list[str] = Field(default_factory=list)
 
 
 AttachKind = Literal["material", "note", "quiz", "exercise", "node", "course"]
@@ -147,7 +168,7 @@ AttachKind = Literal["material", "note", "quiz", "exercise", "node", "course"]
 
 class AttachmentIn(BaseModel):
     kind: AttachKind
-    id: int
+    id: str
 
 
 class MessageIn(BaseModel):
@@ -157,11 +178,11 @@ class MessageIn(BaseModel):
 
 class TurnQueued(BaseModel):
     user_message: MessageOut
-    job_id: int
+    job_id: str
 
 
 class SessionDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 def _chat_service(request: Request, session: Session) -> ChatService:
@@ -182,9 +203,14 @@ def _session_out(chat_session: Any) -> SessionOut:
         title=chat_session.title,
         use_embeddings=chat_session.use_embeddings,
         quizme=bool(chat_session.quizme),
-        quiz_pending=chat_session.quiz_pending,
+        quiz_pending=_quiz_pending_out(chat_session),
         created_at=chat_session.created_at,
     )
+
+
+def _quiz_pending_out(chat_session: Any) -> QuizPendingOut | None:
+    public = quiz_public_state(pending_state(chat_session.quiz_pending_row))
+    return QuizPendingOut(**public) if public else None
 
 
 def _proposal_row_out(proposal: Any) -> ProposalOut:
@@ -213,25 +239,33 @@ def list_proposals(
             ) from error
         filters.append(ChatProposal.status == status_value)
     if cursor is not None:
+        created_raw, _sep, before_id = cursor.partition("|")
         try:
-            before_id = int(cursor)
+            before_created = datetime.fromisoformat(created_raw)
         except ValueError as error:
-            raise HTTPException(
-                status_code=422, detail="invalid cursor"
-            ) from error
-        filters.append(ChatProposal.id < before_id)
+            raise HTTPException(status_code=422, detail="invalid cursor") from error
+        filters.append(
+            or_(
+                ChatProposal.created_at < before_created,
+                and_(
+                    ChatProposal.created_at == before_created,
+                    ChatProposal.id < before_id,
+                ),
+            )
+        )
     rows = session.execute(
         select(ChatProposal, ChatMessage.session_id)
         .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
         .join(ChatSession, ChatMessage.session_id == ChatSession.id)
         .where(*filters)
-        .order_by(ChatProposal.id.desc())
+        .order_by(ChatProposal.created_at.desc(), ChatProposal.id.desc())
         .limit(limit + 1)
     ).all()
     next_cursor: str | None = None
     if len(rows) > limit:
         rows = rows[:limit]
-        next_cursor = str(rows[-1][0].id)
+        last = rows[-1][0]
+        next_cursor = f"{last.created_at.isoformat()}|{last.id}"
     proposals = [
         ProposalOut(
             **proposal_out(proposal),
@@ -243,15 +277,13 @@ def list_proposals(
     return {"proposals": proposals, "next_cursor": next_cursor}
 
 
-def _load_proposals(session: Session, message_ids: list[int]) -> dict[int, list[Any]]:
+def _load_proposals(session: Session, message_ids: list[str]) -> dict[str, list[Any]]:
     from ..domain.models import ChatProposal
 
     if not message_ids:
         return {}
-    rows = session.scalars(
-        select(ChatProposal).where(ChatProposal.message_id.in_(message_ids))
-    )
-    grouped: dict[int, list[Any]] = {}
+    rows = session.scalars(select(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
+    grouped: dict[str, list[Any]] = {}
     for row in rows:
         grouped.setdefault(row.message_id, []).append(row)
     return grouped
@@ -262,7 +294,7 @@ def _message_out(
     proposals: list[Any] | None = None,
     variant_index: int = 1,
     variant_count: int = 1,
-    sibling_ids: list[int] | None = None,
+    sibling_ids: list[str] | None = None,
 ) -> MessageOut:
     blocks: list[dict[str, Any]] = []
     for block in message.blocks or []:
@@ -343,7 +375,7 @@ def _message_out(
 @router.get("/sessions", response_model=list[SessionOut])
 def list_sessions(
     request: Request,
-    node_id: int | None = None,
+    node_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[SessionOut]:
     profile = ensure_default_profile(session)
@@ -375,7 +407,7 @@ def create_session(
 
 @router.patch("/sessions/{session_id}", response_model=SessionOut)
 def update_session(
-    session_id: int,
+    session_id: str,
     body: SessionUpdate,
     request: Request,
     session: Session = Depends(get_session),
@@ -391,14 +423,14 @@ def update_session(
     if body.quizme is not None:
         chat_session.quizme = body.quizme
         if not body.quizme:
-            chat_session.quiz_pending = None
+            clear_pending(session, chat_session)
     session.commit()
     return _session_out(chat_session)
 
 
 @router.delete("/sessions/{session_id}", response_model=SessionDeletedOut)
 def delete_session(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     chat_session = _chat_service(request, session).get_session(session_id, profile.id)
@@ -410,14 +442,10 @@ def delete_session(
         session, "chat", chat_session.id, chat_session.title, profile.id
     )
     message_ids = list(
-        session.scalars(
-            select(ChatMessage.id).where(ChatMessage.session_id == chat_session.id)
-        )
+        session.scalars(select(ChatMessage.id).where(ChatMessage.session_id == chat_session.id))
     )
     if message_ids:
-        session.execute(
-            delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids))
-        )
+        session.execute(delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
         session.execute(delete(ChatMessage).where(ChatMessage.id.in_(message_ids)))
     session.delete(chat_session)
     session.commit()
@@ -426,7 +454,7 @@ def delete_session(
 
 @router.get("/sessions/{session_id}/messages", response_model=list[MessageOut])
 def list_messages(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> list[MessageOut]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -439,9 +467,7 @@ def list_messages(
     outputs: list[MessageOut] = []
     for message in messages:
         group = siblings.get(message.parent_id, [message.id])
-        index = next(
-            (i for i, mid in enumerate(group) if mid == message.id), 0
-        )
+        index = next((i for i, mid in enumerate(group) if mid == message.id), 0)
         outputs.append(
             _message_out(
                 message,
@@ -467,7 +493,7 @@ class MessageStateOut(BaseModel):
 
 @router.patch("/messages/{message_id}/state", response_model=MessageStateOut)
 def patch_message_state(
-    message_id: int,
+    message_id: str,
     body: StatePatchIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -487,16 +513,18 @@ def patch_message_state(
     if len(json.dumps(state, ensure_ascii=False, default=str)) > MAX_STATE_BYTES:
         raise HTTPException(status_code=422, detail="widget state too large")
     message.state = state
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="widget_state",
             context_id=message_id,
             direction="patch",
             model=None,
-            input_tokens=max(1, len(json.dumps(body.delta)) // 4),
+            input_tokens=token_count(json.dumps(body.delta), accounting),
             output_tokens=0,
             cost_usd=None,
             latency_ms=0,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()
@@ -504,15 +532,13 @@ def patch_message_state(
 
 
 def _load_proposal_for_profile(
-    session: Session, proposal_id: int, profile_id: str
+    session: Session, proposal_id: str, profile_id: str
 ) -> tuple[ChatProposal, ChatSession]:
     proposal = session.get(ChatProposal, proposal_id)
     if proposal is None:
         raise HTTPException(status_code=404, detail="proposal not found")
     message = session.get(ChatMessage, proposal.message_id)
-    chat_session = (
-        session.get(ChatSession, message.session_id) if message is not None else None
-    )
+    chat_session = session.get(ChatSession, message.session_id) if message is not None else None
     if chat_session is None or chat_session.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="proposal not found")
     return proposal, chat_session
@@ -543,55 +569,63 @@ def _conflict_refresh(
     payload = dict(proposal.payload or {})
     from ..services.platform.proposal_actions import capture_proposal_snapshot
 
-    snapshot = capture_proposal_snapshot(
+    current = capture_proposal_snapshot(
         session,
         action=proposal.action,
         payload=payload,
-        course_id=int(chat_session.course_id or 0),
+        course_id=chat_session.course_id or "",
     )
-    if not snapshot:
+    if current is None:
         return False
-    current = str(snapshot.get("original_md") or "")
-    if current == str(payload.get("original_md") or ""):
+    if current == str(proposal.original_md or ""):
         return False
-    if payload.get("text_edits"):
+    if proposal.anchors:
         resolved = resolve_text_edits(
-            current, [TextEditOp.model_validate(op) for op in payload["text_edits"]]
+            current,
+            [
+                TextEditOp.model_validate(
+                    {"op": anchor.op, "find": anchor.find_text, "text": anchor.text}
+                )
+                for anchor in proposal.anchors
+            ],
         )
         payload[("new_body_md" if proposal.action == "edit_note" else "new_markdown")] = resolved
-    payload["original_md"] = current
-    proposal.payload = payload
+    proposal.payload = cast(ProposalPayload, payload)
+    proposal.original_md = current
     proposal.status = ChatProposalStatus.CONFLICT.value
-    proposal.result = {
-        "conflict": (
-            "target changed since this proposal was made — "
-            "the diff was refreshed; review and approve again"
-        )
-    }
+    proposal.result = cast(
+        ProposalResult,
+        {
+            "conflict": (
+                "target changed since this proposal was made — "
+                "the diff was refreshed; review and approve again"
+            )
+        },
+    )
     return True
 
 
 @router.post("/proposals/{proposal_id}/approve", response_model=ProposalOut)
 def approve_proposal(
-    proposal_id: int,
+    proposal_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
+    try:
+        validate_proposal_payload(proposal.action, proposal.payload or {})
+    except ProposalPayloadError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     if proposal.status not in ChatProposalStatus.resolvable():
-        raise HTTPException(
-            status_code=409, detail=f"proposal already {proposal.status}"
-        )
+        raise HTTPException(status_code=409, detail=f"proposal already {proposal.status}")
     if proposal.action in GENERATE_ACTIONS:
         proposal.status = ChatProposalStatus.APPROVED.value
         proposal.result = {"open_dialog": proposal.payload}
         session.commit()
         return _proposal_row_out(proposal)
     if chat_session.course_id is None:
-        raise HTTPException(
-            status_code=422, detail="chat session has no course to act on"
-        )
+        raise HTTPException(status_code=422, detail="chat session has no course to act on")
     try:
         if _conflict_refresh(session, proposal, chat_session):
             session.commit()
@@ -616,37 +650,37 @@ def approve_proposal(
             status, result = execute_proposal(
                 session,
                 action=proposal.action,
-                payload=proposal.payload or {},
+                payload=proposal_full_payload(proposal),
                 course_id=chat_session.course_id,
                 context=ProposalContext(
-                blobs=request.app.state.blobs,
-                jobs=request.app.state.jobs,
-                profile_id=profile.id,
-            ),
+                    blobs=request.app.state.blobs,
+                    jobs=request.app.state.jobs,
+                    profile_id=profile.id,
+                ),
             )
         except ProposalActionError as error:
             mark_stale(proposal, str(error))
             session.commit()
             return _proposal_row_out(proposal)
         if status != "executed":
-            raise HTTPException(
-                status_code=422, detail=f"unexpected execution status {status}"
-            )
+            raise HTTPException(status_code=422, detail=f"unexpected execution status {status}")
         if proposal.action in POSTPROCESS_ACTIONS:
             request.app.state.jobs.wake()
     proposal.status = ChatProposalStatus.EXECUTED.value
-    proposal.result = result
+    proposal.result = cast(ProposalResult, result)
     proposal.executed_at = utcnow()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="proposal",
             context_id=proposal.id,
             direction=f"execute {proposal.action}",
             model=None,
-            input_tokens=max(1, len(str(proposal.payload)) // 4),
+            input_tokens=token_count(str(proposal.payload), accounting),
             output_tokens=0,
             cost_usd=None,
             latency_ms=0,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()
@@ -731,42 +765,38 @@ def _execute_create_note(
 
 
 @router.post("/proposals/{proposal_id}/dismiss", response_model=ProposalOut)
-def dismiss_proposal(
-    proposal_id: int, session: Session = Depends(get_session)
-) -> ProposalOut:
+def dismiss_proposal(proposal_id: str, session: Session = Depends(get_session)) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, _chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
     if proposal.status != "proposed":
-        raise HTTPException(
-            status_code=409, detail=f"proposal already {proposal.status}"
-        )
+        raise HTTPException(status_code=409, detail=f"proposal already {proposal.status}")
     proposal.status = ChatProposalStatus.DISMISSED.value
     session.commit()
     return _proposal_row_out(proposal)
 
 
 class ContextNodeOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class MentionRefOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     summary: str | None = None
 
 
 class NotePreviewOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class SessionContextOut(BaseModel):
-    session_id: int
-    course_id: int | None
+    session_id: str
+    course_id: str | None
     node: ContextNodeOut | None
     registry: list[MentionRefOut]
     latest_notes: list[NotePreviewOut]
@@ -774,7 +804,7 @@ class SessionContextOut(BaseModel):
 
 @router.get("/sessions/{session_id}/context", response_model=SessionContextOut)
 def session_context(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -791,9 +821,7 @@ def session_context(
         "session_id": chat_session.id,
         "course_id": chat_session.course_id,
         "node": node,
-        "registry": [
-            entry.as_dict() for entry in registry.entries()
-        ],
+        "registry": [entry.as_dict() for entry in registry.entries()],
         "latest_notes": [
             {"id": note.id, "title": note.title}
             for note in service.latest_notes_preview(chat_session)
@@ -802,22 +830,22 @@ def session_context(
 
 
 class BranchNodeOut(BaseModel):
-    id: int
+    id: str
     role: str
     excerpt: str
-    parent_id: int | None
-    children: list[int]
-    active_child_id: int | None
+    parent_id: str | None
+    children: list[str]
+    active_child_id: str | None
 
 
 class BranchTreeOut(BaseModel):
-    active_root_id: int | None
+    active_root_id: str | None
     nodes: list[BranchNodeOut]
 
 
 @router.get("/sessions/{session_id}/tree", response_model=BranchTreeOut)
 def session_branch_tree(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -825,11 +853,9 @@ def session_branch_tree(
     if chat_session is None:
         raise HTTPException(status_code=404, detail="chat session not found")
     rows = service.all_messages(session_id)
-    children: dict[int | None, list[int]] = {}
+    children: dict[str | None, list[str]] = {}
     for row in rows:
         children.setdefault(row.parent_id, []).append(row.id)
-    for ids in children.values():
-        ids.sort()
 
     def excerpt(row: ChatMessage) -> str:
         for block in row.blocks or []:
@@ -857,7 +883,7 @@ def session_branch_tree(
 
 @router.post("/sessions/{session_id}/messages", response_model=TurnQueued)
 def send_message(
-    session_id: int,
+    session_id: str,
     body: MessageIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -894,7 +920,7 @@ def send_message(
 
 
 def _load_message_for_profile(
-    session: Session, message_id: int, profile_id: str
+    session: Session, message_id: str, profile_id: str
 ) -> tuple[ChatMessage, ChatSession]:
     message = session.get(ChatMessage, message_id)
     if message is None:
@@ -913,13 +939,13 @@ class QuizAnswerOut(BaseModel):
     correct: bool
     verdict_detail: str
     expected_display: str | None = None
-    user_message_id: int
-    job_id: int | None
+    user_message_id: str
+    job_id: str | None
 
 
 @router.post("/sessions/{session_id}/quiz-answer", response_model=QuizAnswerOut)
 def answer_quiz_question(
-    session_id: int,
+    session_id: str,
     body: QuizAnswerIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -931,7 +957,7 @@ def answer_quiz_question(
     chat_session = service.get_session(session_id, profile.id)
     if chat_session is None:
         raise HTTPException(status_code=404, detail="chat session not found")
-    pending = chat_session.quiz_pending
+    pending = pending_state(chat_session.quiz_pending_row)
     if not isinstance(pending, dict) or not pending.get("question"):
         raise HTTPException(status_code=409, detail="no quiz question is pending")
     if pending.get("verdict") is not None:
@@ -941,19 +967,11 @@ def answer_quiz_question(
     pending["verdict_detail"] = detail
     pending["student_answer"] = str(body.answer)
     pending["awaiting_answer"] = False
-    session.add(
-        QuizmeAnswer(
-            profile_id=profile.id, session_id=session_id, correct=correct
-        )
-    )
-    from sqlalchemy.orm.attributes import flag_modified
-
-    flag_modified(chat_session, "quiz_pending")
+    store_pending(session, chat_session, pending)
+    session.add(QuizmeAnswer(profile_id=profile.id, session_id=session_id, correct=correct))
 
     expected_display: str | None = None
-    if pending.get("choices") is not None and isinstance(
-        pending.get("expected_index"), int
-    ):
+    if pending.get("choices") is not None and isinstance(pending.get("expected_index"), int):
         choices = pending["choices"]
         expected_display = str(choices[pending["expected_index"]])
     else:
@@ -985,7 +1003,7 @@ def answer_quiz_question(
 
 def _mark_quiz_entry_answered(
     session: Session,
-    session_id: int,
+    session_id: str,
     pending: dict[str, Any],
     correct: bool,
     expected_display: str | None,
@@ -997,7 +1015,7 @@ def _mark_quiz_entry_answered(
                 ChatMessage.session_id == session_id,
                 ChatMessage.role == "assistant",
             )
-            .order_by(ChatMessage.id.desc())
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
             .limit(10)
         )
     )
@@ -1023,7 +1041,7 @@ class EditIn(BaseModel):
 
 @router.post("/messages/{message_id}/edit", response_model=TurnQueued)
 def edit_message(
-    message_id: int,
+    message_id: str,
     body: EditIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1032,9 +1050,7 @@ def edit_message(
     service = _chat_service(request, session)
     message, chat_session = _load_message_for_profile(session, message_id, profile.id)
     if message.role != "user":
-        raise HTTPException(
-            status_code=422, detail="only user messages can be edited"
-        )
+        raise HTTPException(status_code=422, detail="only user messages can be edited")
     with request.app.state.turn_locks.get(chat_session.id):
         branched = service.branch_message(message, body.content.strip())
         job = JobRunner.enqueue(
@@ -1049,7 +1065,7 @@ def edit_message(
 
 @router.post("/messages/{message_id}/regenerate", response_model=TurnQueued)
 def regenerate_message(
-    message_id: int,
+    message_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> TurnQueued:
@@ -1057,9 +1073,7 @@ def regenerate_message(
     service = _chat_service(request, session)
     message, chat_session = _load_message_for_profile(session, message_id, profile.id)
     if message.role != "user":
-        raise HTTPException(
-            status_code=422, detail="only assistant answers can be regenerated"
-        )
+        raise HTTPException(status_code=422, detail="only assistant answers can be regenerated")
     with request.app.state.turn_locks.get(chat_session.id):
         service.select_message(message)
         job = JobRunner.enqueue(
@@ -1074,7 +1088,7 @@ def regenerate_message(
 
 @router.post("/messages/{message_id}/select", response_model=list[MessageOut])
 def select_message(
-    message_id: int,
+    message_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> list[MessageOut]:
@@ -1097,9 +1111,9 @@ class SessionTurnLocks:
 
     def __init__(self) -> None:
         self._guard = threading.Lock()
-        self._locks: dict[int, threading.Lock] = {}
+        self._locks: dict[str, threading.Lock] = {}
 
-    def get(self, session_id: int) -> threading.Lock:
+    def get(self, session_id: str) -> threading.Lock:
         with self._guard:
             lock = self._locks.get(session_id)
             if lock is None:
@@ -1108,18 +1122,18 @@ class SessionTurnLocks:
             return lock
 
 
-_STOP_EVENTS: dict[int, threading.Event] = {}
+_STOP_EVENTS: dict[str, threading.Event] = {}
 _TURN_LOCKS_GUARD = threading.Lock()
 
 
-def _register_stop_event(session_id: int) -> threading.Event:
+def _register_stop_event(session_id: str) -> threading.Event:
     with _TURN_LOCKS_GUARD:
         event = threading.Event()
         _STOP_EVENTS[session_id] = event
         return event
 
 
-def _release_stop_event(session_id: int, event: threading.Event) -> None:
+def _release_stop_event(session_id: str, event: threading.Event) -> None:
     with _TURN_LOCKS_GUARD:
         if _STOP_EVENTS.get(session_id) is event:
             del _STOP_EVENTS[session_id]
@@ -1131,7 +1145,7 @@ class StopOut(BaseModel):
 
 @router.post("/sessions/{session_id}/stop", response_model=StopOut)
 def stop_session_turn(
-    session_id: int,
+    session_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> dict[str, bool]:
@@ -1175,7 +1189,7 @@ def make_chat_turn_handler(
             messages = service.messages(chat_session.id)
             target_id = payload.get("user_message_id")
             if target_id is not None:
-                pending = session.get(ChatMessage, int(target_id))
+                pending = session.get(ChatMessage, str(target_id))
                 if (
                     pending is None
                     or pending.session_id != chat_session.id
@@ -1187,39 +1201,28 @@ def make_chat_turn_handler(
                     raise JobError("no pending user message")
                 pending = messages[-1]
             service.chain_under_later_reply(pending)
+            session.commit()
 
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)
-                for family_event in to_family_events(event):
-                    bus.publish_threadsafe(
-                        WsTopic.chat(chat_session.id), family_event
-                    )
 
             stop_event = _register_stop_event(chat_session.id)
             try:
-                turn_engine = (
-                    turn_engine_provider() if turn_engine_provider is not None else None
-                )
+                turn_engine = turn_engine_provider() if turn_engine_provider is not None else None
                 if turn_engine is None:
                     raise JobError("chat turn engine is not available")
-                turn_engine.run(
-                    session, service, gateway, chat_session, pending, emit, stop_event
-                )
+                turn_engine.run(session, service, gateway, chat_session, pending, emit, stop_event)
             except Exception as error:
                 detail = sanitize_error_detail(str(error)) or error.__class__.__name__
-                code = (
-                    "ai_not_configured"
-                    if isinstance(error, TaskUnassigned)
-                    else "turn_error"
-                )
-                emit({"type": "turn_error", "code": code, "detail": detail})
+                code = "ai_not_configured" if isinstance(error, TaskUnassigned) else "turn_error"
+                emit(flow_failed_event(code, detail))
                 # Persist the failure on the turn (uniform chat error
                 # display): the transcript keeps rendering it after a
                 # refresh, with Retry through the regenerate endpoint.
                 failure = service.add_message(
                     chat_session.id, "assistant", "", parent_id=pending.id
                 )
-                failure.state = {"turn_failed": {"code": code, "detail": detail}}
+                failure.state = {"turn_failed": TurnFailure(code=code, detail=detail)}
                 session.commit()
                 raise
             finally:

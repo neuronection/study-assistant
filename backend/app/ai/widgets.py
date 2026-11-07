@@ -71,14 +71,14 @@ WIDGET_DOC: str = build_widget_doc()
 
 CHAT_WIDGET_DOC: str = (
     "You may include interactive UI in your answer as fenced blocks the app renders: "
-    "a ```chart fence holding a Plotly figure {\"data\": ..., \"layout\": ...}, or a "
-    "```widget fence holding {\"widget\": <name>, \"id\": \"wN\", \"props\": {...}} "
+    'a ```chart fence holding a Plotly figure {"data": ..., "layout": ...}, or a '
+    '```widget fence holding {"widget": <name>, "id": "wN", "props": {...}} '
     "(id unique per answer). Widget kinds:\n" + WIDGET_DOC
 )
 
 EXGEN_WIDGET_DOC: str = (
-    "Any step may carry an optional \"widgets\" array of widget blocks "
-    "[{\"type\": \"widget\", \"widget\": <name>, \"id\": \"wN\", \"props\": {...}}] "
+    'Any step may carry an optional "widgets" array of widget blocks '
+    '[{"type": "widget", "widget": <name>, "id": "wN", "props": {...}}] '
     "(id unique within the exercise). Widget kinds:\n" + WIDGET_DOC
 )
 

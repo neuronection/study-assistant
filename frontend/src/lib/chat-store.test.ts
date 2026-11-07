@@ -27,22 +27,22 @@ describe('chat-store', () => {
   })
 
   test('viewer ask pins are stored per material and reusable', () => {
-    const ref = { id: 4, publicId: 'uuid-4' }
-    useChatStore.getState().setViewerAsk(12, ref)
-    expect(useChatStore.getState().viewerAsks[12]).toEqual(ref)
-    useChatStore.getState().setViewerAsk(30, { id: 9, publicId: 'uuid-9' })
+    const ref = { id: '4', publicId: 'uuid-4' }
+    useChatStore.getState().setViewerAsk('12', ref)
+    expect(useChatStore.getState().viewerAsks['12']).toEqual(ref)
+    useChatStore.getState().setViewerAsk('30', { id: '9', publicId: 'uuid-9' })
     expect(Object.keys(useChatStore.getState().viewerAsks)).toEqual(['12', '30'])
-    useChatStore.getState().clearViewerAsk(12)
-    expect(useChatStore.getState().viewerAsks[12]).toBeUndefined()
+    useChatStore.getState().clearViewerAsk('12')
+    expect(useChatStore.getState().viewerAsks['12']).toBeUndefined()
     expect(useChatStore.getState().viewerAsks[30]).toBeDefined()
     useChatStore.getState().clearViewerAsk()
     expect(useChatStore.getState().viewerAsks).toEqual({})
   })
 
   test('selection ask pins are keyed by the material selection and clearable', () => {
-    const ref = { id: 5, publicId: 'uuid-5' }
+    const ref = { id: '5', publicId: 'uuid-5' }
     useChatStore.getState().setSelectionAsk('7-12', ref)
-    useChatStore.getState().setSelectionAsk('7-12-30', { id: 6, publicId: 'uuid-6' })
+    useChatStore.getState().setSelectionAsk('7-12-30', { id: '6', publicId: 'uuid-6' })
     expect(useChatStore.getState().selectionAsks['7-12']).toEqual(ref)
     useChatStore.getState().clearSelectionAsk('7-12')
     expect(useChatStore.getState().selectionAsks['7-12']).toBeUndefined()
@@ -52,9 +52,9 @@ describe('chat-store', () => {
   })
 
   test('openSession pins and opens; setOpen(false) unpins', () => {
-    useChatStore.getState().openSession({ id: 7, publicId: 'uuid-7' })
+    useChatStore.getState().openSession({ id: '7', publicId: 'uuid-7' })
     expect(useChatStore.getState().open).toBe(true)
-    expect(useChatStore.getState().session).toEqual({ id: 7, publicId: 'uuid-7' })
+    expect(useChatStore.getState().session).toEqual({ id: '7', publicId: 'uuid-7' })
     useChatStore.getState().setOpen(false)
     expect(useChatStore.getState().open).toBe(false)
     expect(useChatStore.getState().session).toBeNull()
@@ -68,6 +68,6 @@ describe('chat-store', () => {
     useChatStore.getState().setChatWidth(468.4)
     expect(useChatStore.getState().width).toBe(468)
     useChatStore.getState().persistChatWidth()
-    expect(window.localStorage.getItem('ca-chat-width')).toBe('468')
+    expect(window.localStorage.getItem('sa-chat-width')).toBe('468')
   })
 })

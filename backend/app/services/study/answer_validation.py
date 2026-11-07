@@ -26,9 +26,7 @@ def validate_answer_shape(
             indices = answer.get("indices")
             if not isinstance(indices, list) or not indices:
                 problems.append(f"{label}: multi answer needs indices list")
-            elif any(
-                not 0 <= int(i) < len(options) for i in indices if str(i).isdigit()
-            ):
+            elif any(not 0 <= int(i) < len(options) for i in indices if str(i).isdigit()):
                 problems.append(f"{label}: multi index out of range")
     elif kind == "truefalse":
         if not isinstance(answer.get("value"), bool):

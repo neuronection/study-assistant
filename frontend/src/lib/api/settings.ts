@@ -1,35 +1,25 @@
 import type { components } from '@/lib/api-schema'
 import { json, apiFetch, ApiError } from './client'
+import type { ProviderSetupErrorDetail } from './hand-types'
+
+type Schemas = components['schemas']
 
 export type LocalEngineHit = components['schemas']['LocalEngineHitOut']
 
-export interface Provider {
-  id: number
-  name: string
-  type: string
-  base_url: string
-  preset_key: string | null
-  enabled: boolean
-  is_local: boolean | null
-  country: string | null
-  masked_key: string | null
-  status: { last_tested_at?: string; ok?: boolean; error?: string | null; model_count?: number | null } | null
-  created_at: string
-}
-
-export interface ProviderPreset {
-  name: string
-  type: string
-  base_url: string
-  fixed_base: boolean
-  local: boolean
-  key_url: string | null
-  preferred_model: { id: string; name: string; caps: string[] } | null
-  curated_models: string[] | null
-  stt_model: string | null
-  steps: string[] | null
-  free_tier_note: string | null
-}
+export type Provider = Schemas['ProviderOut']
+export type ProviderPreset = Schemas['PresetOut']
+export type ProviderSetupOptions = Schemas['SetupOptionsIn']
+export type ProviderSetupResult = Schemas['SetupOut']
+export type AiModel = Schemas['ModelOut']
+export type RemoteModelInfo = Schemas['RemoteModelOut']
+export type TaskInfo = Schemas['TaskOut']
+export type DefaultTaskInfo = Schemas['DefaultTaskOut']
+export type BackupSettingsInfo = Schemas['BackupSettingsInfoOut']
+export type BackupEntryInfo = Schemas['BackupEntryOut']
+export type BackupRecoveryInfo = Schemas['BackupRecoveryInfoOut']
+export type BackupStatus = Schemas['BackupStatusOut']
+export type SkillInfo = Schemas['SkillOut']
+export type SkillVersionInfo = Schemas['VersionOut']
 
 export async function listProviders(): Promise<Provider[]> {
   const response = await apiFetch('/api/v1/providers')
@@ -41,28 +31,7 @@ export async function listPresets(): Promise<Record<string, ProviderPreset>> {
   return json<Record<string, ProviderPreset>>(response)
 }
 
-export interface ProviderSetupOptions {
-  curated_ids?: string[] | null
-  bind_chat?: boolean
-  bind_vision?: boolean
-  bind_stt?: boolean
-}
-
-export interface ProviderSetupResult {
-  ok: boolean
-  provider: Provider & { preset_key: string | null }
-  catalog_count: number
-  curated_missed: boolean
-  assigned_chat_model: string | null
-  assigned_vision_model: string | null
-  assigned_stt_model: string | null
-}
-
-export interface ProviderSetupErrorDetail {
-  code: string
-  suspected_vendor: string | null
-  detail: string
-}
+export type { ProviderSetupErrorDetail } from './hand-types'
 
 export async function setupProviderPreset(
   presetKey: string,
@@ -77,7 +46,7 @@ export async function setupProviderPreset(
 }
 
 export async function setProviderDefault(
-  providerId: number,
+  providerId: string,
   body: { model_name: string; task?: string }
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/set-default`, {
@@ -129,13 +98,13 @@ export async function createProvider(body: {
   return json<Provider>(response)
 }
 
-export async function testProvider(id: number): Promise<Provider> {
+export async function testProvider(id: string): Promise<Provider> {
   const response = await apiFetch(`/api/v1/providers/${id}/test`, { method: 'POST' })
   return json<Provider>(response)
 }
 
 export async function updateProvider(
-  id: number,
+  id: string,
   body: {
     name?: string
     base_url?: string | null
@@ -153,22 +122,11 @@ export async function updateProvider(
   return json<Provider>(response)
 }
 
-export async function deleteProvider(id: number): Promise<void> {
+export async function deleteProvider(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/providers/${id}`, { method: 'DELETE' })
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
   }
-}
-
-export interface AiModel {
-  id: number
-  provider_id: number
-  external_id: string
-  label: string
-  caps: string[]
-  enabled: boolean
-  missing: boolean
-  reasoning_effort: string | null
 }
 
 export async function listModels(): Promise<AiModel[]> {
@@ -176,23 +134,18 @@ export async function listModels(): Promise<AiModel[]> {
   return json<AiModel[]>(response)
 }
 
-export async function discoverModels(providerId: number): Promise<AiModel[]> {
+export async function discoverModels(providerId: string): Promise<AiModel[]> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/models`, { method: 'POST' })
   return json<AiModel[]>(response)
 }
 
-export interface RemoteModelInfo {
-  external_id: string
-  caps: string[]
-}
-
-export async function listRemoteModels(providerId: number): Promise<RemoteModelInfo[]> {
+export async function listRemoteModels(providerId: string): Promise<RemoteModelInfo[]> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/remote-models`)
   return json<RemoteModelInfo[]>(response)
 }
 
 export async function createModel(body: {
-  provider_id: number
+  provider_id: string
   external_id: string
   label?: string | null
   caps?: string[] | null
@@ -200,6 +153,7 @@ export async function createModel(body: {
   reasoning_effort?: string | null
   temperature?: number | null
   max_tokens?: number | null
+  decision_transport?: string | null
 }): Promise<AiModel> {
   const response = await apiFetch('/api/v1/models', {
     method: 'POST',
@@ -210,7 +164,7 @@ export async function createModel(body: {
 }
 
 export async function updateModel(
-  id: number,
+  id: string,
   body: {
     enabled?: boolean
     label?: string
@@ -218,6 +172,7 @@ export async function updateModel(
     reasoning_effort?: string | null
     temperature?: number | null
     max_tokens?: number | null
+    decision_transport?: string | null
   }
 ): Promise<AiModel> {
   const response = await apiFetch(`/api/v1/models/${id}`, {
@@ -228,33 +183,11 @@ export async function updateModel(
   return json<AiModel>(response)
 }
 
-export async function deleteModel(id: number): Promise<void> {
+export async function deleteModel(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/models/${id}`, { method: 'DELETE' })
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
   }
-}
-
-export interface TaskInfo {
-  task: string
-  description: string
-  requires: string
-  model_id: number | null
-  fallback_model_id: number | null
-  model_label: string | null
-  fallback_model_label: string | null
-  inherits_default: boolean
-  default_model_label: string | null
-  default_fallback_model_label: string | null
-  monthly_cap_usd?: number | null
-}
-
-export interface DefaultTaskInfo {
-  requires: string
-  model_id: number | null
-  fallback_model_id: number | null
-  model_label: string | null
-  fallback_model_label: string | null
 }
 
 export async function listTasks(): Promise<TaskInfo[]> {
@@ -264,8 +197,8 @@ export async function listTasks(): Promise<TaskInfo[]> {
 
 export async function assignTask(
   task: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: string | null,
+  fallbackModelId: string | null = null
 ): Promise<TaskInfo> {
   const response = await apiFetch(`/api/v1/tasks/${task}`, {
     method: 'PUT',
@@ -282,8 +215,8 @@ export async function listTaskDefaults(): Promise<DefaultTaskInfo[]> {
 
 export async function assignTaskDefault(
   requires: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: string | null,
+  fallbackModelId: string | null = null
 ): Promise<DefaultTaskInfo> {
   const response = await apiFetch(`/api/v1/tasks/defaults/${requires}`, {
     method: 'PUT',
@@ -295,32 +228,6 @@ export async function assignTaskDefault(
 
 export function backupExportUrl(): string {
   return '/api/v1/backup/export'
-}
-
-export interface BackupSettingsInfo {
-  auto: boolean
-  interval_hours: number
-  keep_daily: number
-  keep_weekly: number
-  sync_dir: string | null
-}
-
-export interface BackupEntryInfo {
-  name: string
-  size: number
-  created_at: string
-}
-
-export interface BackupRecoveryInfo {
-  at: string
-  from_backup: string | null
-  quarantined?: string
-}
-
-export interface BackupStatus {
-  settings: BackupSettingsInfo
-  backups: BackupEntryInfo[]
-  last_recovery: BackupRecoveryInfo | null
 }
 
 export async function getBackupStatus(): Promise<BackupStatus> {
@@ -380,27 +287,6 @@ export async function setTaskBudget(
   return json<TaskInfo>(response)
 }
 
-export interface SkillInfo {
-  key: string
-  task: string
-  name: string
-  description: string | null
-  is_system: boolean
-}
-
-export interface SkillVersionInfo {
-  id: number
-  scope_type: string
-  scope_ref: number | null
-  version: number
-  system_template: string
-  user_template: string
-  params: Record<string, unknown> | null
-  contract: Record<string, unknown> | null
-  is_active: boolean
-  created_at: string
-}
-
 export async function listSkills(): Promise<SkillInfo[]> {
   const response = await apiFetch('/api/v1/skills')
   return json<SkillInfo[]>(response)
@@ -415,7 +301,7 @@ export async function saveSkillVersion(
   skillKey: string,
   body: {
     scope_type: string
-    scope_ref?: number | null
+    scope_ref?: string | null
     system_template: string
     user_template?: string
     contract?: Record<string, unknown> | null
@@ -431,7 +317,7 @@ export async function saveSkillVersion(
 
 export async function activateSkillVersion(
   skillKey: string,
-  versionId: number
+  versionId: string
 ): Promise<SkillVersionInfo> {
   const response = await apiFetch(
     `/api/v1/skills/${skillKey}/versions/${versionId}/activate`,
@@ -482,7 +368,7 @@ export async function importSkillPackCommit(
 
 export async function skillResolution(
   skillKey: string,
-  courseId?: number | null
+  courseId?: string | null
 ): Promise<{ chain: Record<string, string>; active: SkillVersionInfo | null }> {
   const params = courseId ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/skills/${skillKey}/resolution${params}`)
@@ -496,7 +382,7 @@ export async function skillTestRun(
   system: string
   user: string
   constraints: { kind: string; params: Record<string, unknown> }[]
-  skill_version_id: number
+  skill_version_id: string
 }> {
   const response = await apiFetch('/api/v1/skills/test-run', {
     method: 'POST',
@@ -507,6 +393,6 @@ export async function skillTestRun(
     system: string
     user: string
     constraints: { kind: string; params: Record<string, unknown> }[]
-    skill_version_id: number
+    skill_version_id: string
   }>(response)
 }

@@ -17,13 +17,13 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
 
 CAQ_DOC: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Chain Rule — Practice Set",
     "questions": [
         {
@@ -75,7 +75,7 @@ def caq_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-caq-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-caq-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=UnassignedGateway(),
@@ -86,8 +86,8 @@ def caq_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 class UnassignedGateway(LLMGateway):
@@ -97,7 +97,7 @@ class UnassignedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -106,14 +106,12 @@ class UnassignedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         raise TaskUnassigned(task)
 
 
-def import_caq(
-    client: TestClient, course_id: int, dry_run: str, document: dict[str, Any]
-) -> Any:
+def import_caq(client: TestClient, course_id: str, dry_run: str, document: dict[str, Any]) -> Any:
     return client.post(
         "/api/v1/quiz/import",
         params={"dry_run": dry_run, "course_id": course_id},
@@ -157,14 +155,10 @@ def test_import_commit_creates_gradable_quiz(caq_client: TestClient) -> None:
     activity = body["activity"]
     assert activity["question_count"] == 3
 
-    questions = caq_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()
+    questions = caq_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
     assert all(question["flag"] == "ok" for question in questions)
 
-    attempt = caq_client.post(
-        f"/api/v1/quiz/activities/{activity['id']}/attempts"
-    ).json()
+    attempt = caq_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()
     answer = caq_client.post(
         f"/api/v1/quiz/attempts/{attempt['id']}/answers",
         json={"question_id": questions[2]["id"], "response": "x*x"},
@@ -182,7 +176,7 @@ def test_export_roundtrips_caq(caq_client: TestClient) -> None:
     assert exported.status_code == 200
     assert "attachment" in exported.headers["content-disposition"]
     document = exported.json()
-    assert document["$schema"] == "caq/v1"
+    assert document["$schema"] == "saq/v1"
     assert len(document["questions"]) == 3
     first = document["questions"][0]
     assert first["type"] == "single"

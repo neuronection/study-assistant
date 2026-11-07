@@ -2,15 +2,12 @@ import httpx
 import pytest
 
 from app.ai.gateway import LLMGateway, Message, ProviderError, ResolvedModel
+from app.ai.graphs.chat_turn import _tool_result_summary
 from app.ai.tools import calculate, extract_tool_calls, run_tool_line, strip_tool_lines
-from app.services.platform.chat import _tool_result_summary
 
 
 def make_stream_gateway(transport: httpx.BaseTransport) -> LLMGateway:
     return LLMGateway(session_factory=None, transport=transport)
-
-
-
 
 
 def test_openai_streaming_yields_deltas() -> None:
@@ -27,7 +24,7 @@ def test_openai_streaming_yields_deltas() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -42,20 +39,20 @@ def test_openai_streaming_yields_deltas() -> None:
 def test_anthropic_streaming_yields_deltas() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = (
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"sin"}}\n\n'
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"(x)"}}\n\n'
-            b'event: message_stop\n'
+            b"event: message_stop\n"
             b'data: {"type":"message_stop"}\n\n'
         )
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude",
@@ -79,7 +76,7 @@ def test_google_streaming_yields_deltas() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="google",
         base_url="https://generativelanguage.googleapis.com",
         external_id="gemini-2.5-flash",
@@ -104,7 +101,7 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -112,9 +109,7 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
         caps=["text"],
         api_key=None,
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "hmm"),
         ("text", "answer"),
@@ -126,20 +121,20 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
 def test_anthropic_stream_events_yield_reasoning() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = (
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"thinking_delta","thinking":"pondering"}}\n\n'
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"answer"}}\n\n'
-            b'event: message_stop\n'
+            b"event: message_stop\n"
             b'data: {"type":"message_stop"}\n\n'
         )
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude",
@@ -147,9 +142,7 @@ def test_anthropic_stream_events_yield_reasoning() -> None:
         caps=["text"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "pondering"),
         ("text", "answer"),
@@ -166,7 +159,7 @@ def test_google_stream_events_yield_reasoning() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="google",
         base_url="https://generativelanguage.googleapis.com",
         external_id="gemini-2.5-flash",
@@ -174,9 +167,7 @@ def test_google_stream_events_yield_reasoning() -> None:
         caps=["text"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "musing"),
         ("text", "answer"),
@@ -197,8 +188,8 @@ def test_sympy_actions() -> None:
     assert run_tool_line("SYMPY", "solve x**2 - 4") == "[-2, 2]"
     assert run_tool_line("SYMPY", "simplify sin(x)**2 + cos(x)**2") == "1"
     assert run_tool_line("SYMPY", "factor x**2 - 1") == "(x - 1)*(x + 1)"
-    assert run_tool_line("SYMPY", "bogus x") .startswith("error")
-    assert run_tool_line("SYMPY", "diff not an expression!") .startswith("error")
+    assert run_tool_line("SYMPY", "bogus x").startswith("error")
+    assert run_tool_line("SYMPY", "diff not an expression!").startswith("error")
 
 
 def test_extract_and_strip_tool_lines() -> None:
@@ -224,8 +215,8 @@ def test_extract_resource_tool_lines() -> None:
 
 
 def test_resource_tool_keywords_match_registry() -> None:
+    from app.ai.mcp_resources import RESOURCE_TOOLS
     from app.ai.tools import RESOURCE_TOOL_KEYWORDS
-    from app.mcp_resources import RESOURCE_TOOLS
 
     assert set(RESOURCE_TOOL_KEYWORDS) == {tool["keyword"] for tool in RESOURCE_TOOLS}
 
@@ -318,7 +309,7 @@ def test_stream_http_error_reports_status_not_response_not_read() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -344,7 +335,7 @@ def test_stream_http_error_without_readable_body_still_reports_status() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",

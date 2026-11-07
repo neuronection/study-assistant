@@ -31,6 +31,7 @@ from app.domain.models import Course, Material, Profile, User
 from app.services.search import hybrid_search
 from app.storage.fts import sync_material_fts
 
+# gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
 DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
@@ -65,9 +66,7 @@ LIMIT = 5
 # xdist workers each build their own scratch database; the full Alembic
 # chain must not run concurrently on the server or it exhausts PostgreSQL's
 # lock table (max_locks_per_transaction).
-_MIGRATION_LOCK = FileLock(
-    os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock")
-)
+_MIGRATION_LOCK = FileLock(os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock"))
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -132,7 +131,7 @@ def _no_embed(query: str) -> tuple[str, list[list[float]]] | None:
     return None
 
 
-def _seed_corpus(session: Session) -> dict[str, int]:
+def _seed_corpus(session: Session) -> dict[str, str]:
     """Seed the fixed parity corpus; returns {title: material_id} in order."""
     user = User(id=str(uuid.uuid4()), email="parity@test.local", password_hash=None)
     session.add(user)
@@ -143,7 +142,7 @@ def _seed_corpus(session: Session) -> dict[str, int]:
     course = Course(profile_id=profile.id, title="Parity")
     session.add(course)
     session.flush()
-    ids: dict[str, int] = {}
+    ids: dict[str, str] = {}
     for title, markdown in CORPUS:
         material = Material(
             profile_id=profile.id,
@@ -156,36 +155,35 @@ def _seed_corpus(session: Session) -> dict[str, int]:
         session.add(material)
         session.flush()
         sync_material_fts(session, material, markdown)
-        ids[title] = int(material.id)
+        ids[title] = str(material.id)
     session.flush()
     return ids
 
 
-def _hit_ids(session: Session, query: str) -> list[int]:
+def _hit_ids(session: Session, query: str) -> list[str]:
     hits = hybrid_search(session, query, LIMIT, _no_embed)
-    return [int(hit["material_id"]) for hit in hits[:LIMIT]]
+    return [str(hit["material_id"]) for hit in hits[:LIMIT]]
 
 
 def test_search_parity_benchmark(db_session: Session, pg_session: Session) -> None:
     sqlite_ids = _seed_corpus(db_session)
     pg_ids = _seed_corpus(pg_session)
-    assert list(sqlite_ids.values()) == list(pg_ids.values()), (
-        "id spaces must be aligned on fresh databases for the id comparison"
-    )
 
-    rows: list[tuple[str, str, list[int], list[int], list[int]]] = []
+    def titles_for(ids: dict[str, str], hits: list[str]) -> list[str]:
+        by_id = {material_id: title for title, material_id in ids.items()}
+        return [by_id[hit] for hit in hits if hit in by_id]
+
+    rows: list[tuple[str, str, list[str], list[str], list[str]]] = []
     for kind, query in QUERIES:
-        sqlite_hits = _hit_ids(db_session, query)
-        pg_hits = _hit_ids(pg_session, query)
+        sqlite_hits = titles_for(sqlite_ids, _hit_ids(db_session, query))
+        pg_hits = titles_for(pg_ids, _hit_ids(pg_session, query))
         overlap = sorted(set(sqlite_hits) & set(pg_hits))
         rows.append((kind, query, sqlite_hits, pg_hits, overlap))
 
     print("\nsearch parity benchmark (hybrid_search, limit=5)")
     print(f"{'kind':<11} {'query':<24} {'sqlite hits':<14} {'pg hits':<14} overlap")
     for kind, query, sqlite_hits, pg_hits, overlap in rows:
-        print(
-            f"{kind:<11} {query:<24} {sqlite_hits!s:<14} {pg_hits!s:<14} {overlap}"
-        )
+        print(f"{kind:<11} {query:<24} {sqlite_hits!s:<14} {pg_hits!s:<14} {overlap}")
 
     for kind, query, sqlite_hits, pg_hits, _overlap in rows:
         if kind == "empty":

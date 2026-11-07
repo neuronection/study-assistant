@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 
 export interface SnapTarget {
-  noteId: number
+  noteId: string
   title: string
-  insert: (pngBase64: string) => Promise<number | null>
-  remove: (drawingId: number) => Promise<void>
+  insert: (pngBase64: string) => Promise<string | null>
+  remove: (drawingId: string) => Promise<void>
 }
 
 interface CaptureState {

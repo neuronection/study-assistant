@@ -14,11 +14,11 @@ import { MaterialDetailBody, type DetailTab } from './MaterialDetailBody'
 import { MaterialDetailDrawer } from './MaterialDetailDrawer'
 import { LazyNoteEditor } from '../notes/LazyNoteEditor'
 
-export type StudyTarget = number | 'new'
+export type StudyTarget = string
 
 export interface StudyQuoteSource {
   title: string
-  materialId: number
+  materialId: string
 }
 
 export type StudyInsertApi = {
@@ -28,11 +28,11 @@ export type StudyInsertApi = {
 const MIN_PCT = 30
 const MAX_PCT = 70
 
-function splitKey(courseId: number): string {
-  return `ca-study-split:${courseId}`
+function splitKey(courseId: string): string {
+  return `sa-study-split:${courseId}`
 }
 
-function readSplit(courseId: number): number | null {
+function readSplit(courseId: string): number | null {
   try {
     const raw = localStorage.getItem(splitKey(courseId))
     const value = raw === null ? null : Number(raw)
@@ -81,17 +81,17 @@ export function SplitStudyPane({
   onClose,
   onCloseNotes,
 }: {
-  courseId: number
-  materialId: number
+  courseId: string
+  materialId: string
   study: StudyTarget
-  onNoteCreated: (noteId: number) => void
+  onNoteCreated: (noteId: string) => void
   onClose: () => void
   onCloseNotes: () => void
 }) {
   const { t } = useTranslation()
   const wide = useWideLayout()
   const [tab, setTab] = useState<DetailTab>('extraction')
-  const [noteId, setNoteId] = useState<number | null>(typeof study === 'number' ? study : null)
+  const [noteId, setNoteId] = useState<string | null>(study === 'new' ? null : study)
   const [pct, setPct] = useState<number>(() => readSplit(courseId) ?? 50)
   const insertRef = useRef<StudyInsertApi | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)

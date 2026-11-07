@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -93,6 +94,7 @@ def _structural_problems(draft: dict[str, Any], kind: str) -> list[str]:
         problems.extend(validate_structural_payload(kind, payload))
     return problems
 
+
 class ExgenError(ValueError):
     pass
 
@@ -107,7 +109,7 @@ def _is_number_str(value: Any) -> bool:
         return False
 
 
-def _seed_directive(detection: dict[str, Any] | None) -> str:
+def _seed_directive(detection: Mapping[str, Any] | None) -> str:
     if not isinstance(detection, dict):
         return ""
     kind = detection.get("type")
@@ -128,7 +130,7 @@ def _seed_directive(detection: dict[str, Any] | None) -> str:
     return ""
 
 
-def _seed_problems(detection: dict[str, Any] | None, payload: dict[str, Any]) -> list[str]:
+def _seed_problems(detection: Mapping[str, Any] | None, payload: dict[str, Any]) -> list[str]:
     if not isinstance(detection, dict):
         return []
     flaw_index = payload.get("flaw_index")
@@ -150,19 +152,16 @@ def _seed_problems(detection: dict[str, Any] | None, payload: dict[str, Any]) ->
     if kind == "negated":
         if not equivalent(flawed, f"-({correct})").equivalent:
             return [
-                "error_spot: the flawed answer is not the sign-slip negation "
-                "of the correct one"
+                "error_spot: the flawed answer is not the sign-slip negation of the correct one"
             ]
     elif kind == "factor":
         matched = any(
-            _is_number_str(factor)
-            and equivalent(flawed, f"{factor}*({correct})").equivalent
+            _is_number_str(factor) and equivalent(flawed, f"{factor}*({correct})").equivalent
             for factor in detection.get("factors", [])
         )
         if not matched:
             return [
-                "error_spot: the flawed answer is not a dropped-factor multiple "
-                "of the correct one"
+                "error_spot: the flawed answer is not a dropped-factor multiple of the correct one"
             ]
     return []
 
@@ -193,9 +192,7 @@ def _step_problems(step: dict[str, Any], index: int) -> list[str]:
                 "{domain, points, intervals}"
             )
         else:
-            problems.extend(
-                f"{label}: {problem}" for problem in validate_region_answer(value)
-            )
+            problems.extend(f"{label}: {problem}" for problem in validate_region_answer(value))
     else:
         try:
             float(str(value))
@@ -246,16 +243,12 @@ def validate_exercise_draft(draft: dict[str, Any]) -> list[str]:
     return problems
 
 
-def validate_variant(
-    draft: dict[str, Any], source_steps: list[dict[str, Any]]
-) -> list[str]:
+def validate_variant(draft: dict[str, Any], source_steps: list[dict[str, Any]]) -> list[str]:
     problems: list[str] = []
     steps = draft.get("steps")
     if isinstance(steps, list) and source_steps:
         if len(steps) != len(source_steps):
-            problems.append(
-                f"variant must keep the step structure ({len(source_steps)} steps)"
-            )
+            problems.append(f"variant must keep the step structure ({len(source_steps)} steps)")
             return problems
         changed = False
         for index, (step, source) in enumerate(zip(steps, source_steps, strict=False)):
@@ -279,8 +272,8 @@ class ExgenService:
         self,
         profile_id: str,
         *,
-        course_id: int | None = None,
-        node_id: int | None = None,
+        course_id: str | None = None,
+        node_id: str | None = None,
         topic: str | None = None,
         difficulty: float | None = None,
         step_count: int = 4,
@@ -429,8 +422,8 @@ class ExgenService:
         self,
         profile_id: str,
         *,
-        course_id: int | None,
-        node_id: int | None,
+        course_id: str | None,
+        node_id: str | None,
         topic: str | None,
         difficulty: float | None,
         kind: str,
@@ -459,8 +452,7 @@ class ExgenService:
         )
         if result.problems:
             raise ExgenError(
-                "exercise did not pass validation after repairs: "
-                + "; ".join(result.problems[:10])
+                "exercise did not pass validation after repairs: " + "; ".join(result.problems[:10])
             )
         draft = result.draft
         registry = context.mentions() if context is not None else None
@@ -504,13 +496,13 @@ class ExgenService:
         self,
         profile_id: str,
         *,
-        course_id: int | None,
-        node_id: int | None = None,
+        course_id: str | None,
+        node_id: str | None = None,
         pattern: str,
         pattern_description: str,
         pattern_example: str | None,
         subject: str | None,
-        detection: dict[str, Any] | None = None,
+        detection: Mapping[str, Any] | None = None,
     ) -> Exercise:
         seed_directive = _seed_directive(detection)
         sections = [
@@ -518,16 +510,9 @@ class ExgenService:
                 f"Create ONE error-spotting exercise for the error pattern "
                 f"'{pattern}': {pattern_description}."
             ),
-            (
-                f"Example flaw: {pattern_example}"
-                if pattern_example
-                else "No example available."
-            ),
+            (f"Example flaw: {pattern_example}" if pattern_example else "No example available."),
             f"Course subject: {subject or 'general'}.",
-            (
-                "Return a JSON object with exactly this shape: "
-                + STRUCTURAL_SCHEMAS["error_spot"]
-            ),
+            ("Return a JSON object with exactly this shape: " + STRUCTURAL_SCHEMAS["error_spot"]),
             (
                 "Build lines_correct as a fully correct worked solution (3-6 lines) "
                 "with one math answer per line (answers_correct), then the SAME "
@@ -595,9 +580,7 @@ class ExgenService:
             ExerciseStep(
                 exercise_id=exercise.id,
                 order_idx=0,
-                prompt=[
-                    {"type": "text", "md": str(result.draft.get("prompt_md", ""))}
-                ],
+                prompt=[{"type": "text", "md": str(result.draft.get("prompt_md", ""))}],
                 expected={"kind": "error_spot", **payload},
             )
         )
@@ -671,9 +654,7 @@ class ExgenService:
                 "intermediate result, and the final step confirms the correct result."
             )
         else:
-            sections.append(
-                f"Create a multi-step guided exercise with exactly {step_count} steps."
-            )
+            sections.append(f"Create a multi-step guided exercise with exactly {step_count} steps.")
         if topic:
             sections.append(f"Topic: {topic}")
         if difficulty is not None:

@@ -10,6 +10,7 @@ from ..domain.models import AiInteraction
 from ..services.platform.skills import SkillService
 from .gateway import LLMGateway, Message
 from .parsing import estimate_tokens, extract_json_object
+from .tokenizers import embedding_accounting
 
 DEFAULT_MAX_ROUNDS = 2
 
@@ -17,7 +18,7 @@ DEFAULT_MAX_ROUNDS = 2
 @dataclass(frozen=True)
 class AuditRef:
     context_type: str
-    context_id: int | None
+    context_id: str | None
     direction: str
 
 
@@ -28,7 +29,7 @@ class TaskRunResult:
     rounds: int
     prompt: str
     system_prompt: str
-    skill_version_id: int | None
+    skill_version_id: str | None
     model_label: str | None
     latency_ms: int
     output_text: str
@@ -39,7 +40,7 @@ class TaskRunner:
         self._session = session
         self._gateway = gateway
 
-    def model_label(self, task: str, course_id: int | None = None) -> str | None:
+    def model_label(self, task: str, course_id: str | None = None) -> str | None:
         try:
             return self._gateway.resolve(task, course_id).label
         except Exception:
@@ -49,10 +50,10 @@ class TaskRunner:
         self,
         *,
         skill_key: str,
-        course_id: int | None,
+        course_id: str | None,
         fallback_system: str,
         render_vars: dict[str, Any] | None = None,
-    ) -> tuple[str, int | None]:
+    ) -> tuple[str, str | None]:
         version = SkillService(self._session).resolve(skill_key, course_id=course_id)
         if version is not None:
             system, _user = SkillService(self._session).render(version, render_vars or {})
@@ -67,7 +68,7 @@ class TaskRunner:
         validate: Callable[[dict[str, Any]], list[str]],
         fallback_system: str,
         skill_key: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         render_vars: dict[str, Any] | None = None,
         max_rounds: int = DEFAULT_MAX_ROUNDS,
         error_type: type[ValueError] = ValueError,
@@ -122,6 +123,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -130,8 +132,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )
@@ -155,7 +157,7 @@ class TaskRunner:
         validate: Callable[[str], list[str]],
         fallback_system: str,
         skill_key: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         render_vars: dict[str, Any] | None = None,
         max_rounds: int = DEFAULT_MAX_ROUNDS,
         audit: AuditRef | None = None,
@@ -194,6 +196,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -202,8 +205,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )
@@ -227,7 +230,7 @@ class TaskRunner:
         validate: Callable[[str], list[str]],
         fallback_system: str,
         skill_key: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         render_vars: dict[str, Any] | None = None,
         max_rounds: int = DEFAULT_MAX_ROUNDS,
         audit: AuditRef | None = None,
@@ -286,6 +289,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -294,8 +298,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )

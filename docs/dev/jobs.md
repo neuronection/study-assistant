@@ -16,8 +16,11 @@ schedulers. Progress surfaces in the UI on the `/jobs` activity page.
   (marked `failed` with an "interrupted" error) and spawns worker threads
   (default 4). Workers poll the `jobs` table, claim a queued row, run its
   registered handler, and update status.
-- Handlers are registered by **name** in the `handlers` dict built in
-  `main.py`; each handler is `(Session, Job, ProgressReporter) -> None`.
+- Handlers are registered in `app/jobs/registry.py` keyed by **`JobType`
+  members** (plan 82 C, ADR-204) — the enum is the single vocabulary, so a
+  typo'd key cannot silently drop jobs. `tests/test_job_registry.py` asserts
+  every `JobType` member has a registered handler and vice versa. Each
+  handler is `(Session, Job, ProgressReporter) -> None`.
 - Progress is reported through the `EventBus`, which bridges worker threads to
   WebSocket subscribers via `publish_threadsafe`.
 - Failed jobs are recorded and logged (structlog `job_failed`); the pool keeps
@@ -37,6 +40,9 @@ The registered job types are:
 | `genesis` | Topic-to-course generation | `pipelines/genesis.py` |
 | `compose` | AI-composed material requested | `pipelines/compose.py` |
 | `url_import` | A link material is refreshed | `pipelines/url_import.py` |
+| `VECTOR_REINDEX` | Admin/ops reindex over the legacy vector store | `pipelines/retrieval_ops.py` — bounded verify/re-embed + coverage snapshot |
+| `VECTOR_MAINTENANCE` | Orphan sweep, vacuum, index rebuild or scoped retry | `pipelines/retrieval_ops.py` |
+| `VECTOR_CUTOVER` | Reserved by the family contract | `pipelines/retrieval_ops.py` — refuses until Q3b's space lifecycle exists |
 
 The closed vocabulary of job statuses is `JobStatus` in `core/vocab.py`:
 `queued`, `running`, `failed`, `done`, `cancelled`.
@@ -63,11 +69,18 @@ Three long-lived threads start with the app (`main.py` lifespan):
 - **`ScanScheduler`** — re-scans linked folders on
   `SA_SOURCE_SCAN_INTERVAL_SEC` (default 300 s) and enqueues `ingest` for new
   files.
-- **`ExternalSourceScheduler`** — polls enabled `external_sources` (RSS/Atom,
-  YouTube channel/playlist, site-filtered search) on per-source due times
-  (minimum 15 min). New items land as `suggested` suggestions — never materials,
-  never LLM calls. Errors isolate per source into `last_scan_error` and publish
-  on `externalsource:{id}`.
+- **`ExternalSourceScheduler`** — polls enabled `external_sources` on per-source
+  due times (minimum 15 min). Since plan 86 the same loop dispatches through
+  the provider seam: RSS/Atom, YouTube and site search keep their legs, while
+  WebDAV/Nextcloud, Google Drive, Dropbox, OneDrive, Zotero and AnkiConnect
+  reconcile through the `SourceAdapter` engine. New items land as `suggested`
+  suggestions — never materials, never LLM calls; provider failures are typed
+  and tracked as `consecutive_failures` (`degraded` then `failing`), isolated
+  per source into `last_scan_error` and published on `externalsource:{id}`.
+  Anki scans union-merge review events (unique by source + remote card +
+  reviewed time) and deterministically recompute the mapped cards' FSRS state;
+  RSS media-enclosure acceptance enqueues the existing `url_import`
+  `transcribe_audio` path.
 - **`BackupScheduler`** — writes a validated full archive shortly after startup
   and every `SA_BACKUP_INTERVAL_HOURS` (default 24), retaining 14 dailies + 8
   weeklies, with an optional `SA_BACKUP_SYNC_DIR` copy.

@@ -53,7 +53,5 @@ def check_leak(hint_text: str, expected: str) -> LeakCheck:
             if _re.escape(expression.lower()) in _re.escape(expected.lower()) and not (
                 _is_trivial_number(expression)
             ):
-                return LeakCheck(
-                    True, expression, f"hint contains the answer token ({expression})"
-                )
+                return LeakCheck(True, expression, f"hint contains the answer token ({expression})")
     return LeakCheck(False, None, "no leak detected")

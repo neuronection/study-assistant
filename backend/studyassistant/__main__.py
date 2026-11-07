@@ -17,13 +17,44 @@ def _reset_flags(argv: list[str]) -> tuple[bool, bool]:
     return "--all" in args or "-a" in args, "--yes" in args or "-y" in args
 
 
+def _bootstrap() -> None:
+    """Desktop profile bootstrap (app/local.py; plan 20 Phase 4): data
+    dir + env defaults, then migrations — before any `Settings` is built.
+    Migrations are an entrypoint responsibility (D6), never `create_app`'s.
+    """
+    from app.local import (
+        DatabaseVersionError,
+        bootstrap_environment,
+        default_data_dir,
+        run_migrations,
+    )
+
+    data_dir = default_data_dir()
+    bootstrap_environment(data_dir)
+    try:
+        run_migrations()
+    except DatabaseVersionError as error:
+        error_path = data_dir / "STARTUP-ERROR.txt"
+        try:
+            error_path.write_text(str(error) + "\n", encoding="utf-8")
+            written = True
+        except OSError:
+            written = False
+        sys.stderr.write(f"\n{error}\n")
+        if written:
+            sys.stderr.write(f"\nThis message was written to {error_path}\n")
+        raise
+
+
 if __name__ == "__main__":
     mode = resolve_mode(sys.argv)
     if mode == "mcp":
-        from app.mcp_resources import run_mcp_stdio
+        _bootstrap()
+        from app.ai.mcp_resources import run_mcp_stdio
 
         run_mcp_stdio()
     elif mode == "web":
+        _bootstrap()
         from app.shell import run_browser
 
         run_browser()
@@ -34,6 +65,7 @@ if __name__ == "__main__":
         if not run_reset(include_backups=include_backups, assume_yes=assume_yes):
             raise SystemExit(1)
     else:
+        _bootstrap()
         from app.shell import run
 
         run()

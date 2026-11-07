@@ -35,7 +35,7 @@ def test_detect_kind_matrix() -> None:
     assert detect_kind("recording.webm") == "video"
     assert detect_kind("movie.mp4") == "video"
     with pytest.raises(UnsupportedMaterialError) as excinfo:
-        detect_kind("legacy.doc")
+        detect_kind("v1.doc")
     assert excinfo.value.suffix == ".doc"
     with pytest.raises(UnsupportedMaterialError):
         detect_kind("archive.zip")
@@ -55,7 +55,7 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -64,7 +64,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 

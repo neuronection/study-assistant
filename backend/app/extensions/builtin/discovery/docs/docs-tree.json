@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "category": "overview",
+      "items": [
+        {
+          "id": "overview",
+          "file": "overview.md",
+          "title": "Overview",
+          "description": "What the discovery connector is, which providers it fans out to, and when to use it.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "setup",
+      "items": [
+        {
+          "id": "setup",
+          "file": "setup.md",
+          "title": "Setup",
+          "description": "Enabling web/YouTube/site providers and wiring MCP servers into discovery.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "usage",
+      "items": [
+        {
+          "id": "usage",
+          "file": "usage.md",
+          "title": "Usage",
+          "description": "Running DISCOVER in chat, the normalized result shape, and what MCP legs must return.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "troubleshooting",
+      "items": [
+        {
+          "id": "troubleshooting",
+          "file": "troubleshooting.md",
+          "title": "Troubleshooting",
+          "description": "Symptom → cause → fix for empty results, missing providers and failing MCP legs.",
+          "audience": "user"
+        }
+      ]
+    }
+  ]
+}

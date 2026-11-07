@@ -1,5 +1,5 @@
 """Chat-turn graph (plan 10 Phase 5, ADR-0008; the only chat engine since
-plan 72-A removed the legacy loop).
+plan 72-A removed the earlier loop).
 
 Implements the chat turn as a checkpointed StateGraph:
 
@@ -8,17 +8,18 @@ Implements the chat turn as a checkpointed StateGraph:
 A custom StateGraph instead of `create_agent`: the turn interleaves two tool
 modes (native `.bind_tools()` plus the degraded prompt-line grammar), enforces
 per-kind budgets (math 2 / READ 3 / STATE 3 / resource 5 per turn), emits
-legacy WS progress events, and runs the deterministic contract repair loop —
-none of which agent middleware can host (the plan-10 §5.2 decision point).
+family flow events (`ai/flow_events.py`), and runs the deterministic contract
+repair loop — none of which agent middleware can host (the plan-10 §5.2
+decision point).
 
 Nodes call the gateway only for model I/O; retrieval, tools, contracts, and
 persistence are the plain `ChatService` methods
 (`prepare_turn_context` / `prepare_turn_contract` / `finalize_turn`).
-`stream_start`, `phase`, and `tool_call` WS events are emitted from nodes
+`flow_started`, `node_started`, and `tool_call` events are emitted from nodes
 through the injected `Emitter` (turn-semantic payloads with no LangGraph
 projection); token
 deltas flow through the raw `astream(stream_mode=["updates", "messages"])`
-messages mode and are mapped onto `stream_delta` by `chat_turn_adapter`.
+messages mode and are mapped onto `delta` by `chat_turn_adapter`.
 
 Fault tolerance is layered over the gateway's own retries: the graph retries
 only raw transport leaks (`httpx.HTTPError`) — `ProviderError` has already
@@ -30,10 +31,12 @@ the callback context that feeds the `messages` stream).
 
 import asyncio
 import json
+import re
 import threading
 import time
 from collections.abc import Callable
 from typing import Any, cast
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import httpx
@@ -43,8 +46,7 @@ from langgraph.types import RetryPolicy, TimeoutPolicy
 from typing_extensions import TypedDict
 
 from ...domain.models import ChatMessage, ChatSession
-from ...mcp_resources import RESOURCE_TOOL_BY_KEYWORD
-from ...services.platform.chat import (
+from ...services.platform.chat.service import (
     CHAT_TASK,
     MAX_DISCOVER_ROUNDS,
     MAX_FETCH_ROUNDS,
@@ -56,16 +58,16 @@ from ...services.platform.chat import (
     MAX_SEARCH_ROUNDS,
     MAX_STATE_ROUNDS,
     MAX_TOOL_ROUNDS,
+    STOP_MESSAGE,
     ChatService,
     Emitter,
     TurnPrep,
-    _native_call_args,
-    _tool_result_summary,
-    flatten_prompt,
 )
 from ..chat_models import degrade_native_tools
 from ..contracts.contracts import ValidationResult, validate
+from ..flow_events_chat import flow_started_event, node_started_event, tool_call_event
 from ..gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
+from ..mcp_resources import RESOURCE_TOOL_BY_KEYWORD
 from ..tools import extract_tool_calls, run_tool_line, strip_tool_lines
 
 logger = structlog.get_logger(__name__)
@@ -73,8 +75,50 @@ logger = structlog.get_logger(__name__)
 MAX_ROUND_BUDGET = MAX_TOOL_ROUNDS + MAX_READ_ROUNDS + 1
 NODE_RUN_TIMEOUT_SEC = 600
 
-STOP_MESSAGE = "generation stopped by user"
 DEGRADED = "@degraded"
+
+_URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
+
+
+def flatten_prompt(messages: list[Message]) -> str:
+    return "\n".join(f"{message.role}: {message.content}" for message in messages)
+
+
+def _native_call_args(name: str, arguments: dict[str, Any]) -> str:
+    if name == "SYMPY":
+        return f"{arguments.get('action', '')} {arguments.get('expression', '')}".strip()
+    if name in ("CALC", "PLOT"):
+        return str(arguments.get("expression", ""))
+    if name == "READ":
+        return str(arguments.get("handle", ""))
+    if name == "STATE":
+        return str(arguments.get("widget_id", ""))
+    if name == "SEARCH":
+        return str(arguments.get("query", ""))
+    if name == "FETCH":
+        return str(arguments.get("url", ""))
+    if name in RESOURCE_TOOL_BY_KEYWORD:
+        return str(arguments.get("node", ""))
+    return json.dumps(arguments, ensure_ascii=False)
+
+
+def _tool_result_summary(kind: str, raw: str) -> str | None:
+    if kind == "READ":
+        return f"read {len(raw)} chars"
+    if kind == "PLOT":
+        return "chart data"
+    if kind == "STATE":
+        return None
+    if kind in ("SEARCH", "DISCOVER"):
+        urls = _URL_RE.findall(raw)
+        domains = sorted({urlsplit(url).netloc for url in urls})
+        if domains:
+            return f"{len(urls)} results: {', '.join(domains[:4])}"
+        return raw[:200]
+    if kind == "FETCH":
+        return f"fetched {len(raw)} chars"
+    return raw[:500]
+
 
 READISH_TOOLS = frozenset(
     {
@@ -91,7 +135,7 @@ READISH_TOOLS = frozenset(
 
 
 class ChatTurnState(TypedDict, total=False):
-    session_id: int
+    session_id: str
     attempt: int
     round_index: int
     run_id: str
@@ -124,7 +168,7 @@ class ChatTurnState(TypedDict, total=False):
     validation_ok: bool
     final_tool_calls: list[dict[str, Any]]
     final_events: list[dict[str, Any]]
-    message_id: int
+    message_id: str
     finalized: bool
 
 
@@ -211,9 +255,7 @@ def _contract_guard(deps: ChatTurnDeps, _state: ChatTurnState) -> dict[str, Any]
     return {}
 
 
-def _round_messages(
-    deps: ChatTurnDeps, prep: TurnPrep, state: ChatTurnState
-) -> list[Message]:
+def _round_messages(deps: ChatTurnDeps, prep: TurnPrep, state: ChatTurnState) -> list[Message]:
     attempt = state["attempt"]
     feedback = state["feedback_text"] if attempt > 0 else None
     if state["native_tools"]:
@@ -278,16 +320,12 @@ def _consume_stream(
         if buffer:
             return buffer, native_raw, reasoning, str(error)[:200]
         if state["native_tools"] and is_tool_unsupported_error(error):
-            degrade_native_tools(
-                deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id)
-            )
+            degrade_native_tools(deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id))
             return buffer, native_raw, reasoning, DEGRADED
         raise
     if deps.on_round_stream_end is not None:
         had_tools = (
-            bool(native_raw)
-            if state["native_tools"]
-            else bool(extract_tool_calls("".join(buffer)))
+            bool(native_raw) if state["native_tools"] else bool(extract_tool_calls("".join(buffer)))
         )
         deps.on_round_stream_end(had_tools)
     return buffer, native_raw, reasoning, None
@@ -338,13 +376,9 @@ def _execute_tools(
     for kind, argument in tool_calls:
         tool_start_ms = deps.elapsed_ms()
         tool_phase = (
-            "reading"
-            if kind in READISH_TOOLS
-            else "plotting"
-            if kind == "PLOT"
-            else "computing"
+            "reading" if kind in READISH_TOOLS else "plotting" if kind == "PLOT" else "computing"
         )
-        deps.emit({"type": "phase", "phase": tool_phase, "elapsed_ms": tool_start_ms})
+        deps.emit(node_started_event(tool_phase))
         if kind == "READ":
             if read_used >= MAX_READ_ROUNDS:
                 results.append(
@@ -383,7 +417,7 @@ def _execute_tools(
                     title=entry.title if entry is not None else None,
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "STATE":
             if state_used >= MAX_STATE_ROUNDS:
                 results.append(
@@ -405,7 +439,7 @@ def _execute_tools(
                     _tool_result_summary("STATE", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind in RESOURCE_TOOL_BY_KEYWORD:
             if resource_used >= MAX_RESOURCE_ROUNDS:
                 results.append(
@@ -414,9 +448,7 @@ def _execute_tools(
                 )
                 continue
             resource_used += 1
-            content = deps.service._run_resource_tool(
-                kind, argument, deps.chat_session, registry
-            )
+            content = deps.service._run_resource_tool(kind, argument, deps.chat_session, registry)
             results.append(f"{kind} {argument} -> {content}")
             tool_calls_seen.append(
                 _tool_entry(
@@ -429,7 +461,7 @@ def _execute_tools(
                     _tool_result_summary(kind, content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "FIND":
             if state["find_used"] >= MAX_FIND_ROUNDS:
                 results.append(
@@ -451,7 +483,7 @@ def _execute_tools(
                     _tool_result_summary("FIND", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "SEARCH":
             if state["search_used"] >= MAX_SEARCH_ROUNDS:
                 results.append(
@@ -478,7 +510,7 @@ def _execute_tools(
                     _tool_result_summary("SEARCH", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "DISCOVER":
             if state["discover_used"] >= MAX_DISCOVER_ROUNDS:
                 results.append(
@@ -505,7 +537,7 @@ def _execute_tools(
                     _tool_result_summary("DISCOVER", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "FETCH":
             if state["fetch_used"] >= MAX_FETCH_ROUNDS:
                 results.append(
@@ -529,7 +561,7 @@ def _execute_tools(
                     _tool_result_summary("FETCH", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "QUIZ":
             if state["quiz_used"] >= MAX_QUIZ_ROUNDS:
                 results.append("QUIZ -> error: QUIZ budget for this turn is spent")
@@ -548,8 +580,7 @@ def _execute_tools(
         else:
             if state["math_rounds"] >= MAX_TOOL_ROUNDS:
                 results.append(
-                    f"{kind} {argument} -> error: math tool budget "
-                    "for this turn is spent"
+                    f"{kind} {argument} -> error: math tool budget for this turn is spent"
                 )
                 continue
             executed_math = True
@@ -566,7 +597,7 @@ def _execute_tools(
                     _tool_result_summary(kind, result),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
     updates: dict[str, Any] = {
         "read_used": read_used,
         "state_used": state_used,
@@ -609,9 +640,7 @@ def _execute_tools(
     else:
         results_text = "\n".join(results)
         updates["tool_log"] = (
-            f"{state['tool_log']}\n{results_text}"
-            if state["tool_log"]
-            else results_text
+            f"{state['tool_log']}\n{results_text}" if state["tool_log"] else results_text
         )
     return updates
 
@@ -631,19 +660,11 @@ def _agent_round(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
     attempt = state["attempt"]
     round_start_ms = deps.elapsed_ms()
     if round_index == 0:
-        deps.emit(
-            {
-                "type": "stream_start",
-                "run_id": state["run_id"],
-                "elapsed_ms": round_start_ms,
-            }
-        )
+        deps.emit(flow_started_event(state["run_id"]))
     round_phase = "repairing" if attempt > 0 else "thinking"
-    deps.emit({"type": "phase", "phase": round_phase, "elapsed_ms": round_start_ms})
+    deps.emit(node_started_event(round_phase))
     messages = _round_messages(deps, prep, state)
-    buffer, native_raw, reasoning, interruption = _consume_stream(
-        deps, state, messages
-    )
+    buffer, native_raw, reasoning, interruption = _consume_stream(deps, state, messages)
     trace_rounds = list(state["trace_rounds"])
     reasoning_parts = list(state["reasoning_parts"])
     reasoning_parts.extend(reasoning)
@@ -671,9 +692,7 @@ def _agent_round(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
         }
     )
     try:
-        model_name: str | None = deps.gateway.resolve(
-            CHAT_TASK, deps.chat_session.course_id
-        ).label
+        model_name: str | None = deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id).label
     except Exception:
         model_name = None
     base_updates: dict[str, Any] = {

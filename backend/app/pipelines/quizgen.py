@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
@@ -7,8 +7,9 @@ from ..ai.gateway import LLMGateway
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
-from ..core.vocab import QUESTION_TYPES
+from ..core.vocab import QuestionType
 from ..domain.models import Activity, Question
+from ..domain.payloads import QuestionAnswer
 from ..math.code import validate_code_answer
 from ..math.composite import validate_composite_answer
 from ..math.graphs import (
@@ -26,6 +27,15 @@ from ..services.study.answer_validation import (
     validate_answer_shape,
     validate_distractor_equivalence,
 )
+from ..services.study.exercise_rubric import validate_rubric_payload
+from ..services.study.exercise_structs import validate_structural_payload
+
+STRUCTURAL_QUESTION_KINDS = {
+    "matching": "matching",
+    "ordering": "ordering",
+    "cloze": "fill_blank",
+}
+ESSAY_QUESTION_KIND = "essay"
 
 QUIZGEN_TASK = "quizgen"
 QUIZGEN_SKILL = "quiz.generate"
@@ -39,7 +49,9 @@ class QuizgenError(ValueError):
     pass
 
 
-def _default_blueprint(count: int, question_types: list[str] | None = None) -> list[dict[str, Any]]:
+def _default_blueprint(
+    count: int, question_types: list[QuestionType] | None = None
+) -> list[dict[str, Any]]:
     count = max(1, min(count, 30))
     if question_types:
         types = list(question_types)
@@ -51,7 +63,7 @@ def _default_blueprint(count: int, question_types: list[str] | None = None) -> l
 def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     problems: list[str] = []
     qtype = draft.get("type")
-    if qtype not in QUESTION_TYPES:
+    if qtype not in QuestionType.values():
         problems.append(f"q{index}: unknown type '{qtype}'")
         return problems
     if not str(draft.get("stem_md", "")).strip():
@@ -63,28 +75,25 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     options = draft.get("options_md")
     if qtype in PRACTICE_ANSWER_KINDS:
         problems.extend(validate_answer_shape(qtype, answer, options, f"q{index}"))
-        problems.extend(
-            validate_distractor_equivalence(qtype, answer, options, f"q{index}")
-        )
+        problems.extend(validate_distractor_equivalence(qtype, answer, options, f"q{index}"))
     elif qtype == "numberline":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_region_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_region_answer(answer))
     elif qtype == "table_fill":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_table_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_table_answer(answer))
     elif qtype == "composite":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_composite_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_composite_answer(answer))
     elif qtype == "graph_read":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_graph_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_graph_answer(answer))
     elif qtype == "code":
+        problems.extend(f"q{index}: {problem}" for problem in validate_code_answer(answer))
+    elif qtype in STRUCTURAL_QUESTION_KINDS:
         problems.extend(
-            f"q{index}: {problem}" for problem in validate_code_answer(answer)
+            f"q{index}: {problem}"
+            for problem in validate_structural_payload(STRUCTURAL_QUESTION_KINDS[qtype], answer)
+        )
+    elif qtype == ESSAY_QUESTION_KIND:
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_rubric_payload("explain", answer)
         )
 
     if not str(draft.get("explanation_md", "")).strip():
@@ -121,7 +130,7 @@ def _build_prompt(
     topic: str | None,
     skill: str | None,
     context: ContextBundle | None,
-    question_types: list[str] | None = None,
+    question_types: list[QuestionType] | None = None,
 ) -> str:
     blueprint = _default_blueprint(count, question_types)
     type_counts: dict[str, int] = {}
@@ -129,9 +138,7 @@ def _build_prompt(
         type_counts[entry["type"]] = type_counts.get(entry["type"], 0) + 1
     focus_lines = []
     if topic:
-        focus_lines.append(
-            f"FOCUS TOPIC: every question must target the concept '{topic}'."
-        )
+        focus_lines.append(f"FOCUS TOPIC: every question must target the concept '{topic}'.")
     if skill:
         focus_lines.append(
             f"SKILL FOCUS: questions must exercise {skill} ability "
@@ -168,7 +175,7 @@ class QuizgenService:
         context: ContextBundle | None = None,
         topic: str | None = None,
         skill: str | None = None,
-        question_types: list[str] | None = None,
+        question_types: list[QuestionType] | None = None,
         shuffle: bool = False,
     ) -> tuple[list[Question], list[str]]:
         count = max(1, min(count, 30))
@@ -188,9 +195,7 @@ class QuizgenService:
             problems: list[str] = []
             for index, entry in enumerate(drafts[:count]):
                 if question_types and entry.get("type") not in question_types:
-                    problems.append(
-                        f"q{index}: type '{entry.get('type')}' not in allowed set"
-                    )
+                    problems.append(f"q{index}: type '{entry.get('type')}' not in allowed set")
                 problems.extend(validate_question(entry, index))
             if len(drafts) < count:
                 problems.append(f"only {len(drafts)}/{count} questions returned")
@@ -224,9 +229,7 @@ class QuizgenService:
                 if used:
                     explanation_block["mentions"] = [entry.as_dict() for entry in used]
             answer = draft.get("answer", {})
-            stem_blocks: list[dict[str, Any]] = [
-                {"type": "text", "md": draft.get("stem_md", "")}
-            ]
+            stem_blocks: list[dict[str, Any]] = [{"type": "text", "md": draft.get("stem_md", "")}]
             if draft["type"] == "graph_read":
                 answer, _problems = materialize_graph_answer(answer)
                 try:
@@ -263,7 +266,7 @@ class QuizgenService:
                 )
             )
         if shuffle:
-            self._shuffle_questions(questions, activity.id)
+            self._shuffle_questions(questions, int(activity.id.replace("-", "")[:16], 16))
         self._session.add_all(questions)
         self._session.flush()
         return questions, problems
@@ -276,7 +279,7 @@ class QuizgenService:
                 continue
             indexed = list(enumerate(question.options))
             rng.shuffle(indexed)
-            remap = [old_index for old_index, _ in indexed]
+            remap = [prior_index for prior_index, _ in indexed]
             question.options = [option for _, option in indexed]
             answer = dict(question.answer or {})
             if question.type == "single":
@@ -291,7 +294,7 @@ class QuizgenService:
                         for old in indices
                         if isinstance(old, int) and 0 <= old < len(remap)
                     ]
-            question.answer = answer
+            question.answer = cast(QuestionAnswer, answer)
             misconceptions = question.distractor_misconceptions or {}
             if misconceptions:
                 question.distractor_misconceptions = {

@@ -5,7 +5,7 @@ import { api, baseUrl, seedProvider } from './state'
 test('S4 — chat turn streams a fixed answer with a tool card', async ({ page }) => {
   await seedProvider()
   await page.goto(baseUrl())
-  await page.evaluate(() => window.localStorage.removeItem('ca-course-id'))
+  await page.evaluate(() => window.localStorage.removeItem('sa-course-id'))
   await page.reload()
   await page.getByRole('button', { name: 'Open chat' }).click()
   const composer = page.getByPlaceholder('Ask about your material…')
@@ -25,7 +25,7 @@ test('S5 — full-page tutor shows thinking status and streams across session cr
 }) => {
   await seedProvider()
   await page.goto(baseUrl())
-  await page.evaluate(() => window.localStorage.removeItem('ca-course-id'))
+  await page.evaluate(() => window.localStorage.removeItem('sa-course-id'))
   await page.reload()
   await page.getByRole('button', { name: 'Tutor' }).click()
   const composer = page.getByPlaceholder('Ask about your material…')

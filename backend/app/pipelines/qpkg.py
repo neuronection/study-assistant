@@ -55,9 +55,7 @@ def read_qpkg(data: bytes) -> PkgContent:
     }
     actual = hashlib.sha256(doc_bytes).hexdigest()
     if DOC_NAME in expected and expected[DOC_NAME] != actual:
-        raise HTTPException(
-            status_code=422, detail="integrity check failed — package is corrupted"
-        )
+        raise HTTPException(status_code=422, detail="integrity check failed — package is corrupted")
     try:
         document = json.loads(doc_bytes)
     except ValueError as error:

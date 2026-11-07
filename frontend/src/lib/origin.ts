@@ -18,8 +18,8 @@ export function parseOrigin(value: unknown): string | null {
 }
 
 export function practiceFallback(
-  courseId: number | null | undefined,
-  nodeId: number | null | undefined
+  courseId: string | null | undefined,
+  nodeId: string | null | undefined
 ): string {
   if (courseId === null || courseId === undefined) {
     return '/courses'

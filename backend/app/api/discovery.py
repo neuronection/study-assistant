@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind, SuggestionStatus
 from ..domain.models import MaterialSuggestion
-from ..search.discovery import (
+from ..extensions.search.discovery import (
     DiscoveryError,
     DiscoveryResult,
     resolve_providers,
@@ -27,9 +28,9 @@ class DiscoverySearchIn(BaseModel):
 
 
 class SuggestionStateOut(BaseModel):
-    id: int
+    id: str
     status: str
-    material_id: int | None = None
+    material_id: str | None = None
 
 
 class DiscoveryResultOut(BaseModel):
@@ -53,9 +54,9 @@ class DiscoverySearchOut(BaseModel):
 
 
 class SuggestionOut(BaseModel):
-    id: int
-    course_id: int | None
-    node_id: int | None
+    id: str
+    course_id: str | None
+    node_id: str | None
     provider: str
     url: str
     url_norm: str
@@ -64,7 +65,7 @@ class SuggestionOut(BaseModel):
     kind: str
     meta: dict[str, object] = Field(default_factory=dict)
     status: str
-    material_id: int | None
+    material_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -80,7 +81,7 @@ def _suggestion_out(row: MaterialSuggestion) -> SuggestionOut:
         title=row.title,
         snippet=row.snippet or "",
         kind=row.kind,
-        meta=row.meta or {},
+        meta=cast(dict[str, object], row.meta or {}),
         status=row.status,
         material_id=row.material_id,
         created_at=row.created_at,
@@ -95,8 +96,8 @@ class SuggestionSaveIn(BaseModel):
     snippet: str | None = Field(default=None, max_length=2000)
     kind: str | None = None
     meta: dict[str, object] | None = None
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
 
 
 class SuggestionSaveOut(BaseModel):
@@ -106,13 +107,13 @@ class SuggestionSaveOut(BaseModel):
 
 class SuggestionPatchIn(BaseModel):
     status: str | None = None
-    material_id: int | None = None
-    node_id: int | None = None
+    material_id: str | None = None
+    node_id: str | None = None
 
 
 class SuggestionListOut(BaseModel):
     items: list[SuggestionOut]
-    next_cursor: int | None = None
+    next_cursor: str | None = None
 
 
 @router.get("/kinds", response_model=list[str])
@@ -128,9 +129,7 @@ def discovery_search(
 ) -> DiscoverySearchOut:
     profile = ensure_default_profile(session)
     if profile.id in _DISCOVERY_IN_FLIGHT:
-        raise HTTPException(
-            status_code=409, detail="a discovery search is already running"
-        )
+        raise HTTPException(status_code=409, detail="a discovery search is already running")
     try:
         providers = resolve_providers(
             session,
@@ -143,8 +142,7 @@ def discovery_search(
     if not providers:
         raise HTTPException(
             status_code=503,
-            detail="no discovery providers configured — connect a search "
-            "provider in Settings",
+            detail="no discovery providers configured — connect a search provider in Settings",
         )
     _DISCOVERY_IN_FLIGHT.add(profile.id)
     results: list[DiscoveryResultOut] = []
@@ -153,13 +151,14 @@ def discovery_search(
         for provider in providers:
             try:
                 found: list[DiscoveryResult] = provider.search(
-                    body.query.strip(), cap=body.cap
+                    body.query.strip(),
+                    cap=body.cap,
+                    transport=getattr(request.app.state, "search_transport", None),
+                    resolver=getattr(request.app.state, "search_resolver", None),
                 )
             except Exception as error:
                 errors.append(
-                    DiscoveryProviderErrorOut(
-                        provider=provider.id, error=str(error)[:300]
-                    )
+                    DiscoveryProviderErrorOut(provider=provider.id, error=str(error)[:300])
                 )
                 continue
             for row in found:
@@ -170,7 +169,7 @@ def discovery_search(
                         url=row.url,
                         kind=row.kind,
                         description=row.description[:800],
-                        meta=row.meta,
+                        meta=cast(dict[str, object], row.meta or {}),
                     )
                 )
     finally:
@@ -178,9 +177,7 @@ def discovery_search(
     if not results and errors:
         raise HTTPException(
             status_code=502,
-            detail="; ".join(
-                f"{entry.provider}: {entry.error}" for entry in errors
-            ),
+            detail="; ".join(f"{entry.provider}: {entry.error}" for entry in errors),
         )
     results = results[: body.cap * len(providers)]
     known = suggestions.suggestion_states_for_urls(
@@ -200,12 +197,12 @@ def discovery_search(
 
 @router.get("/suggestions", response_model=SuggestionListOut)
 def list_suggestions(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     status: str | None = None,
     kind: str | None = None,
     limit: int = Query(default=50, ge=1, le=100),
-    cursor: int | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> SuggestionListOut:
     profile = ensure_default_profile(session)
@@ -224,9 +221,7 @@ def list_suggestions(
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    return SuggestionListOut(
-        items=[_suggestion_out(row) for row in rows], next_cursor=next_cursor
-    )
+    return SuggestionListOut(items=[_suggestion_out(row) for row in rows], next_cursor=next_cursor)
 
 
 @router.post("/suggestions", response_model=SuggestionSaveOut, status_code=200)
@@ -257,7 +252,7 @@ def save_suggestion(
 
 @router.patch("/suggestions/{suggestion_id}", response_model=SuggestionOut)
 def patch_suggestion(
-    suggestion_id: int,
+    suggestion_id: str,
     body: SuggestionPatchIn,
     session: Session = Depends(get_session),
 ) -> SuggestionOut:
@@ -280,7 +275,7 @@ def patch_suggestion(
 
 @router.delete("/suggestions/{suggestion_id}", status_code=204)
 def delete_suggestion(
-    suggestion_id: int,
+    suggestion_id: str,
     session: Session = Depends(get_session),
 ) -> None:
     profile = ensure_default_profile(session)

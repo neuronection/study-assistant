@@ -34,7 +34,7 @@ export function NewTextFileDialog({
   onCreate: (input: TextFileCreateInput) => Promise<TextFileEditState | null>
   onSave: (input: TextFileSaveInput) => Promise<TextFileEditState>
   onCancel: () => void
-  courseId?: number
+  courseId?: string
 }) {
   useCloseFloatings()
   const { t } = useTranslation()
@@ -59,10 +59,10 @@ export function NewTextFileDialog({
           ...prev,
           { ref, strokes, png_base64: pngBase64, ocr, view },
         ])
-        return ref
+        return String(ref)
       },
       update: async (
-        drawingId: number,
+        drawingId: string,
         strokes: Stroke[],
         pngBase64: string,
         ocr: boolean,
@@ -70,22 +70,22 @@ export function NewTextFileDialog({
       ) => {
         setPendingDrawings((prev) =>
           prev.map((entry) =>
-            entry.ref === drawingId
+            String(entry.ref) === drawingId
               ? { ...entry, strokes, png_base64: pngBase64, ocr, view }
               : entry
           )
         )
       },
       reocr: async () => {},
-      remove: async (drawingId: number) => {
-        setPendingDrawings((prev) => prev.filter((entry) => entry.ref !== drawingId))
+      remove: async (drawingId: string) => {
+        setPendingDrawings((prev) => prev.filter((entry) => String(entry.ref) !== drawingId))
       },
     }),
     []
   )
 
   const drawings: DrawingMeta[] = pendingDrawings.map((entry) => ({
-    id: entry.ref,
+    id: String(entry.ref),
     png_sha: `data:image/png;base64,${entry.png_base64}`,
     ocr_markdown: null,
     strokes: entry.strokes,
@@ -95,7 +95,7 @@ export function NewTextFileDialog({
   const applySavedState = (state: TextFileEditState) => {
     setPendingDrawings((prev) =>
       prev.map((entry) =>
-        state.refToReal[entry.ref] !== undefined
+        typeof entry.ref === 'number' && state.refToReal[entry.ref] !== undefined
           ? { ...entry, ref: state.refToReal[entry.ref] }
           : entry
       )

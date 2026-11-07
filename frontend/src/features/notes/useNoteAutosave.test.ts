@@ -6,7 +6,7 @@ import { noteBodyMd } from './useNoteAutosave'
 
 function note(body: NoteDetailInfo['body']): NoteDetailInfo {
   return {
-    id: 1,
+    id: '1',
     title: 't',
     course_id: null,
     node_id: null,
@@ -21,15 +21,15 @@ function note(body: NoteDetailInfo['body']): NoteDetailInfo {
 }
 
 describe('noteBodyMd', () => {
-  test('legacy stripped blocks rejoin with paragraph breaks', () => {
+  test('older stripped blocks rejoin with paragraph breaks', () => {
     const md = noteBodyMd(
       note([
         { type: 'text', md: 'before' },
-        { type: 'drawing', drawing_id: 4 },
+        { type: 'drawing', drawing_id: '4' },
         { type: 'text', md: 'after' },
       ])
     )
-    expect(md).toBe('before\n\n![drawing](ca-drawing://4)\n\nafter')
+    expect(md).toBe('before\n\n![drawing](sa-drawing://4)\n\nafter')
   })
 
   test('verbatim blocks rejoin byte-identically', () => {
@@ -45,14 +45,14 @@ describe('noteBodyMd', () => {
     const md = noteBodyMd(
       note([
         { type: 'text', md: 'start\n\n' },
-        { type: 'drawing', drawing_id: 1 },
+        { type: 'drawing', drawing_id: '1' },
         { type: 'text', md: '\n\nmid\n\n\n' },
-        { type: 'drawing', drawing_id: 2 },
+        { type: 'drawing', drawing_id: '2' },
         { type: 'text', md: '\ntail\n' },
       ])
     )
     expect(md).toBe(
-      'start\n\n![drawing](ca-drawing://1)\n\nmid\n\n\n![drawing](ca-drawing://2)\ntail\n'
+      'start\n\n![drawing](sa-drawing://1)\n\nmid\n\n\n![drawing](sa-drawing://2)\ntail\n'
     )
   })
 

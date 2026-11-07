@@ -20,7 +20,7 @@ GENESIS_QUIZ_COUNT = 5
 GENESIS_CARD_COUNT = 10
 
 
-def _lesson_markdown(session: Session, material_id: int) -> str | None:
+def _lesson_markdown(session: Session, material_id: str) -> str | None:
     extraction = session.scalars(
         select(Extraction)
         .where(Extraction.material_id == material_id)
@@ -30,15 +30,13 @@ def _lesson_markdown(session: Session, material_id: int) -> str | None:
     return extraction.markdown if extraction is not None else None
 
 
-def make_genesis_handler(
-    gateway: LLMGateway, blobs: BlobStore, embed: Any
-) -> JobHandler:
+def make_genesis_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload = cast(GenesisPayload, job.payload or {})
         raw_course_id = payload.get("course_id")
         if raw_course_id is None:
             raise JobError("genesis payload missing course_id")
-        course = session.get(Course, int(raw_course_id))
+        course = session.get(Course, str(raw_course_id))
         if course is None:
             raise JobError(f"course {raw_course_id} not found")
         lessons = bool(payload.get("lessons", True))

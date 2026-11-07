@@ -17,7 +17,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    courseTree: (courseId: number) => courseTree(courseId),
+    courseTree: (courseId: string) => courseTree(courseId),
   }
 })
 
@@ -40,7 +40,7 @@ vi.mock('@/features/library/MaterialDetailDrawer', () => ({
 vi.mock('@/features/notes/LazyNoteEditor', () => ({
   LazyNoteEditor: (props: {
     docked?: boolean
-    noteId: number
+    noteId: string
     onClose: () => void
     onStudyAlongside?: () => void
     onExpand?: () => void
@@ -56,34 +56,27 @@ vi.mock('@/features/notes/LazyNoteEditor', () => ({
 }))
 
 vi.mock('@/features/courses/MaterialPickerDialog', () => ({
-  MaterialPickerDialog: (props: { onClose: () => void; onSelect?: (ids: number[]) => void }) => (
+  MaterialPickerDialog: (props: { onClose: () => void; onSelect?: (ids: string[]) => void }) => (
     <div data-testid="picker-stub">
       <button onClick={props.onClose}>picker-close</button>
-      <button onClick={() => props.onSelect?.([9])}>picker-select</button>
+      <button onClick={() => props.onSelect?.(['9'])}>picker-select</button>
     </div>
   ),
 }))
 
 function tabSearch(search: Record<string, unknown>): {
   tab?: string
-  note?: number
-  material?: number
-  study?: number | 'new'
-  folder?: number
+  note?: string
+  material?: string
+  study?: string
+  folder?: string
 } {
-  const rawStudy = search.study
-  let study: number | 'new' | undefined
-  if (rawStudy === 'new') {
-    study = 'new'
-  } else if (typeof rawStudy === 'number') {
-    study = rawStudy
-  }
   return {
     tab: typeof search.tab === 'string' ? search.tab : undefined,
-    note: typeof search.note === 'number' ? search.note : undefined,
-    material: typeof search.material === 'number' ? search.material : undefined,
-    study,
-    folder: undefined,
+    note: search.note === undefined ? undefined : String(search.note),
+    material: search.material === undefined ? undefined : String(search.material),
+    study: search.study === undefined ? undefined : String(search.study),
+    folder: search.folder === undefined ? undefined : String(search.folder),
   }
 }
 
@@ -156,7 +149,7 @@ describe('FileDock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'stub-close' }))
     await waitFor(() =>
       expect(
-        (router.state.location.search as { material?: number }).material
+        (router.state.location.search as { material?: string }).material
       ).toBeUndefined()
     )
     expect(router.state.location.pathname).toBe('/courses/3/n/5')
@@ -169,7 +162,7 @@ describe('FileDock', () => {
     await screen.findByTestId('material-stub')
     fireEvent.click(screen.getByRole('button', { name: 'stub-notes' }))
     await waitFor(() =>
-      expect(router.state.location.search).toMatchObject({ material: 7, study: 'new' })
+      expect(router.state.location.search).toMatchObject({ material: '7', study: 'new' })
     )
   })
 
@@ -178,7 +171,7 @@ describe('FileDock', () => {
     await screen.findByTestId('material-stub')
     fireEvent.click(screen.getByRole('button', { name: 'stub-expand' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/library/7'))
-    expect(router.state.location.search).toMatchObject({ from: '/courses/3/n/5?material=7' })
+    expect(router.state.location.search).toMatchObject({ from: '/courses/3/n/5?material=%227%22' })
   })
 
   test('renders the note editor docked when ?note= is set', async () => {
@@ -198,10 +191,10 @@ describe('FileDock', () => {
     expect(await screen.findByTestId('picker-stub')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'picker-select' }))
     await waitFor(() =>
-      expect(router.state.location.search).toMatchObject({ material: 9, study: 5 })
+      expect(router.state.location.search).toMatchObject({ material: '9', study: '5' })
     )
     expect(
-      (router.state.location.search as { note?: number }).note
+      (router.state.location.search as { note?: string }).note
     ).toBeUndefined()
     expect(screen.queryByTestId('picker-stub')).not.toBeInTheDocument()
   })
@@ -212,7 +205,7 @@ describe('FileDock', () => {
     await screen.findByTestId('note-stub')
     fireEvent.click(screen.getByRole('button', { name: 'stub-expand' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/note/5'))
-    expect(router.state.location.search).toMatchObject({ from: '/courses/3?note=5' })
+    expect(router.state.location.search).toMatchObject({ from: '/courses/3?note=%225%22' })
   })
 
   test('renders nothing while the split study pane owns the screen', async () => {

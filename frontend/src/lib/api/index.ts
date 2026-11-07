@@ -32,6 +32,7 @@ export type {
   Diagnostics,
   ErrorTagProfile,
   ExamStatusEntry,
+  ItemStat,
   MatrixCell,
   Overview,
   Recommendation,
@@ -42,7 +43,9 @@ export type {
 export {
   getCosts,
   getDiagnostics,
+  analyticsExportUrl,
   getExamStatus,
+  getItems,
   getOverview,
   getRecommendations,
   setDailyGoal,
@@ -79,6 +82,7 @@ export type {
 } from './study'
 
 export type {
+  AlertEntry,
   DueReviewEntry,
   ExamEntry,
   Notifications,
@@ -129,6 +133,7 @@ export {
 export type {
   AdminUser,
   AdminUserPatch,
+  InstanceAuthMode,
   PublicUser,
   UserSession,
 } from './admin'
@@ -142,6 +147,7 @@ export {
   patchAdminUser,
   resetAdminUserPassword,
   revokeMySession,
+  updateInstanceMode,
 } from './admin'
 
 export {
@@ -170,6 +176,7 @@ export type {
   Course,
   CourseBundlePreview,
   CourseDefaultTaskInfo,
+  CourseDuplicate,
   CourseTaskInfo,
   CourseTypeInfo,
   GenesisCommitResult,
@@ -207,6 +214,7 @@ export {
   deleteCourse,
   deleteNode,
   draftGenesis,
+  duplicateCourse,
   draftNodeNote,
   extractConcepts,
   getCourse,
@@ -354,6 +362,7 @@ export {
   copyMaterial,
   createTextFile,
   createTextMaterial,
+  downloadBibliography,
   deallocateMaterial,
   deallocateNodeFolder,
   deleteMaterial,
@@ -370,6 +379,7 @@ export {
   listCourseMaterials,
   listExtractionVersions,
   listMaterials,
+  importBibliography,
   importUrlMaterial,
   mindmapEdit,
   moveMaterial,
@@ -388,6 +398,8 @@ export {
 
 export type {
   NoteActionResult,
+  NoteLinkInfo,
+  NoteLinksInfo,
   NoteDetailInfo,
   NoteDrawingInfo,
   NoteInfo,
@@ -402,12 +414,16 @@ export {
   createPlanItem,
   deletePlanItem,
   generatePlan,
+  importIcs,
   listPlanItems,
   listUpcomingItems,
+  previewIcsImport,
   updatePlanItem,
 } from './plan'
 
 export type {
+  IcsImportResult,
+  IcsPreview,
   PlanItem,
   PlanItemKind,
   UpcomingItem,
@@ -422,12 +438,14 @@ export {
   diffNoteVersions,
   getNote,
   getNoteVersion,
+  listNoteLinks,
   listNoteTags,
   listNoteVersions,
   listNotes,
   moveNote,
   reocrDrawing,
   restoreNoteVersion,
+  vaultExportUrl,
   runNoteAction,
   saveSessionSummaryNote,
   updateDrawing,
@@ -572,6 +590,12 @@ export type {
   ProfileInfo,
   ProfilePreferences,
   ProfilePreferencesUpdate,
+  SearchProvider,
+  SearchProviderCatalog,
+  SearchProviderCatalogEntry,
+  SearchProviderCatalogField,
+  SearchProviderProbe,
+  UpdateCheck,
   WorkingDirInfo,
   WorkingDirValidation,
 } from './system'
@@ -579,28 +603,58 @@ export type {
 export {
   createProfile,
   createSampleCourse,
-  clearSearchProvider,
+  createSearchProvider,
   deleteProfile,
+  deleteSearchProvider,
   desktopFileUrl,
   getHealth,
   getOnboardingState,
   getProfilePreferences,
-  getSearchProvider,
+  getSearchProviderCatalog,
+  getUpdateCheck,
   getWorkingDir,
   listDeletedItems,
   listDesktopFolder,
   listFsDirs,
   listProfiles,
+  listSearchProviders,
+  moveSearchProvider,
   patchProfile,
   purgeDeletedItem,
   registerDesktopDrops,
   resetWorkingDir,
   restoreDeletedItem,
   setWorkingDir,
+  testSearchProvider,
   updateProfilePreferences,
   updateSearchProvider,
   validateWorkingDir,
 } from './system'
+
+export type {
+  CalendarCatalog,
+  CalendarLink,
+  CalendarLinkInput,
+  CalendarOAuthStart,
+  CalendarProvider,
+  CalendarSetupField,
+  CalendarSyncReport,
+  DiscoveredCalendar,
+} from './calendar'
+
+export {
+  completeCalendarOAuth,
+  createCalendarLink,
+  deleteCalendarLink,
+  discoverCalendars,
+  listCalendarLinks,
+  listCalendarProviders,
+  setCalendarLinkSecret,
+  startCalendarOAuth,
+  syncCalendarLink,
+  testCalendarLink,
+  updateCalendarLink,
+} from './calendar'
 
 export type {
   DiscoveryResultRow,
@@ -620,22 +674,85 @@ export {
 export type {
   ExternalSourceKind,
   ExternalSourceRow,
+  SourceAcceptResult,
+  SourceBackupUpload,
+  SourceOAuthStatus,
+  SourceProvider,
+  SourceProviderCatalog,
+  SourceRemoteBackup,
+  SourceRemoteBackupList,
+  SourceSecretStatus,
 } from './external-sources'
 
 export {
+  acceptExternalSuggestion,
+  connectExternalSource,
   createExternalSource,
   deleteExternalSource,
+  deleteExternalSourceSecret,
+  disconnectExternalSource,
+  listExternalBackups,
   listExternalSources,
+  listSourceProviders,
+  restoreExternalBackup,
   scanExternalSource,
+  setExternalSourceSecret,
   updateExternalSource,
+  uploadExternalBackup,
 } from './external-sources'
 
-export type { McpServerRow, McpServerToolInfo } from './mcp-servers'
+export type { ExtensionDocs } from './extensions'
+
+export { getExtensionDocumentation } from './extensions'
+
+export type { McpServerRow, McpServerToolInfo, McpCharter } from './mcp-servers'
 
 export {
   createMcpServer,
   deleteMcpServer,
+  getMcpCharter,
   listMcpServers,
   refreshMcpServer,
   updateMcpServer,
 } from './mcp-servers'
+
+export type { ExerciseOrderingItem } from './hand-types'
+export { HAND_TYPE_REGISTER } from './hand-types'
+
+export type {
+  RetrievalAction,
+  RetrievalCoverageEnvelope,
+  RetrievalCutoverRequest,
+  RetrievalMaintenanceRequest,
+  RetrievalOverview,
+  RetrievalQuality,
+  RetrievalQualityCompareRequest,
+  RetrievalQueryHealth,
+  RetrievalReindexRequest,
+  RetrievalRunProgress,
+  RetrievalRuns,
+  RetrievalUsage,
+  RetrievalSpaceBuildRequest,
+  RetrievalSpaceConfirmRequest,
+  RetrievalSpaces,
+} from './retrieval'
+
+export {
+  activateRetrievalSpace,
+  cancelRetrievalRun,
+  dropRetrievalSpace,
+  getRetrievalCoverage,
+  getRetrievalOverview,
+  getRetrievalQuality,
+  getRetrievalQueryHealth,
+  getRetrievalRuns,
+  getRetrievalSpaces,
+  getRetrievalUsage,
+  postRetrievalBuildSpace,
+  postRetrievalCutover,
+  postRetrievalMaintenance,
+  postRetrievalQualityCompare,
+  postRetrievalReindex,
+  retireRetrievalSpace,
+  retryRetrievalRun,
+} from './retrieval'

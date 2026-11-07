@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import time
+import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -43,10 +44,10 @@ class ProbeGateway(ScriptedGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="probe",
@@ -60,7 +61,7 @@ class ProbeGateway(ScriptedGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return super().generate(task, messages, model)
@@ -104,44 +105,41 @@ def make_gateway(responses: list[str]) -> ProbeGateway:
     return ProbeGateway(responses)
 
 
-def upload_txt(client: TestClient, filename: str, course_id: int, content: bytes) -> int:
+def upload_txt(client: TestClient, filename: str, course_id: str, content: bytes) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, content, "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
 
-def root_node(client: TestClient, course_id: int) -> int:
-    return int(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
+def root_node(client: TestClient, course_id: str) -> str:
+    return str(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def link_material(client: TestClient, node_id: int, material_id: int) -> None:
-    linked = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+def link_material(client: TestClient, node_id: str, material_id: str) -> None:
+    linked = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert linked.status_code == 201, linked.text
 
 
-def make_note(
-    client: TestClient, course_id: int, node_id: int, title: str, body_md: str
-) -> int:
+def make_note(client: TestClient, course_id: str, node_id: str, title: str, body_md: str) -> str:
     created = client.post(
         "/api/v1/notes",
         json={
@@ -152,7 +150,7 @@ def make_note(
         },
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_quiz_generate_provider_error_maps_to_502(tmp_path: Path) -> None:
@@ -164,11 +162,11 @@ def test_quiz_generate_provider_error_maps_to_502(tmp_path: Path) -> None:
             task: str,
             messages: list[Message],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             raise GatewayProviderError(
                 ResolvedModel(
-                    provider_id=1,
+                    provider_id="1",
                     provider_type="openai_compatible",
                     base_url="https://api.openai.com/v1",
                     external_id="gpt-test",
@@ -186,7 +184,7 @@ def test_quiz_generate_provider_error_maps_to_502(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         generated = client.post(
             "/api/v1/quiz/generate",
             json={"course_id": course_id, "count": 1},
@@ -251,7 +249,7 @@ def test_ai_tools_catalog(client: TestClient) -> None:
     materials = mcp_body["tools"][2]
     by_name = {argument["name"]: argument for argument in materials["arguments"]}
     assert by_name["node_id"]["required"] is True
-    assert by_name["node_id"]["type"] == "integer"
+    assert by_name["node_id"]["type"] == "string"
     assert by_name["include_children"]["required"] is False
     assert by_name["profile_id"]["required"] is False
     node_context = mcp_body["tools"][11]
@@ -262,7 +260,7 @@ def test_ai_tools_catalog(client: TestClient) -> None:
 
 
 def test_preview_scope_node_vs_subtree(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
     section = make_node(client, course_id, chapter, "Sec")
@@ -296,7 +294,7 @@ def test_preview_scope_node_vs_subtree(client: TestClient) -> None:
 
 
 def test_preview_include_exclude_materials(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
 
@@ -326,7 +324,7 @@ def test_preview_include_exclude_materials(client: TestClient) -> None:
     titles = [entry["title"] for entry in included.json()["stats"]["materials"]]
     assert titles == ["linked", "extra"]
 
-    foreign_course = int(client.post("/api/v1/courses", json={"title": "D"}).json()["id"])
+    foreign_course = str(client.post("/api/v1/courses", json={"title": "D"}).json()["id"])
     foreign = upload_txt(client, "foreign.txt", foreign_course, b"antiderivative foreign")
     cross = client.post(
         "/api/v1/ai/context/preview",
@@ -340,7 +338,7 @@ def test_preview_include_exclude_materials(client: TestClient) -> None:
 
 
 def test_preview_notes_concepts_and_hints(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
     note_id = make_note(client, course_id, chapter, "My note", "u-substitution recap")
@@ -356,7 +354,7 @@ def test_preview_notes_concepts_and_hints(client: TestClient) -> None:
         },
     )
     assert committed.status_code == 200
-    concept_id = int(
+    concept_id = str(
         client.get(f"/api/v1/courses/{course_id}/concepts").json()["concepts"][0]["id"]
     )
 
@@ -392,7 +390,7 @@ def test_preview_notes_concepts_and_hints(client: TestClient) -> None:
 
 
 def test_root_hint_only_patch_and_tree_payload(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     refused = client.patch(f"/api/v1/nodes/{root}", json={"title": "new title"})
     assert refused.status_code == 422
@@ -419,15 +417,11 @@ def test_quiz_generate_receives_context(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         root = root_node(client, course_id)
         chapter = make_node(client, course_id, root, "Ch")
-        kept = upload_txt(
-            client, "kept.txt", course_id, b"antiderivative of x squared material"
-        )
-        dropped = upload_txt(
-            client, "dropped.txt", course_id, b"antiderivative dice game material"
-        )
+        kept = upload_txt(client, "kept.txt", course_id, b"antiderivative of x squared material")
+        dropped = upload_txt(client, "dropped.txt", course_id, b"antiderivative dice game material")
         link_material(client, chapter, kept)
         link_material(client, chapter, dropped)
         note_id = make_note(client, course_id, chapter, "Note", "remember plus C")
@@ -469,8 +463,8 @@ def test_quiz_generate_cross_course_note_rejected(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        first = int(client.post("/api/v1/courses", json={"title": "A"}).json()["id"])
-        second = int(client.post("/api/v1/courses", json={"title": "B"}).json()["id"])
+        first = str(client.post("/api/v1/courses", json={"title": "A"}).json()["id"])
+        second = str(client.post("/api/v1/courses", json={"title": "B"}).json()["id"])
         root_b = root_node(client, second)
         note_id = make_note(client, second, root_b, "foreign", "content")
         generated = client.post(
@@ -493,7 +487,7 @@ def test_exercise_generate_receives_notes(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         root = root_node(client, course_id)
         chapter = make_node(client, course_id, root, "Ch")
         note_id = make_note(client, course_id, chapter, "Hint note", "integration by parts")
@@ -519,7 +513,7 @@ def test_exercise_generate_receives_notes(tmp_path: Path) -> None:
 
 
 def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> None:
-    from app.storage import vectors as vectors_module
+    from app.storage.vector_store import StudyVectorStore
 
     gateway = make_gateway([])
     embedder = _FakeVectorEmbedder()
@@ -530,7 +524,7 @@ def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> 
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         root = root_node(client, course_id)
         chapter = make_node(client, course_id, root, "Ch")
         target = upload_txt(client, "target.txt", course_id, b"obscure syllabus content")
@@ -540,14 +534,16 @@ def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> 
         chunk_row = raw.execute(
             "SELECT c.id FROM chunks c JOIN extractions e ON e.id = c.extraction_id "
             "WHERE e.material_id = ? LIMIT 1",
-            (target,),
+            (uuid.UUID(target).hex,),
         ).fetchone()
         assert chunk_row is not None
-        chunk_id = int(chunk_row[0])
+        chunk_id = str(uuid.UUID(str(chunk_row[0])))
         raw.close()
 
         monkeypatch.setattr(
-            vectors_module, "search", lambda session, qv, limit=24: [(chunk_id, 0.01)]
+            StudyVectorStore,
+            "search",
+            lambda self, qv, limit=24, **kwargs: [(chunk_id, 0.01)],
         )
         preview = client.post(
             "/api/v1/ai/context/preview",
@@ -568,7 +564,7 @@ class _FakeVectorEmbedder:
 
 
 def test_preview_structure_section_covers_neighborhood(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Chapter A")
     sibling = make_node(client, course_id, root, "Chapter B")

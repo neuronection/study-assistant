@@ -18,10 +18,10 @@ class CardsGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="cards-model",
@@ -35,7 +35,7 @@ class CardsGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -49,7 +49,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -58,7 +58,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-cards-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-cards-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=CardsGateway(responses),
@@ -68,8 +68,8 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def cards_json(cards: list[dict[str, str]]) -> str:
@@ -83,7 +83,7 @@ def test_manual_card_validation() -> None:
         created = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "cloze",
+                "kind": "card_cloze",
                 "front_md": "The derivative of $x^2$ is {{2x}}",
                 "back_md": "$2x$",
                 "course_id": course_id,
@@ -94,7 +94,7 @@ def test_manual_card_validation() -> None:
         bad = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "cloze",
+                "kind": "card_cloze",
                 "front_md": "no deletion here",
                 "back_md": "x",
                 "course_id": course_id,
@@ -107,11 +107,11 @@ def test_manual_card_validation() -> None:
 def test_due_queue_and_review_scheduling() -> None:
     client = make_client([])
     with client:
-        card_id = int(
+        card_id = str(
             client.post(
                 "/api/v1/flashcards",
                 json={
-                    "kind": "basic",
+                    "kind": "card_basic",
                     "front_md": "What is $\\frac{d}{dx} x^2$?",
                     "back_md": "$2x$",
                     "course_id": make_course(client),
@@ -122,9 +122,7 @@ def test_due_queue_and_review_scheduling() -> None:
         assert [card["id"] for card in due] == [card_id]
         assert due[0]["state"] is None
 
-        reviewed = client.post(
-            f"/api/v1/flashcards/{card_id}/review", json={"rating": 3}
-        )
+        reviewed = client.post(f"/api/v1/flashcards/{card_id}/review", json={"rating": 3})
         assert reviewed.status_code == 200
         body = reviewed.json()
         assert body["interval_days"] >= 1
@@ -141,11 +139,11 @@ def test_due_queue_and_review_scheduling() -> None:
 def test_again_review_schedules_tomorrow_and_logs() -> None:
     client = make_client([])
     with client:
-        card_id = int(
+        card_id = str(
             client.post(
                 "/api/v1/flashcards",
                 json={
-                    "kind": "basic",
+                    "kind": "card_basic",
                     "front_md": "F",
                     "back_md": "B",
                     "course_id": make_course(client),
@@ -164,13 +162,13 @@ def test_again_review_schedules_tomorrow_and_logs() -> None:
             from sqlalchemy import text
 
             rows = db.execute(
-                text("SELECT rating, interval_days FROM review_log ORDER BY id")
+                text("SELECT rating, interval_days FROM review_log ORDER BY reviewed_at, id")
             ).all()
         assert [row[0] for row in rows] == [3, 1]
 
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Cards quiz",
     "questions": [
         {
@@ -191,7 +189,7 @@ CAQ_DOC = {
 }
 
 
-def seed_mistake(client: TestClient) -> int:
+def seed_mistake(client: TestClient) -> str:
     course_id = make_course(client)
     imported = client.post(
         "/api/v1/quiz/import",
@@ -199,13 +197,11 @@ def seed_mistake(client: TestClient) -> int:
         json=CAQ_DOC,
     )
     assert imported.status_code == 200, imported.text
-    activity_id = int(imported.json()["activity"]["id"])
-    question_id = int(
+    activity_id = str(imported.json()["activity"]["id"])
+    question_id = str(
         client.get(f"/api/v1/quiz/activities/{activity_id}/questions").json()[0]["id"]
     )
-    attempt_id = int(
-        client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"]
-    )
+    attempt_id = str(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
     answered = client.post(
         f"/api/v1/quiz/attempts/{attempt_id}/answers",
         json={"question_id": question_id, "response": 1},
@@ -217,8 +213,8 @@ def seed_mistake(client: TestClient) -> int:
 def test_generation_repair_and_duplicate_rejection() -> None:
     good = cards_json(
         [
-            {"kind": "basic", "front_md": "Q1", "back_md": "A1"},
-            {"kind": "cloze", "front_md": "power rule: {{d/dx x^n}}", "back_md": "nx^{n-1}"},
+            {"kind": "card_basic", "front_md": "Q1", "back_md": "A1"},
+            {"kind": "card_cloze", "front_md": "power rule: {{d/dx x^n}}", "back_md": "nx^{n-1}"},
         ]
     )
     client = make_client(["not json at all"])
@@ -230,7 +226,7 @@ def test_generation_repair_and_duplicate_rejection() -> None:
         )
         assert generated.status_code == 422
 
-    duplicate_batch = cards_json([{"kind": "basic", "front_md": "Q1", "back_md": "A1"}])
+    duplicate_batch = cards_json([{"kind": "card_basic", "front_md": "Q1", "back_md": "A1"}])
     client2 = make_client([good, duplicate_batch, duplicate_batch, duplicate_batch])
     with client2:
         course_id = seed_mistake(client2)

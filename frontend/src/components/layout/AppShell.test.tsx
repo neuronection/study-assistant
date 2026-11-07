@@ -34,6 +34,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listProfiles: () => listProfiles(),
     createProfile: (name: string) => createProfileFn(name),
     getInstanceConfig: () => getInstanceConfigFn(),
+    getUpdateCheck: () =>
+      Promise.resolve({
+        current_version: '0.12.1',
+        latest_version: '0.12.1',
+        update_available: false,
+        release_url: 'https://example.invalid',
+        checked_at: null,
+        error: null,
+      }),
   }
 })
 
@@ -75,8 +84,8 @@ vi.mock('./CommandPalette', () => ({
   useCommandPaletteOpen: () => ({ open: false, close: vi.fn(), openPalette: vi.fn() }),
 }))
 
-vi.mock('@/features/chat/ChatPanel', () => ({
-  ChatPanel: (props: Record<string, unknown>) => {
+vi.mock('@/features/chat/StudyChatPanel', () => ({
+  StudyChatPanel: (props: Record<string, unknown>) => {
     chatPanelState.props = props
     return null
   },
@@ -87,7 +96,7 @@ vi.mock('@/features/chat/useStudyChat', () => ({
     sessionId,
     children,
   }: {
-    sessionId: number | null
+    sessionId: string | null
     children: React.ReactNode
   }) => {
     chatPanelState.sessionProps = { sessionId }
@@ -97,7 +106,7 @@ vi.mock('@/features/chat/useStudyChat', () => ({
 
 const COURSES = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     subject: null,
     level: null,
@@ -107,7 +116,7 @@ const COURSES = [
     material_count: 2,
   },
   {
-    id: 2,
+    id: '2',
     title: 'Linear Algebra',
     subject: null,
     level: null,
@@ -142,7 +151,7 @@ describe('AppShell rail', () => {
       auth_mode: 'open',
       registration_enabled: true,
     })
-    localStorage.removeItem('ca-profile-id')
+    localStorage.removeItem('sa-profile-id')
     clearDemoModeCache()
     navigate.mockReset()
     useWorkspaceStore.getState().setCourse(null)
@@ -159,7 +168,6 @@ describe('AppShell rail', () => {
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' })
     expect(nav).toBeInTheDocument()
     expect(screen.queryByText('Dev')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /rendering spike/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Flashcards' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Quiz' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Exercises' })).not.toBeInTheDocument()
@@ -172,14 +180,16 @@ describe('AppShell rail', () => {
     expect(within(nav).queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
   })
 
-  test('sidebar footer shows the family block, About pill and app version', async () => {
+  test('sidebar footer shows the family switcher, About pill and app version', async () => {
     renderShell()
-    expect(await screen.findByText('More from the family')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Explore projects' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument()
     expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
   })
 
-  test('short viewports: footer drops to a compact variant — family panel hidden, pills stay', async () => {
+  test('short viewports: footer keeps the switcher and pills in a compact row', async () => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockImplementation((query: string) => ({
@@ -193,14 +203,12 @@ describe('AppShell rail', () => {
     try {
       renderShell()
       expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
-      // the family projects panel and the branding line go…
-      expect(screen.queryByText('More from the family')).not.toBeInTheDocument()
-      expect(screen.queryByText(/^Part of/)).not.toBeInTheDocument()
-      // …the Fund/About pills and the version stay
+      // the switcher, the pills and the version all stay — only the pills slim down
+      expect(screen.getByRole('button', { name: 'Explore projects' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Fund' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument()
       expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
-      // the Neuronection mark sits on the same row (left) linking to the site
+      // the branding line links to the site
       expect(screen.getByLabelText('Part of Neuronection')).toBeInTheDocument()
       // the account menu (carrying the profile switcher slot) stays too
       expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
@@ -219,7 +227,7 @@ describe('AppShell rail', () => {
     expect(within(listbox).getByRole('option', { name: /linear algebra/i })).toBeInTheDocument()
 
     fireEvent.click(within(listbox).getByRole('option', { name: /linear algebra/i }))
-    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe(2))
+    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe('2'))
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
         to: '/courses/$courseId',
@@ -229,7 +237,7 @@ describe('AppShell rail', () => {
   })
 
   test('switcher keeps an explicit all-courses row', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     fireEvent.click(await screen.findByRole('button', { name: 'Current course' }))
     const listbox = await screen.findByRole('listbox', { name: 'Current course' })
@@ -270,20 +278,20 @@ describe('AppShell rail', () => {
     // server mode has no silent default (§15) — the null selection must
     // adopt the is_default row so boot queries carry X-Profile-Id
     await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
-    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
+    expect(localStorage.getItem('sa-profile-id')).toBe('p-default')
   })
 
   test('a stale stored selection is repaired to the Default profile', async () => {
     // auth_mode open (desktop) — repair is mode-independent, adoption is not
     listProfiles.mockResolvedValue([{ id: 'p-default', name: 'Default', color: null, is_default: true }])
-    localStorage.setItem('ca-profile-id', 'p-deleted')
+    localStorage.setItem('sa-profile-id', 'p-deleted')
     renderShell()
     await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
-    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
+    expect(localStorage.getItem('sa-profile-id')).toBe('p-default')
   })
 
   test('active course shows quick destinations for workspace, materials, notes and practice', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     const grid = await screen.findByRole('group', { name: 'Course shortcuts' })
     expect(within(grid).getByRole('link', { name: 'Workspace' })).toHaveAttribute(
@@ -312,7 +320,7 @@ describe('AppShell rail', () => {
   })
 
   test('switcher popover always links to the Courses page', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     fireEvent.click(await screen.findByRole('button', { name: 'Current course' }))
     const dialog = await screen.findByRole('dialog', { name: 'Current course' })
@@ -340,7 +348,7 @@ describe('AppShell rail', () => {
       session: unknown,
     ) => void
     onSessionCreated({
-      id: 7,
+      id: '7',
       public_id: 'uuid-7',
       course_id: null,
       node_id: null,
@@ -348,7 +356,7 @@ describe('AppShell rail', () => {
       created_at: new Date().toISOString(),
     })
 
-    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe(7))
+    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe('7'))
     expect(navigate).not.toHaveBeenCalled()
   })
 
@@ -360,14 +368,14 @@ describe('AppShell rail', () => {
       session: unknown,
     ) => void
     onSelectSession({
-      id: 9,
+      id: '9',
       public_id: 'uuid-9',
       course_id: null,
       node_id: null,
       title: 'New chat',
       created_at: new Date().toISOString(),
     })
-    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe(9))
+    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe('9'))
     expect(navigate).not.toHaveBeenCalled()
 
     const onNewChat = chatPanelState.props?.onNewChat as () => void
@@ -377,10 +385,10 @@ describe('AppShell rail', () => {
   })
 
   test('node-ask pins the sidepanel to the store session and expand goes full page', async () => {
-    act(() => useChatStore.getState().openSession({ id: 5, publicId: 'uuid-5' }))
+    act(() => useChatStore.getState().openSession({ id: '5', publicId: 'uuid-5' }))
     renderShell()
     expect(await screen.findByTitle('Close chat')).toBeInTheDocument()
-    expect(chatPanelState.sessionProps?.sessionId).toBe(5)
+    expect(chatPanelState.sessionProps?.sessionId).toBe('5')
 
     const onExpand = chatPanelState.props?.onExpand as () => void
     onExpand()

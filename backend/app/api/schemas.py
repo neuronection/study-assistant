@@ -3,9 +3,26 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-from ..core.vocab import MaterialKind, MaterialStatus, applicable_extraction_modes
+from ..core.vocab import (
+    CitationKind,
+    DecisionTransport,
+    MaterialKind,
+    MaterialStatus,
+    applicable_extraction_modes,
+)
+from ..domain.payloads import ProviderStatus
 
-MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts")
+MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts", "decision")
+
+
+def _validate_decision_transport(value: str | None) -> str | None:
+    """The decision transport seam (D2): one shipping transport today —
+    anything else is a data error, never silently coerced."""
+    if value is None:
+        return value
+    if value != DecisionTransport.SYSTEMONE.value:
+        raise ValueError(f"unknown decision transport: {value}")
+    return value
 
 
 class HealthResponse(BaseModel):
@@ -16,8 +33,8 @@ class HealthResponse(BaseModel):
 
 class FolderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    course_id: int
-    parent_id: int | None = None
+    course_id: str
+    parent_id: str | None = None
 
 
 class FolderRename(BaseModel):
@@ -25,16 +42,16 @@ class FolderRename(BaseModel):
 
 
 class FolderMove(BaseModel):
-    parent_id: int | None
+    parent_id: str | None
 
 
 class FolderOut(BaseModel):
-    id: int
+    id: str
     name: str
     path: str
-    course_id: int
-    parent_id: int | None
-    source_id: int | None = None
+    course_id: str
+    parent_id: str | None
+    source_id: str | None = None
     created_at: datetime
     node_link_count: int = 0
 
@@ -43,7 +60,9 @@ class ProviderCreate(BaseModel):
     is_local: bool | None = None
     country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
     name: str = Field(min_length=1, max_length=120)
-    type: str = Field(pattern="^(google|openai_compatible|anthropic)$")
+    # `decision` = decision-typed providers (ADR-0032: the typesafe preset's
+    # wire type); models added under one default to the decision capability.
+    type: str = Field(pattern="^(google|openai_compatible|anthropic|decision)$")
     base_url: str | None = None
     api_key: str | None = None
 
@@ -63,7 +82,7 @@ class RemoteModelOut(BaseModel):
 
 
 class ModelCreateIn(BaseModel):
-    provider_id: int
+    provider_id: str
     external_id: str = Field(min_length=1, max_length=300)
     label: str | None = Field(default=None, max_length=300)
     caps: list[str] | None = None
@@ -71,6 +90,7 @@ class ModelCreateIn(BaseModel):
     reasoning_effort: str | None = Field(default=None, max_length=20)
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_tokens: int | None = Field(default=None, ge=1)
+    decision_transport: str | None = Field(default=None, max_length=20)
 
     @field_validator("caps")
     @classmethod
@@ -82,9 +102,14 @@ class ModelCreateIn(BaseModel):
             raise ValueError(f"unknown caps: {', '.join(unknown)}")
         return value
 
+    @field_validator("decision_transport")
+    @classmethod
+    def transport_within_vocabulary(cls, value: str | None) -> str | None:
+        return _validate_decision_transport(value)
+
 
 class ProviderOut(BaseModel):
-    id: int
+    id: str
     name: str
     type: str
     base_url: str
@@ -93,16 +118,17 @@ class ProviderOut(BaseModel):
     is_local: bool | None = None
     country: str | None = None
     masked_key: str | None
-    status: dict[str, Any] | None
+    status: ProviderStatus | None
     created_at: datetime
 
 
 class ModelOut(BaseModel):
-    id: int
-    provider_id: int
+    id: str
+    provider_id: str
     external_id: str
     label: str
     caps: list[str]
+    decision_transport: str | None = None
     enabled: bool
     missing: bool
     reasoning_effort: str | None = None
@@ -117,6 +143,12 @@ class ModelUpdate(BaseModel):
     reasoning_effort: str | None = Field(default=None, max_length=20)
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_tokens: int | None = Field(default=None, ge=1)
+    decision_transport: str | None = Field(default=None, max_length=20)
+
+    @field_validator("decision_transport")
+    @classmethod
+    def transport_within_vocabulary(cls, value: str | None) -> str | None:
+        return _validate_decision_transport(value)
 
     @field_validator("caps")
     @classmethod
@@ -130,38 +162,45 @@ class ModelUpdate(BaseModel):
 
 
 class TaskAssignmentIn(BaseModel):
-    model_id: int | None = None
-    fallback_model_id: int | None = None
+    model_id: str | None = None
+    fallback_model_id: str | None = None
 
 
 class TaskOut(BaseModel):
     task: str
     description: str
     requires: str
-    model_id: int | None
-    fallback_model_id: int | None
+    model_id: str | None
+    fallback_model_id: str | None
     model_label: str | None
     fallback_model_label: str | None
     inherits_default: bool = False
     default_model_label: str | None = None
-    default_fallback_model_label: str | None = None
+    # ADR-0037: capability defaults are single-slot — no inherited-fallback
+    # label; the prior `default_fallback_model_label` is removed.
     monthly_cap_usd: float | None = None
 
 
 class DefaultTaskOut(BaseModel):
     requires: str
-    model_id: int | None
-    fallback_model_id: int | None
+    model_id: str | None
+    # Fallback stays on the wire for the decision kind override rows this
+    # endpoint also serves (ADR-0037); capability rows always carry null.
+    fallback_model_id: str | None
     model_label: str | None
     fallback_model_label: str | None
+    # ADR-0036 §4: the model a decision kind inherits when its picker's
+    # labeled null option is chosen (the `decision` default resolution).
+    # Populated for decision:<kind> rows only.
+    resolved_inherit_label: str | None = None
 
 
 class CourseTaskOut(BaseModel):
     task: str
     description: str
     requires: str
-    model_id: int | None
-    fallback_model_id: int | None
+    model_id: str | None
+    fallback_model_id: str | None
     model_label: str | None
     fallback_model_label: str | None
     global_model_label: str | None
@@ -169,17 +208,21 @@ class CourseTaskOut(BaseModel):
 
 
 class CourseDefaultTaskOut(BaseModel):
+    # ADR-0037: course capability defaults are single-slot — no fallback
+    # fields; the inherited view is the global default's primary.
     requires: str
-    model_id: int | None
-    fallback_model_id: int | None
+    model_id: str | None
     model_label: str | None
-    fallback_model_label: str | None
     global_model_label: str | None
-    global_fallback_model_label: str | None
+
+
+class CitationAuthorOut(BaseModel):
+    name: str
+    affiliation: str | None = None
 
 
 class MaterialOut(BaseModel):
-    id: int
+    id: str
     title: str
     description: str | None = None
     kind: MaterialKind
@@ -187,9 +230,8 @@ class MaterialOut(BaseModel):
     filename: str
     mime: str | None
     pages: int | None
-    course_id: int
-    group_id: int | None
-    folder_id: int | None
+    course_id: str
+    folder_id: str | None
     blob_sha: str | None
     provenance: dict[str, Any] | None = None
     created_at: datetime
@@ -198,6 +240,13 @@ class MaterialOut(BaseModel):
     tags: list[str] = []
     starred: bool = False
     link_count: int = 0
+    citation_title: str | None = None
+    citation_authors: list[CitationAuthorOut] | None = None
+    citation_year: int | None = None
+    citation_doi: str | None = None
+    citation_container: str | None = None
+    citation_kind: CitationKind | None = None
+    citation_text: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -212,20 +261,20 @@ class UploadWarningOut(BaseModel):
 
 
 class MaterialJobOut(BaseModel):
-    job_id: int
+    job_id: str
 
 
 class MaterialUploadOut(BaseModel):
     material: MaterialOut
-    job_id: int | None
+    job_id: str | None
     deduped: bool
-    node_id: int | None = None
+    node_id: str | None = None
     warnings: list[UploadWarningOut] = Field(default_factory=list)
 
 
 class ExtractionOut(BaseModel):
-    id: int
-    material_id: int
+    id: str
+    material_id: str
     version: int
     extractor: str
     markdown: str
@@ -240,13 +289,13 @@ class ViewBox(BaseModel):
 
 
 class DrawingOut(BaseModel):
-    id: int
+    id: str
     png_sha: str | None
     strokes: list[dict[str, Any]]
     view: ViewBox | None = None
     ocr_version: int
     ocr_markdown: str | None
-    ocr_job_id: int | None = None
+    ocr_job_id: str | None = None
     created_at: datetime
 
 
@@ -266,13 +315,13 @@ class IndexCardOut(BaseModel):
 
 
 class MaterialImageOut(BaseModel):
-    id: int
+    id: str
     position: int
     blob_sha: str | None
     mime: str | None
     ocr_version: int
     ocr_markdown: str | None
-    ocr_job_id: int | None = None
+    ocr_job_id: str | None = None
     created_at: datetime
 
 
@@ -285,13 +334,13 @@ class MaterialDetailOut(BaseModel):
 
 
 class SearchHitNode(BaseModel):
-    course_id: int
-    node_id: int
+    course_id: str
+    node_id: str
     node_title: str
 
 
 class SearchHit(BaseModel):
-    material_id: int
+    material_id: str
     title: str
     snippet: str
     score: float | None = None

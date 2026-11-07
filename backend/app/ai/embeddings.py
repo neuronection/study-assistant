@@ -1,5 +1,7 @@
+import inspect
 import json
 import time
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import httpx
@@ -8,13 +10,20 @@ from .gateway import LLMGateway, ResolvedModel, TaskUnassigned
 
 EMBEDDINGS_TASK = "embeddings"
 
+EmbedderCallable = Callable[..., tuple[str, list[list[float]]] | None]
+
 
 class GatewayEmbedder:
     def __init__(self, gateway: LLMGateway, transport: httpx.BaseTransport | None = None) -> None:
         self._gateway = gateway
         self._transport = transport if transport is not None else gateway.transport
 
-    def embed(self, texts: list[str]) -> tuple[str, list[list[float]]] | None:
+    def embed(
+        self,
+        texts: list[str],
+        *,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> tuple[str, list[list[float]]] | None:
         try:
             resolved = self._gateway.resolve(EMBEDDINGS_TASK)
         except TaskUnassigned:
@@ -23,14 +32,45 @@ class GatewayEmbedder:
         with httpx.Client(timeout=180, transport=self._transport) as client:
             vectors = _embed_with(client, resolved, texts)
         self._gateway.record_usage(
-            EMBEDDINGS_TASK, resolved, "\n".join(texts), int((time.monotonic() - started) * 1000)
+            EMBEDDINGS_TASK,
+            resolved,
+            "\n".join(texts),
+            int((time.monotonic() - started) * 1000),
+            metadata=metadata,
         )
         return resolved.external_id, vectors
 
 
-def _embed_with(
-    client: httpx.Client, model: ResolvedModel, texts: list[str]
-) -> list[list[float]]:
+def _accepts_metadata(embedder: EmbedderCallable) -> bool:
+    try:
+        signature = inspect.signature(embedder)
+    except (TypeError, ValueError):
+        return False
+    if "metadata" in signature.parameters:
+        return True
+    return any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+
+
+def embed_with_tags(
+    embedder: EmbedderCallable,
+    texts: list[str],
+    metadata: Mapping[str, Any] | None = None,
+) -> tuple[str, list[list[float]]] | None:
+    """Call the study embedder with caller-supplied tags when it accepts them.
+
+    Legacy/fake embedders with the one-argument shape keep working; the real
+    :class:`GatewayEmbedder` records the tags on the existing
+    ``ai_interactions`` ledger. Tags are ids/counters only — never text.
+    """
+    if metadata and _accepts_metadata(embedder):
+        return embedder(texts, metadata=metadata)
+    return embedder(texts)
+
+
+def _embed_with(client: httpx.Client, model: ResolvedModel, texts: list[str]) -> list[list[float]]:
     if model.provider_type == "google":
         return _embed_google(client, model, texts)
     if model.provider_type == "openai_compatible":
@@ -76,3 +116,12 @@ def _embed_openai(
 
 def serialize_vector(vector: list[float]) -> str:
     return json.dumps(vector)
+
+
+__all__ = [
+    "EMBEDDINGS_TASK",
+    "EmbedderCallable",
+    "GatewayEmbedder",
+    "embed_with_tags",
+    "serialize_vector",
+]

@@ -29,6 +29,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | Importing or exporting data | [import-export.md](import-export.md) |
 | Deploying or packaging | [deployment.md](deployment.md), [desktop-packaging.md](desktop-packaging.md) |
 | Adding a feature end-to-end | [adding-features.md](adding-features.md) |
+| Building or connecting an extension, source or MCP server | [sdk/overview.md](sdk/overview.md) — the [Extension SDK](sdk/docs-tree.json) set |
 
 ## The pages
 
@@ -38,11 +39,12 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | [development.md](development.md) | Prerequisites, bootstrap, run modes, commands, worktrees, verification gates |
 | [testing.md](testing.md) | pytest (xdist, fixtures, isolated keyring), vitest, Playwright e2e, golden evals |
 | [visual-tour.md](visual-tour.md) | Regenerating the README GIF, screenshot gallery and tour manifest from the demo instance |
+| [history.md](history.md) | Project history archive: round as-builts, the dated changelog and incident post-mortems moved out of STATUS (ADR-206) |
 | [data-model.md](data-model.md) | SQLite schema as built: entity map, scoping, tables, derived structures, migration notes |
 | [api.md](api.md) | The `/api/v1` REST surface, profile scoping, errors, pagination, WebSocket, OpenAPI |
 | [ai.md](ai.md) | Gateway-only model access, tasks and capabilities, providers, chat engine, tools, skills, MCP |
 | [math-verification.md](math-verification.md) | The deterministic equivalence chain and the hint-leak guard |
-| [import-export.md](import-export.md) | The `caq/v1`, `ca-course/v2` and `ca-skills/v1` interchange formats |
+| [import-export.md](import-export.md) | The `saq/v1`, `sa-course/v2` and `sa-skills/v1` interchange formats |
 | [jobs.md](jobs.md) | The durable job runner, job types, retries, cancellation and the schedulers |
 | [frontend.md](frontend.md) | React 19 + Vite SPA: routing, state, the typed API client, assistant-ui, i18n |
 | [ui-conventions.md](ui-conventions.md) | Component placement, design tokens, the workspace pattern, motion, a11y, testability |
@@ -51,6 +53,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | [deployment.md](deployment.md) | The standalone Docker stack, nginx, TLS, volumes, upgrades and backups |
 | [desktop-packaging.md](desktop-packaging.md) | The PyInstaller build, deb/AppImage/Windows packaging and the release workflow |
 | [adding-features.md](adding-features.md) | End-to-end recipes for the common change types |
+| [sdk/](sdk/overview.md) | The chaptered Extension SDK set (plan 34): overview, quickstart, core concepts, authoring, recipes, security, reference, versioning, diagnostics + its own validated [docs-tree.json](sdk/docs-tree.json) |
 
 ## Ground rules (short version)
 

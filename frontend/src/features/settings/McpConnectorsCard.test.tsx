@@ -10,6 +10,8 @@ const updateMcpServer = vi.fn()
 const deleteMcpServer = vi.fn()
 const refreshMcpServer = vi.fn()
 
+const getMcpCharter = vi.fn()
+
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
@@ -19,6 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     updateMcpServer: (id: string, body: unknown) => updateMcpServer(id, body),
     deleteMcpServer: (id: string) => deleteMcpServer(id),
     refreshMcpServer: (id: string) => refreshMcpServer(id),
+    getMcpCharter: () => getMcpCharter(),
   }
 })
 
@@ -45,6 +48,11 @@ const SERVER = {
   ],
   last_error: null,
   refreshed_at: null,
+  status: 'ok',
+  last_success_at: null,
+  consecutive_failures: 0,
+  conditions: [],
+  declared_contracts: [],
 }
 
 function renderCard() {
@@ -58,6 +66,10 @@ function renderCard() {
 
 beforeEach(() => {
   listMcpServers.mockReset().mockResolvedValue([SERVER])
+  getMcpCharter.mockReset().mockResolvedValue({
+    t3_perimeter_disclosure: 'T3 PERIMETER COPY VERBATIM',
+    capabilities: ['secrets'],
+  })
   createMcpServer.mockReset()
   updateMcpServer.mockReset().mockResolvedValue(SERVER)
   deleteMcpServer.mockReset().mockResolvedValue(undefined)
@@ -65,11 +77,39 @@ beforeEach(() => {
 })
 
 describe('McpConnectorsCard', () => {
+  test('renders the instance status badge and the verbatim T3 disclosure', async () => {
+    renderCard()
+    expect(await screen.findByText('coursehub')).toBeInTheDocument()
+    const status = await screen.findByText('Healthy')
+    expect(status).toHaveAttribute('data-status', 'ok')
+    const disclosure = screen.getByTestId('mcp-t3-disclosure')
+    expect(disclosure).toHaveTextContent('External process')
+    expect(disclosure).toHaveTextContent('T3 PERIMETER COPY VERBATIM')
+  })
+
+  test('surfaces degraded status and the needs-config condition honestly', async () => {
+    listMcpServers.mockResolvedValue([
+      {
+        ...SERVER,
+        status: 'degraded',
+        last_error: 'spawn failed',
+        consecutive_failures: 1,
+        conditions: ['needs-config'],
+      },
+    ])
+    renderCard()
+    expect(await screen.findByText('Degraded')).toHaveAttribute('data-status', 'degraded')
+    expect(screen.getByText('Incomplete configuration')).toBeInTheDocument()
+  })
+
   test('lists servers with honest disabled state and command line', async () => {
     renderCard()
     expect(await screen.findByText('coursehub')).toBeInTheDocument()
-    expect(screen.getByText('python -m coursehub_server')).toBeInTheDocument()
-    expect(screen.getByText('Off')).toBeInTheDocument()
+    expect(screen.getByTestId('mcp-servers-list').textContent).toContain(
+      'python -m coursehub_server',
+    )
+    const toggle = screen.getByRole('switch', { name: /enabled: coursehub/i })
+    expect(toggle).not.toBeChecked()
   })
 
   test('adding a stdio server posts name, command and parsed args', async () => {
@@ -147,6 +187,15 @@ describe('McpConnectorsCard', () => {
         'abc123',
         expect.not.objectContaining({ token: expect.anything() }),
       ),
+    )
+  })
+
+  test('toggling enable through the kit posts the enabled patch', async () => {
+    renderCard()
+    const toggle = await screen.findByRole('switch', { name: /enabled: coursehub/i })
+    fireEvent.click(toggle)
+    await waitFor(() =>
+      expect(updateMcpServer).toHaveBeenCalledWith('abc123', { enabled: true }),
     )
   })
 

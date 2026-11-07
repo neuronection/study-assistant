@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api'
 
 export async function exportMarkdownWithDrawings(
   markdown: string,
-  drawings: Array<{ id: number; png_sha: string | null }>
+  drawings: Array<{ id: string; png_sha: string | null }>
 ): Promise<string> {
   let resolved = markdown
   for (const drawing of drawings) {
@@ -19,7 +19,7 @@ export async function exportMarkdownWithDrawings(
       binary += String.fromCharCode(buffer[index])
     }
     resolved = resolved.replaceAll(
-      `ca-drawing://${drawing.id}`,
+      `sa-drawing://${drawing.id}`,
       `data:image/png;base64,${btoa(binary)}`
     )
   }

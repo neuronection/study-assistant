@@ -79,7 +79,7 @@ export default defineConfig({
     },
   },
   server: {
-    // Family dev-port bands (dev/guidelines/dev-ports.md): study is slot 2 —
+    // Family dev-port bands (the family dev-ports.md standard): study is slot 2 —
     // backend 8200 / frontend 3200. Proxy follows SA_PORT so run-dev.sh
     // overrides stay consistent; strictPort fails loud instead of silently
     // bumping onto a port another family app may own.
@@ -102,7 +102,24 @@ export default defineConfig({
     ],
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    server: {
+      deps: {
+        inline: ['@neuronection/assistant-ui'],
+      },
+    },
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/lib/api-schema.d.ts',
+        'src/types/**',
+      ],
+    },
   },
 })

@@ -21,9 +21,7 @@ def make_factory(tmp_path: Path) -> sessionmaker[Session]:
     return make_session_factory(engine)
 
 
-def insert(
-    factory: sessionmaker[Session], *, status: str, age_days: float, finished: bool
-) -> int:
+def insert(factory: sessionmaker[Session], *, status: str, age_days: float, finished: bool) -> str:
     now = utcnow()
     with factory() as session:
         job = Job(type="postprocess", status=status, payload=None)
@@ -33,13 +31,13 @@ def insert(
             job.created_at = now - timedelta(days=age_days)
         session.add(job)
         session.commit()
-        job_id = int(job.id)
+        job_id = str(job.id)
     return job_id
 
 
-def survivors(factory: sessionmaker[Session]) -> set[int]:
+def survivors(factory: sessionmaker[Session]) -> set[str]:
     with factory() as session:
-        return {int(job.id) for job in session.scalars(select(Job))}
+        return {str(job.id) for job in session.scalars(select(Job))}
 
 
 def test_prune_removes_only_old_done_jobs(tmp_path: Path) -> None:

@@ -26,42 +26,43 @@ def client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p9cd-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p9cd-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"))
     with TestClient(app) as test_client:
         yield test_client
 
 
-def upload_txt(client: TestClient, filename: str, course_id: int, content: bytes) -> int:
+def upload_txt(client: TestClient, filename: str, course_id: str, content: bytes) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, content, "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
-    return int(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
+def root_node(client: TestClient, course_id: str) -> str:
+    return str(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
 
 
 def test_node_concept_coverage_management(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
 
@@ -75,7 +76,7 @@ def test_node_concept_coverage_management(client: TestClient) -> None:
     )
     assert committed.status_code == 200
     graph = client.get(f"/api/v1/courses/{course_id}/concepts").json()
-    concept_id = int(graph["concepts"][0]["id"])
+    concept_id = str(graph["concepts"][0]["id"])
 
     added = client.post(f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": concept_id})
     assert added.status_code == 201, added.text
@@ -90,7 +91,7 @@ def test_node_concept_coverage_management(client: TestClient) -> None:
     assert root_ws["concepts"][0]["direct"] is False
     assert root_ws["concepts"][0]["node_ids"] == [chapter]
 
-    foreign = int(client.post("/api/v1/courses", json={"title": "D"}).json()["id"])
+    foreign = str(client.post("/api/v1/courses", json={"title": "D"}).json()["id"])
     committed_foreign = client.post(
         f"/api/v1/courses/{foreign}/concepts/commit",
         json={
@@ -100,12 +101,10 @@ def test_node_concept_coverage_management(client: TestClient) -> None:
         },
     )
     assert committed_foreign.status_code == 200
-    foreign_concept = int(
+    foreign_concept = str(
         client.get(f"/api/v1/courses/{foreign}/concepts").json()["concepts"][0]["id"]
     )
-    cross = client.post(
-        f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": foreign_concept}
-    )
+    cross = client.post(f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": foreign_concept})
     assert cross.status_code == 422
 
     removed = client.delete(f"/api/v1/nodes/{chapter}/concepts/{concept_id}")
@@ -115,7 +114,7 @@ def test_node_concept_coverage_management(client: TestClient) -> None:
 
 
 def test_chat_session_list_filters_by_node(client: TestClient) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
 
@@ -135,7 +134,7 @@ def test_chat_session_list_filters_by_node(client: TestClient) -> None:
 
 
 CAQ: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "probe",
     "questions": [
         {
@@ -163,7 +162,7 @@ def test_scoped_chat_retrieval_narrows_to_subtree(tmp_path: Path) -> None:
             task: str,
             messages: list[Message],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             gateway_calls.append(messages)
             return super().generate(task, messages, model)
@@ -176,7 +175,7 @@ def test_scoped_chat_retrieval_narrows_to_subtree(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         root = root_node(client, course_id)
         chapter = make_node(client, course_id, root, "Integrals")
 
@@ -199,9 +198,7 @@ def test_scoped_chat_retrieval_narrows_to_subtree(tmp_path: Path) -> None:
         assert sent.status_code in (200, 202), sent.text
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
-            messages = client.get(
-                f"/api/v1/chat/sessions/{session['id']}/messages"
-            ).json()
+            messages = client.get(f"/api/v1/chat/sessions/{session['id']}/messages").json()
             if messages and messages[-1]["role"] == "assistant":
                 break
             time.sleep(0.05)

@@ -14,15 +14,14 @@ def fuse_rrf(
     key: str,
     limit: int,
 ) -> list[dict[str, Any]]:
-    scores: dict[int, float] = {}
-    entries: dict[int, dict[str, Any]] = {}
+    scores: dict[str, float] = {}
+    entries: dict[str, dict[str, Any]] = {}
     for ranking, weight in rankings:
         for rank, hit in enumerate(ranking):
-            item_id = int(hit[key])
+            item_id = str(hit[key])
             scores[item_id] = scores.get(item_id, 0.0) + weight / (RRF_K + rank + 1)
             entries.setdefault(item_id, hit)
     ranked = sorted(scores, key=lambda item_id: scores[item_id], reverse=True)
     return [
-        {**entries[item_id], key: item_id, "score": scores[item_id]}
-        for item_id in ranked[:limit]
+        {**entries[item_id], key: item_id, "score": scores[item_id]} for item_id in ranked[:limit]
     ]

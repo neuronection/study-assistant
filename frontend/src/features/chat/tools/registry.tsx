@@ -15,6 +15,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { toolCallQuiz } from '@/lib/api/hand-types'
 import { answerQuizQuestion } from '@/lib/api'
 import type { ChatToolCall } from '@/lib/api'
 import { useChatStore } from '@/lib/chat-store'
@@ -131,7 +132,7 @@ function QuizCardView({ tool }: ToolViewProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const session = useChatStore((state) => state.session)
-  const quiz = tool.quiz ?? null
+  const quiz = toolCallQuiz(tool.quiz)
   const [answer, setAnswer] = useState('')
   const [choice, setChoice] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -164,7 +165,7 @@ function QuizCardView({ tool }: ToolViewProps) {
       setVerdict({
         correct: result.correct,
         detail: result.verdict_detail,
-        expected: result.expected_display,
+        expected: result.expected_display ?? null,
       })
       await queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
     } finally {

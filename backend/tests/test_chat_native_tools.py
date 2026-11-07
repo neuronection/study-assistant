@@ -22,10 +22,10 @@ class NativeGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake-native",
@@ -39,7 +39,7 @@ class NativeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         from app.ai.gateway import StreamChunk
 
@@ -80,15 +80,15 @@ def make_native_app(tmp_path: Path, gateway: NativeGateway) -> Any:
     return TestClient(app)
 
 
-def _course(client: Any) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "N"}).json()["id"])
+def _course(client: Any) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "N"}).json()["id"])
 
 
-def _session(client: Any) -> int:
-    return int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+def _session(client: Any) -> str:
+    return str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
 
 
-def wait_for_assistant(client: Any, session_id: int, timeout: float = 5.0) -> list[dict[str, Any]]:
+def wait_for_assistant(client: Any, session_id: str, timeout: float = 5.0) -> list[dict[str, Any]]:
     import time
 
     deadline = time.monotonic() + timeout
@@ -110,9 +110,7 @@ def test_native_calc_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert "0.5" in assistant["markdown"]
@@ -145,9 +143,7 @@ def test_native_sympy_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         call = assistant["tool_calls"][0]
@@ -167,9 +163,7 @@ def test_native_resource_tool_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         course = _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert len(assistant["tool_calls"]) == 1
@@ -191,9 +185,7 @@ def test_native_cap_gate_uses_prompt_path_without_tools_cap(tmp_path: Path) -> N
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert len(assistant["tool_calls"]) == 1
@@ -218,9 +210,7 @@ def test_native_math_budget_bounds_rounds(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         executed = [c for c in assistant["tool_calls"] if c["status"] == "done"]
@@ -262,15 +252,14 @@ def test_native_tool_call_ws_event_emitted(tmp_path: Path) -> None:
     with TestClient(app) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         wait_for_assistant(client, session)
     tool_calls = [e for e in events if e["type"] == "tool_call"]
     assert len(tool_calls) == 1
     assert tool_calls[0]["name"] == "CALC"
-    assert tool_calls[0]["argument"] == "sin(pi/2)"
+    assert tool_calls[0]["args"] == "sin(pi/2)"
     assert tool_calls[0]["result"] == "1"
+    assert tool_calls[0]["id"].startswith("CALC@")
 
 
 def test_gateway_streams_native_tool_call_chunk() -> None:
@@ -284,13 +273,11 @@ def test_gateway_streams_native_tool_call_chunk() -> None:
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200, content=sse, headers={"content-type": "text/event-stream"}
-        )
+        return httpx.Response(200, content=sse, headers={"content-type": "text/event-stream"})
 
     gateway = LLMGateway(None, transport=httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -298,13 +285,9 @@ def test_gateway_streams_native_tool_call_chunk() -> None:
         caps=["text", "tools"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     calls = [json.loads(e.text) for e in events if e.kind == "tool_call"]
-    assert calls == [
-        {"id": "call_9", "name": "CALC", "arguments": {"expression": "2+2"}}
-    ]
+    assert calls == [{"id": "call_9", "name": "CALC", "arguments": {"expression": "2+2"}}]
 
 
 def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
@@ -321,23 +304,17 @@ def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
         "id": None,
         "index": None,
     }
-    first = ToolCallChunk(
-        **{**fragment, "name": "QUIZ", "id": "call_1"}
-    )
-    second = ToolCallChunk(
-        **{**fragment, "args": '{"question": "q?", "choices": ["a", "b"]}'}
-    )
+    first = ToolCallChunk(**{**fragment, "name": "QUIZ", "id": "call_1"})
+    second = ToolCallChunk(**{**fragment, "args": '{"question": "q?", "choices": ["a", "b"]}'})
     c1 = AIMessageChunk(content="", tool_call_chunks=[first])
     c2 = AIMessageChunk(content="", tool_call_chunks=[second])
     merged = c1 + c2
     parsed = merged.tool_calls
-    assert any(
-        not call.get("args") or not call.get("name") for call in parsed
-    ), "the broken-merge precondition should hold"
+    assert any(not call.get("args") or not call.get("name") for call in parsed), (
+        "the broken-merge precondition should hold"
+    )
 
-    events = [
-        json.loads(chunk.text) for chunk in _tool_call_events(merged)
-    ]
+    events = [json.loads(chunk.text) for chunk in _tool_call_events(merged)]
     assert events == [
         {
             "id": "call_1",
@@ -348,14 +325,16 @@ def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
 
 
 def test_chat_native_schemas_cover_all_tools() -> None:
+    from app.ai.mcp_resources import RESOURCE_TOOLS
     from app.ai.tools import CHAT_TOOL_CATALOG, QUIZ_TOOL
-    from app.mcp_resources import RESOURCE_TOOLS
 
     schemas = chat_native_schemas()
     names = {s["function"]["name"] for s in schemas}
-    expected = {t["name"] for t in CHAT_TOOL_CATALOG} | {QUIZ_TOOL["name"]} | {
-        t["keyword"] for t in RESOURCE_TOOLS
-    }
+    expected = (
+        {t["name"] for t in CHAT_TOOL_CATALOG}
+        | {QUIZ_TOOL["name"]}
+        | {t["keyword"] for t in RESOURCE_TOOLS}
+    )
     assert names == expected
     for schema in schemas:
         parameters = schema["function"]["parameters"]
@@ -374,7 +353,7 @@ class DegradingGateway(NativeGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         native = not any(
             isinstance(m.content, str) and "Emit EXACTLY one tool line" in m.content
@@ -425,14 +404,14 @@ class FailingGateway(NativeGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         from app.ai.gateway import ProviderError
 
         raise ProviderError(self.resolve(task), "HTTP 500 service unavailable")
 
 
-def test_pre_stream_failure_persists_marker_and_fires_turn_error(
+def test_pre_stream_failure_persists_marker_and_fires_flow_failed(
     tmp_path: Path,
 ) -> None:
     sys.path.insert(0, "tests")
@@ -466,8 +445,8 @@ def test_pre_stream_failure_persists_marker_and_fires_turn_error(
         session = _session(client)
         client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         deadline = time.monotonic() + 5.0
-        while not any(e["type"] == "turn_error" for e in events):
-            assert time.monotonic() < deadline, "no turn_error event"
+        while not any(e["type"] == "flow_failed" for e in events):
+            assert time.monotonic() < deadline, "no flow_failed event"
             time.sleep(0.05)
         messages = client.get(f"/api/v1/chat/sessions/{session}/messages").json()
     # The failed turn persists a display-only marker row (uniform chat
@@ -477,4 +456,4 @@ def test_pre_stream_failure_persists_marker_and_fires_turn_error(
     failure = messages[-1]
     assert failure["markdown"] == ""
     assert failure["state"]["turn_failed"]["code"] == "turn_error"
-    assert any(e["type"] == "turn_error" for e in events)
+    assert any(e["type"] == "flow_failed" for e in events)

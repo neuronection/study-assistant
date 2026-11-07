@@ -5,26 +5,30 @@ from . import (
     ai_settings,
     analytics,
     backup,
+    calendar,
     chat,
     config,
     courses,
     discovery,
     exercises,
+    extensions,
     external_sources,
     flashcards,
     folders,
     fs,
+    genesis,
     health,
     instance,
     jobs,
     materials,
-    mcp_servers,
+    nodes,
     notes,
     notifications,
     onboarding,
     plan,
     profiles,
     quiz,
+    retrieval,
     review,
     search,
     skills,
@@ -43,9 +47,14 @@ api_router.include_router(materials.blobs_router)
 api_router.include_router(search.router)
 api_router.include_router(discovery.router)
 api_router.include_router(external_sources.router)
-api_router.include_router(mcp_servers.router)
+api_router.include_router(extensions.router)
+api_router.include_router(extensions.charter_router)
+api_router.include_router(extensions.docs_router)
 api_router.include_router(folders.router)
 api_router.include_router(courses.router)
+api_router.include_router(genesis.router)
+api_router.include_router(nodes.router)
+api_router.include_router(plan.courses_plan_router)
 api_router.include_router(chat.router)
 api_router.include_router(quiz.router)
 api_router.include_router(review.router)
@@ -57,7 +66,9 @@ api_router.include_router(study.router)
 api_router.include_router(study_sessions.router)
 api_router.include_router(notifications.router)
 api_router.include_router(backup.router)
+api_router.include_router(calendar.router)
 api_router.include_router(profiles.router)
+api_router.include_router(retrieval.router)
 api_router.include_router(plan.router)
 api_router.include_router(plan.upcoming_router)
 api_router.include_router(config.router)

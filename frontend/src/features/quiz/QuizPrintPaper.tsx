@@ -20,7 +20,7 @@ export function QuizPrintPaper({
   mode,
   autoPrint = true,
 }: {
-  activityId: number
+  activityId: string
   mode: 'paper' | 'key'
   autoPrint?: boolean
 }) {

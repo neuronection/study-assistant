@@ -17,7 +17,7 @@ from app.ai.proposals import PROPOSAL_ACTIONS, AttachLinkPayload
 from app.core.config import Settings
 from app.domain.models import Material, MaterialLink
 from app.main import create_app
-from app.services.platform.chat import MAX_DISCOVER_ROUNDS
+from app.services.platform.chat.service import MAX_DISCOVER_ROUNDS
 
 seen_queries: list[str] = []
 
@@ -67,7 +67,7 @@ def client(
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 30.0
+    client: TestClient, session_id: str, timeout: float = 30.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -109,16 +109,20 @@ def test_discover_here_builds_query_from_node_context(
     with test_client:
         app.state.search_transport = tavily_transport()
         assert (
-            test_client.put(
-                "/api/v1/search-provider",
-                json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+            test_client.post(
+                "/api/v1/search-providers",
+                json={
+                    "type": "tavily",
+                    "base_url": "https://api.tavily.com",
+                    "api_key": "tvly-key",
+                },
             )
-        ).status_code == 200
+        ).status_code == 201
         enable_web_only(test_client)
 
         course_id = make_course(test_client)
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         node = test_client.post(
             f"/api/v1/courses/{course_id}/nodes",
             json={
@@ -133,7 +137,7 @@ def test_discover_here_builds_query_from_node_context(
         gateway.responses.append("Here is what I found.")
         session = test_client.post(
             "/api/v1/chat/sessions",
-            json={"course_id": course_id, "node_id": int(node["id"])},
+            json={"course_id": course_id, "node_id": str(node["id"])},
         ).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
@@ -158,18 +162,16 @@ def test_discover_here_falls_back_to_course_context(
     seen_queries.clear()
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
         course_id = make_course(test_client, title="Linear Algebra")
 
         gateway.responses.append("DISCOVER here")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover"},
@@ -184,9 +186,9 @@ def test_discover_here_without_course_is_honest(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
 
@@ -212,9 +214,7 @@ def test_discover_unconfigured_is_honest(
         course_id = make_course(test_client)
         gateway.responses.append("DISCOVER chain rule videos")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover chain rule"},
@@ -230,19 +230,15 @@ def test_discover_budget_is_two_per_turn(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
         course_id = make_course(test_client)
-        gateway.responses.append(
-            "DISCOVER limits\nDISCOVER derivatives\nDISCOVER integrals"
-        )
+        gateway.responses.append("DISCOVER limits\nDISCOVER derivatives\nDISCOVER integrals")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover a lot"},
@@ -252,9 +248,7 @@ def test_discover_budget_is_two_per_turn(
         assert len(calls) == 2
         assert MAX_DISCOVER_ROUNDS == 2
         feedback = "\n".join(
-            str(message.content)
-            for call_round in gateway.calls
-            for message in call_round
+            str(message.content) for call_round in gateway.calls for message in call_round
         )
         assert "DISCOVER budget for this turn is spent" in feedback
 
@@ -289,9 +283,7 @@ def test_attach_link_executes_creates_link_material(
             + "\n```"
         )
         gateway.responses.append(f"Found this.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "attach that video"},
@@ -308,7 +300,7 @@ def test_attach_link_executes_creates_link_material(
         assert body["result"]["deduped"] is False
 
         stored = app.state.session_factory()
-        material = stored.get(Material, int(body["result"]["material_id"]))
+        material = stored.get(Material, str(body["result"]["material_id"]))
         assert material is not None
         assert material.kind == "link"
         assert material.course_id == course_id
@@ -341,9 +333,7 @@ def test_attach_link_stale_node_fails_honestly(
             + "\n```"
         )
         gateway.responses.append(f"Proposal.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "attach"},
@@ -366,9 +356,7 @@ def test_attach_link_second_attach_dedupes(
 
         def propose_and_approve() -> dict[str, Any]:
             proposal_text = (
-                "```proposal\n"
-                + json.dumps({"action": "attach_link", "url": url})
-                + "\n```"
+                "```proposal\n" + json.dumps({"action": "attach_link", "url": url}) + "\n```"
             )
             gateway.responses.append(f"Found this.\n\n{proposal_text}")
             session = test_client.post(
@@ -379,9 +367,7 @@ def test_attach_link_second_attach_dedupes(
                 json={"content": "attach it"},
             )
             proposal = get_proposal(test_client, session["id"])
-            approved = test_client.post(
-                f"/api/v1/chat/proposals/{proposal['id']}/approve"
-            )
+            approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
             assert approved.status_code == 200, approved.text
             data: dict[str, Any] = approved.json()
             return data
@@ -394,17 +380,17 @@ def test_attach_link_second_attach_dedupes(
         assert second["result"]["deduped"] is True
 
 
-def make_node(test_client: TestClient, course_id: int, title: str) -> int:
+def make_node(test_client: TestClient, course_id: str, title: str) -> str:
     tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = test_client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def get_proposal(test_client: TestClient, session_id: int) -> dict[str, Any]:
+def get_proposal(test_client: TestClient, session_id: str) -> dict[str, Any]:
     messages = wait_for_assistant(test_client, session_id)
     proposals: list[dict[str, Any]] = messages[-1]["proposals"]
     assert proposals

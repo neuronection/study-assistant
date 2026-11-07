@@ -5,12 +5,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def wait_for_ingest(client: TestClient, material_id: int, timeout: float = 10.0) -> None:
+def wait_for_ingest(client: TestClient, material_id: str, timeout: float = 10.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
         if status == "ready":
             return
         time.sleep(0.05)
@@ -27,14 +25,14 @@ def wait_for_queue_drain(client: TestClient, timeout: float = 15.0) -> None:
     raise AssertionError("job queue never drained")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def create_folder(
-    client: TestClient, name: str, course_id: int, parent_id: int | None = None
+    client: TestClient, name: str, course_id: str, parent_id: str | None = None
 ) -> dict[str, Any]:
     response = client.post(
         "/api/v1/folders",
@@ -45,14 +43,14 @@ def create_folder(
     return body
 
 
-def upload(client: TestClient, data: bytes, filename: str, course_id: int) -> int:
+def upload(client: TestClient, data: bytes, filename: str, course_id: str) -> str:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, data, "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    return int(response.json()["material"]["id"])
+    return str(response.json()["material"]["id"])
 
 
 def test_create_nested_folders_and_list(client: TestClient) -> None:
@@ -80,9 +78,7 @@ def test_same_path_allowed_across_courses(client: TestClient) -> None:
 def test_duplicate_name_rejected_within_course(client: TestClient) -> None:
     course_id = make_course(client, "Calculus")
     create_folder(client, "Calculus", course_id)
-    response = client.post(
-        "/api/v1/folders", json={"name": "Calculus", "course_id": course_id}
-    )
+    response = client.post("/api/v1/folders", json={"name": "Calculus", "course_id": course_id})
     assert response.status_code == 422
 
 
@@ -107,16 +103,12 @@ def test_move_rejects_own_subtree_and_cross_course(client: TestClient) -> None:
     course_id = make_course(client, "Main")
     root = create_folder(client, "Root", course_id)
     child = create_folder(client, "Child", course_id, root["id"])
-    response = client.patch(
-        f"/api/v1/folders/{root['id']}/move", json={"parent_id": child["id"]}
-    )
+    response = client.patch(f"/api/v1/folders/{root['id']}/move", json={"parent_id": child["id"]})
     assert response.status_code == 422
 
     other_course = make_course(client, "Other")
     foreign = create_folder(client, "Foreign", other_course)
-    cross = client.patch(
-        f"/api/v1/folders/{child['id']}/move", json={"parent_id": foreign["id"]}
-    )
+    cross = client.patch(f"/api/v1/folders/{child['id']}/move", json={"parent_id": foreign["id"]})
     assert cross.status_code == 422
     assert "another course" in cross.json()["detail"]
 
@@ -131,7 +123,7 @@ def test_delete_cascades_subtree(client: TestClient, text_pdf: bytes) -> None:
         files={"file": ("notes.pdf", text_pdf, "application/pdf")},
     )
     assert upload_response.status_code == 200
-    material_id = int(upload_response.json()["material"]["id"])
+    material_id = str(upload_response.json()["material"]["id"])
     wait_for_ingest(client, material_id)
     wait_for_queue_drain(client)
 
@@ -154,9 +146,7 @@ def test_materials_filter_by_folder(client: TestClient, text_pdf: bytes) -> None
     )
     assert upload_response.status_code == 200
     inside = client.get("/api/v1/materials", params={"folder_id": folder["id"]}).json()
-    all_materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    all_materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert len(all_materials) == 1
     assert [m["id"] for m in inside] == [all_materials[0]["id"]]
 

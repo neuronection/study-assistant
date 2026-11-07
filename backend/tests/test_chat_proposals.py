@@ -35,7 +35,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -139,9 +139,7 @@ def test_extract_proposals_with_drops_reason_codes() -> None:
     assert drops == ["invalid_json"]
     _, drops = extract_proposals_with_drops('```proposal\n"just a string"\n```')
     assert drops == ["not_object"]
-    _, drops = extract_proposals_with_drops(
-        '```proposal\n{"action": "make_coffee"}\n```'
-    )
+    _, drops = extract_proposals_with_drops('```proposal\n{"action": "make_coffee"}\n```')
     assert drops == ["unknown_action"]
     _, drops = extract_proposals_with_drops(
         '```proposal\n{"action": "create_note", "title": ""}\n```'
@@ -167,18 +165,13 @@ def test_dropped_proposals_surface_warning_and_trace(
     client: tuple[TestClient, ScriptedGateway, FastAPI],
 ) -> None:
     test_client, gateway, _app = client
-    unfixable = (
-        "Here you go.\n\n```proposal\n{broken\n```\n\n"
-        + VALID_PROPOSAL
-    )
+    unfixable = "Here you go.\n\n```proposal\n{broken\n```\n\n" + VALID_PROPOSAL
     gateway.responses.append(unfixable)
     gateway.responses.append(unfixable)
     with test_client:
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "chain rule content", course_id)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "summarize the chain rule and offer to save it"},
@@ -231,13 +224,9 @@ def test_proposal_contract_blocks_invalid_and_repairs(
     with test_client:
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "chain rule content", course_id)
-        gateway.responses.append(
-            "```proposal\n" + json.dumps({"action": "make_coffee"}) + "\n```"
-        )
+        gateway.responses.append("```proposal\n" + json.dumps({"action": "make_coffee"}) + "\n```")
         gateway.responses.append(VALID_PROPOSAL)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "summarize the chain rule and offer to save it"},
@@ -245,9 +234,7 @@ def test_proposal_contract_blocks_invalid_and_repairs(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert len(gateway.calls) == 2
-        repair_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        repair_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "unknown proposal action" in repair_prompt
         assert "```proposal" not in assistant["markdown"]
         assert assistant["proposals"]
@@ -263,9 +250,7 @@ def test_no_note_created_until_approved_and_approve_creates_it(
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "chain rule content", course_id)
         gateway.responses.append(VALID_PROPOSAL)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "summarize and offer to save"},
@@ -312,9 +297,7 @@ def test_dismiss_blocks_execution(
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "body", course_id)
         gateway.responses.append(VALID_PROPOSAL)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "summarize"},
@@ -324,9 +307,7 @@ def test_dismiss_blocks_execution(
         dismissed = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/dismiss")
         assert dismissed.status_code == 200
         assert dismissed.json()["status"] == "dismissed"
-        approve_after = test_client.post(
-            f"/api/v1/chat/proposals/{proposal['id']}/approve"
-        )
+        approve_after = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert approve_after.status_code == 409
         stored = app.state.session_factory()
         assert len(stored.scalars(select(Note.id)).all()) == 0
@@ -369,9 +350,7 @@ def test_contract_ignores_proposals_when_disabled() -> None:
 
 ASSIGN_PROPOSAL = (
     "```proposal\n"
-    + json.dumps(
-        {"action": "assign_material", "material_id": "{mid}", "node_id": "{nid}"}
-    )
+    + json.dumps({"action": "assign_material", "material_id": "{mid}", "node_id": "{nid}"})
     + "\n```"
 )
 
@@ -397,17 +376,17 @@ GENERATE_PROPOSAL = (
 )
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def make_note(client: TestClient, course_id: int, body_md: str) -> int:
+def make_note(client: TestClient, course_id: str, body_md: str) -> str:
     created = client.post(
         "/api/v1/notes",
         json={
@@ -418,7 +397,7 @@ def make_note(client: TestClient, course_id: int, body_md: str) -> int:
         },
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 EDIT_NOTE_PROPOSAL = (
@@ -448,7 +427,7 @@ APPEND_NOTE_PROPOSAL = (
 )
 
 
-def get_proposal(client: TestClient, session_id: int) -> dict[str, Any]:
+def get_proposal(client: TestClient, session_id: str) -> dict[str, Any]:
     messages = wait_for_assistant(client, session_id)
     proposals: list[dict[str, Any]] = messages[-1]["proposals"]
     assert proposals
@@ -465,13 +444,9 @@ def test_assign_material_executes_and_is_idempotent(
         node_id = make_node(test_client, course_id, "Target")
         gateway.responses.append(
             "Summary [1].\n\n"
-            + ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace(
-                "{nid}", str(node_id)
-            )
+            + ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace("{nid}", str(node_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "assign it"},
@@ -492,9 +467,7 @@ def test_assign_material_executes_and_is_idempotent(
         assert link.rationale == "AI proposal"
         stored.close()
 
-        stale_retry = test_client.post(
-            f"/api/v1/chat/proposals/{proposal['id']}/approve"
-        )
+        stale_retry = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert stale_retry.status_code == 409
 
 
@@ -508,20 +481,16 @@ def test_revalidation_marks_stale_on_deleted_target(
         node_id = make_node(test_client, course_id, "Doomed")
         gateway.responses.append(
             "Sure [1].\n\n"
-            + ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace(
-                "{nid}", str(node_id)
-            )
+            + ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace("{nid}", str(node_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "go"},
         )
         proposal = get_proposal(test_client, session["id"])
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         deleted = test_client.delete(
             f"/api/v1/nodes/{node_id}",
             params={"merge_into": root_id},
@@ -552,9 +521,7 @@ def test_cover_concept_executes(
                 }
             )
         )
-        extracted = test_client.post(
-            f"/api/v1/courses/{course_id}/concepts/extract", json={}
-        )
+        extracted = test_client.post(f"/api/v1/courses/{course_id}/concepts/extract", json={})
         assert extracted.status_code == 200, extracted.text
         draft = extracted.json()
         committed = test_client.post(
@@ -566,20 +533,14 @@ def test_cover_concept_executes(
             },
         )
         assert committed.status_code == 200, committed.text
-        concepts = test_client.get(
-            f"/api/v1/courses/{course_id}/concepts"
-        ).json()["concepts"]
+        concepts = test_client.get(f"/api/v1/courses/{course_id}/concepts").json()["concepts"]
         assert concepts
-        concept_id = int(concepts[0]["id"])
+        concept_id = str(concepts[0]["id"])
         gateway.responses.append(
             "Cover it.\n\n"
-            + COVER_PROPOSAL.replace("{cid}", str(concept_id)).replace(
-                "{nid}", str(node_id)
-            )
+            + COVER_PROPOSAL.replace("{cid}", str(concept_id)).replace("{nid}", str(node_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "cover"},
@@ -606,9 +567,7 @@ def test_generate_proposal_marks_approved_with_dialog_params(
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "body", course_id)
         gateway.responses.append(f"Quiz yourself.\n\n{GENERATE_PROPOSAL}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "quiz me"},
@@ -631,13 +590,9 @@ def test_multiple_proposals_persist_and_approve_independently(
         course_id = make_course(test_client)
         material_id = add_material(test_client, "m.txt", "body", course_id)
         node_id = make_node(test_client, course_id, "Ch3")
-        assign = ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace(
-            "{nid}", str(node_id)
-        )
+        assign = ASSIGN_PROPOSAL.replace("{mid}", str(material_id)).replace("{nid}", str(node_id))
         gateway.responses.append(f"Doing both.\n\n{VALID_PROPOSAL}\n\n{assign}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "note and assign"},
@@ -651,19 +606,13 @@ def test_multiple_proposals_persist_and_approve_independently(
         }
         assert "```" not in messages[-1]["markdown"]
 
-        first = test_client.post(
-            f"/api/v1/chat/proposals/{proposals[0]['id']}/approve"
-        )
+        first = test_client.post(f"/api/v1/chat/proposals/{proposals[0]['id']}/approve")
         assert first.status_code == 200, first.text
         assert first.json()["status"] == "executed"
-        second = test_client.post(
-            f"/api/v1/chat/proposals/{proposals[1]['id']}/approve"
-        )
+        second = test_client.post(f"/api/v1/chat/proposals/{proposals[1]['id']}/approve")
         assert second.status_code == 200, second.text
         assert second.json()["status"] == "executed"
-        replay = test_client.post(
-            f"/api/v1/chat/proposals/{proposals[0]['id']}/approve"
-        )
+        replay = test_client.post(f"/api/v1/chat/proposals/{proposals[0]['id']}/approve")
         assert replay.status_code == 409
 
 
@@ -674,9 +623,7 @@ def test_dismissal_feedback_injects_prompt_note(
     with test_client:
         course_id = make_course(test_client)
         add_material(test_client, "m.txt", "body", course_id)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         for _ in range(2):
             gateway.responses.append(VALID_PROPOSAL)
             test_client.post(
@@ -684,9 +631,7 @@ def test_dismissal_feedback_injects_prompt_note(
                 json={"content": "summarize"},
             )
             proposal = get_proposal(test_client, session["id"])
-            dismissed = test_client.post(
-                f"/api/v1/chat/proposals/{proposal['id']}/dismiss"
-            )
+            dismissed = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/dismiss")
             assert dismissed.status_code == 200
         gateway.responses.append("Fine, no proposal. [1]")
         test_client.post(
@@ -694,9 +639,7 @@ def test_dismissal_feedback_injects_prompt_note(
             json={"content": "again"},
         )
         wait_for_assistant(test_client, session["id"])
-        last_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        last_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "dismissed earlier proposals" in last_prompt
 
 
@@ -706,16 +649,12 @@ def test_edit_note_captures_snapshot_and_executes(
     test_client, gateway, app = client
     with test_client:
         course_id = make_course(test_client)
-        note_id = make_note(
-            test_client, course_id, "# Derivation note\n\nThe derivative is $2x$."
-        )
+        note_id = make_note(test_client, course_id, "# Derivation note\n\nThe derivative is $2x$.")
         gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix the sign error"},
@@ -732,9 +671,7 @@ def test_edit_note_captures_snapshot_and_executes(
         assert body["result"]["note_id"] == note_id
 
         stored = app.state.session_factory()
-        versions = stored.scalars(
-            select(NoteVersion).where(NoteVersion.note_id == note_id)
-        ).all()
+        versions = stored.scalars(select(NoteVersion).where(NoteVersion.note_id == note_id)).all()
         stored.close()
         assert len(versions) == 1
         assert versions[0].cause == "ai-edit"
@@ -757,9 +694,7 @@ def test_edit_note_marks_stale_when_note_changed(
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix"},
@@ -775,9 +710,7 @@ def test_edit_note_marks_stale_when_note_changed(
         body = approved.json()
         assert body["status"] == "conflict"
         assert "changed" in body["result"]["conflict"]
-        assert body["payload"]["original_md"] == (
-            "# Derivation note\n\nUser edited this first."
-        )
+        assert body["payload"]["original_md"] == ("# Derivation note\n\nUser edited this first.")
         note = test_client.get(f"/api/v1/notes/{note_id}").json()
         assert "User edited" in str(note["body"])
 
@@ -795,15 +728,9 @@ def test_edit_note_unknown_target_marks_stale(
     test_client, gateway, _app = client
     with test_client:
         course_id = make_course(test_client)
-        gateway.responses.append(
-            "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999")
-        )
-        gateway.responses.append(
-            "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999")
-        )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        gateway.responses.append("Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999"))
+        gateway.responses.append("Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999"))
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix"},
@@ -826,9 +753,7 @@ def test_append_note_executes_and_versions(
         gateway.responses.append(
             "Adding it.\n\n" + APPEND_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "append an example"},
@@ -848,9 +773,7 @@ def test_append_note_executes_and_versions(
         assert "Extra worked example." in rendered
 
         stored = app.state.session_factory()
-        versions = stored.scalars(
-            select(NoteVersion).where(NoteVersion.note_id == note_id)
-        ).all()
+        versions = stored.scalars(select(NoteVersion).where(NoteVersion.note_id == note_id)).all()
         stored.close()
         assert len(versions) == 1
 
@@ -893,9 +816,7 @@ def test_edit_material_captures_snapshot_and_executes(
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix the material"},
@@ -909,11 +830,9 @@ def test_edit_material_captures_snapshot_and_executes(
         body = approved.json()
         assert body["status"] == "executed"
         assert body["result"]["material_id"] == material_id
-        assert body["result"]["extraction_id"] > 0
+        assert body["result"]["extraction_id"]
 
-        versions = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions"
-        ).json()
+        versions = test_client.get(f"/api/v1/materials/{material_id}/extractions").json()
         assert len(versions) >= 2
         latest = test_client.get(
             f"/api/v1/materials/{material_id}/extractions/{len(versions)}"
@@ -935,9 +854,7 @@ def test_edit_material_marks_stale_when_edited_elsewhere(
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix"},
@@ -953,16 +870,12 @@ def test_edit_material_marks_stale_when_edited_elsewhere(
         body = approved.json()
         assert body["status"] == "conflict"
         assert "changed" in body["result"]["conflict"]
-        assert body["payload"]["original_md"] == (
-            "# Chain rule\n\nUser fixed this first."
-        )
+        assert body["payload"]["original_md"] == ("# Chain rule\n\nUser fixed this first.")
 
         replay = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert replay.status_code == 200
         assert replay.json()["status"] == "executed"
-        versions = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions"
-        ).json()
+        versions = test_client.get(f"/api/v1/materials/{material_id}/extractions").json()
         latest = test_client.get(
             f"/api/v1/materials/{material_id}/extractions/{len(versions)}"
         ).json()
@@ -983,18 +896,14 @@ def test_anchored_conflict_re_resolves_and_preserves_interim_edit(
                 {
                     "action": "edit_note",
                     "note_id": note_id,
-                    "text_edits": [
-                        {"op": "replace", "find": "beta", "text": "BETA"}
-                    ],
+                    "text_edits": [{"op": "replace", "find": "beta", "text": "BETA"}],
                 }
             )
             + "\n```"
         )
         gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append("Fixing it.\n\n" + anchored)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "emphasize beta"},
@@ -1009,12 +918,8 @@ def test_anchored_conflict_re_resolves_and_preserves_interim_edit(
         assert approved.status_code == 200
         body = approved.json()
         assert body["status"] == "conflict"
-        assert body["payload"]["original_md"] == (
-            "# Note\n\nalpha beta gamma — user added this."
-        )
-        assert body["payload"]["new_body_md"] == (
-            "# Note\n\nalpha BETA gamma — user added this."
-        )
+        assert body["payload"]["original_md"] == ("# Note\n\nalpha beta gamma — user added this.")
+        assert body["payload"]["new_body_md"] == ("# Note\n\nalpha BETA gamma — user added this.")
         replay = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert replay.status_code == 200
         assert replay.json()["status"] == "executed"
@@ -1032,12 +937,9 @@ def test_append_material_executes(
         material_id = add_material(test_client, "m.txt", "Original body.", course_id)
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
-            "Adding it.\n\n"
-            + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
+            "Adding it.\n\n" + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "append a section"},
@@ -1050,9 +952,7 @@ def test_append_material_executes(
         assert approved.status_code == 200, approved.text
         assert approved.json()["status"] == "executed"
 
-        versions = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions"
-        ).json()
+        versions = test_client.get(f"/api/v1/materials/{material_id}/extractions").json()
         latest = test_client.get(
             f"/api/v1/materials/{material_id}/extractions/{len(versions)}"
         ).json()
@@ -1071,12 +971,9 @@ def test_proposals_carry_target_info(
         node_id = make_node(test_client, course_id, "Chapter 3")
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
-            "Extending it.\n\n"
-            + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
+            "Extending it.\n\n" + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "append a section"},
@@ -1136,8 +1033,8 @@ def test_generate_proposal_context_must_be_offered() -> None:
             {
                 "action": "generate_quiz",
                 "topic": "chain rule",
-                "material_ids": [5],
-                "note_ids": [2],
+                "material_ids": ["5"],
+                "note_ids": ["2"],
             }
         )
         + "\n```"
@@ -1185,18 +1082,14 @@ def test_generate_context_contract_rejects_unoffered_ids(
         )
         gateway.responses.append(bad)
         gateway.responses.append(good)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "quiz me on the material"},
         )
         proposal = get_proposal(test_client, session["id"])
         assert proposal["action"] == "generate_quiz"
-        repair_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        repair_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "not offered" in repair_prompt
         assert proposal["payload"]["material_ids"] == [material_id]
         assert proposal["payload"]["instructions"] == "Focus on the sign rule"
@@ -1206,9 +1099,7 @@ def test_generate_context_contract_rejects_unoffered_ids(
 
 FLASHCARDS_PROPOSAL = (
     "```proposal\n"
-    + json.dumps(
-        {"action": "generate_flashcards", "material_id": "{mid}", "count": 12}
-    )
+    + json.dumps({"action": "generate_flashcards", "material_id": "{mid}", "count": 12})
     + "\n```"
 )
 
@@ -1223,9 +1114,7 @@ def test_flashcards_proposal_marks_approved_with_dialog_params(
         gateway.responses.append(
             "Cards.\n\n" + FLASHCARDS_PROPOSAL.replace("{mid}", str(material_id))
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "make cards"},
@@ -1260,9 +1149,7 @@ def test_create_material_executes_with_ingest_and_node_link(
             + "\n```"
         )
         gateway.responses.append(f"Here you go.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "save that as a material"},
@@ -1309,9 +1196,7 @@ def test_create_concept_executes_and_links_node(
             + "\n```"
         )
         gateway.responses.append(f"Adding it.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "track this concept"},
@@ -1331,9 +1216,7 @@ def test_create_concept_executes_and_links_node(
         concept = stored.scalars(
             select(ConceptModel).where(ConceptModel.course_id == course_id)
         ).all()
-        coverage = stored.scalars(
-            select(NodeConcept).where(NodeConcept.node_id == node_id)
-        ).all()
+        coverage = stored.scalars(select(NodeConcept).where(NodeConcept.node_id == node_id)).all()
         stored.close()
         assert any(c.name == "Substitution Rule" for c in concept)
         assert len(coverage) == 1
@@ -1364,9 +1247,7 @@ def test_find_tool_searches_registers_and_reads(
         gateway.responses.append("FIND taylor series")
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append("The taylor series chapter says so [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "find my material on taylor series"},
@@ -1374,16 +1255,12 @@ def test_find_tool_searches_registers_and_reads(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert assistant["role"] == "assistant"
-        find_calls = [
-            call for call in assistant["tool_calls"] if call["name"] == "FIND"
-        ]
+        find_calls = [call for call in assistant["tool_calls"] if call["name"] == "FIND"]
         assert find_calls
         find_result = str(find_calls[0].get("result", ""))
         assert f"M{material_id}" in find_result
         assert "taylor2" not in find_result
-        read_calls = [
-            call for call in assistant["tool_calls"] if call["name"] == "READ"
-        ]
+        read_calls = [call for call in assistant["tool_calls"] if call["name"] == "READ"]
         assert read_calls
         reads = assistant["reads"]
         assert any(entry["id"] == material_id for entry in reads)
@@ -1422,9 +1299,7 @@ def test_move_tag_exam_proposals_execute(
             + "\n```"
         )
         gateway.responses.append(f"Doing three things.\n\n{move}\n\n{tags}\n\n{exam}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "organize me"},
@@ -1433,9 +1308,7 @@ def test_move_tag_exam_proposals_execute(
         proposals = messages[-1]["proposals"]
         assert len(proposals) == 3
         for proposal in proposals:
-            approved = test_client.post(
-                f"/api/v1/chat/proposals/{proposal['id']}/approve"
-            )
+            approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
             assert approved.status_code == 200, approved.text
             assert approved.json()["status"] == "executed"
 
@@ -1475,9 +1348,7 @@ def test_generate_plan_and_add_plan_items_proposals(
             + "\n```"
         )
         gateway.responses.append(f"Planning.\n\n{exam}\n\n{gen}\n\n{add}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "plan my study"},
@@ -1489,9 +1360,7 @@ def test_generate_plan_and_add_plan_items_proposals(
             "add_plan_items",
         }
         for proposal in proposals:
-            approved = test_client.post(
-                f"/api/v1/chat/proposals/{proposal['id']}/approve"
-            )
+            approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
             assert approved.status_code == 200, approved.text
             body = approved.json()
             assert body["status"] == "executed", body
@@ -1509,19 +1378,19 @@ def test_proposal_node_id_must_exist_in_course() -> None:
                 "action": "create_material",
                 "title": "New note on limits",
                 "body_md": "Some content.",
-                "node_id": 77,
+                "node_id": "77",
             }
         )
         + "\n```"
     )
-    assert validate_proposal_context(text, ["T7"], course_node_ids={1, 7, 77}) == []
+    assert validate_proposal_context(text, ["T7"], course_node_ids={"1", "7", "77"}) == []
     assert validate_proposal_context(text, ["T7"], course_node_ids=None) == []
-    problems = validate_proposal_context(text, ["T7"], course_node_ids={1, 7})
+    problems = validate_proposal_context(text, ["T7"], course_node_ids={"1", "7"})
     assert len(problems) == 1
     assert "node 77" in problems[0]
     assert "[T#]" in problems[0]
-    null_node = text.replace('"node_id": 77', '"node_id": null')
-    assert validate_proposal_context(null_node, ["T7"], course_node_ids={1}) == []
+    null_node = text.replace('"node_id": "77"', '"node_id": null')
+    assert validate_proposal_context(null_node, ["T7"], course_node_ids={"1"}) == []
 
 
 def test_manifest_checks_cover_singular_ids() -> None:
@@ -1529,37 +1398,27 @@ def test_manifest_checks_cover_singular_ids() -> None:
 
     offered = ["N3", "M7"]
     ungrounded_edit = (
-        '```proposal\n{"action": "edit_note", "note_id": 999, '
-        '"new_body_md": "x"}\n```'
+        '```proposal\n{"action": "edit_note", "note_id": "999", "new_body_md": "x"}\n```'
     )
     assert any(
-        "note 999" in problem
-        for problem in validate_proposal_context(ungrounded_edit, offered)
+        "note 999" in problem for problem in validate_proposal_context(ungrounded_edit, offered)
     )
-    flashcards_none = (
-        '```proposal\n{"action": "generate_flashcards", "count": 5}\n```'
-    )
+    flashcards_none = '```proposal\n{"action": "generate_flashcards", "count": 5}\n```'
     assert validate_proposal_context(flashcards_none, offered) == []
-    flashcards_bad = (
-        '```proposal\n{"action": "generate_flashcards", "material_id": 999}\n```'
-    )
+    flashcards_bad = '```proposal\n{"action": "generate_flashcards", "material_id": "999"}\n```'
     assert any(
-        "material 999" in problem
-        for problem in validate_proposal_context(flashcards_bad, offered)
+        "material 999" in problem for problem in validate_proposal_context(flashcards_bad, offered)
     )
     move_bad = (
-        '```proposal\n{"action": "move_to_node", "kind": "note", '
-        '"id": 999, "node_id": 1}\n```'
+        '```proposal\n{"action": "move_to_node", "kind": "note", "id": "999", "node_id": "1"}\n```'
     )
     assert any(
-        "note 999" in problem
-        for problem in validate_proposal_context(move_bad, offered, {1})
+        "note 999" in problem for problem in validate_proposal_context(move_bad, offered, {"1"})
     )
     cover_concept = (
-        '```proposal\n{"action": "cover_concept", "concept_id": 55, '
-        '"node_id": 1}\n```'
+        '```proposal\n{"action": "cover_concept", "concept_id": "55", "node_id": "1"}\n```'
     )
-    assert validate_proposal_context(cover_concept, offered, {1}) == []
+    assert validate_proposal_context(cover_concept, offered, {"1"}) == []
 
 
 def test_grounding_gate_and_ungrounded_filter() -> None:
@@ -1568,7 +1427,7 @@ def test_grounding_gate_and_ungrounded_filter() -> None:
         validate_proposal_grounding,
     )
 
-    edit = '```proposal\n{"action": "edit_note", "note_id": 3, "new_body_md": "x"}\n```'
+    edit = '```proposal\n{"action": "edit_note", "note_id": "3", "new_body_md": "x"}\n```'
     problems = validate_proposal_grounding(edit, [])
     assert len(problems) == 1
     assert "unread_target" in problems[0]
@@ -1578,13 +1437,12 @@ def test_grounding_gate_and_ungrounded_filter() -> None:
     assert len(cross_kind) == 1
     assert "unread_target" in cross_kind[0]
     create = (
-        '```proposal\n{"action": "create_note", "title": "t", '
-        '"body_md": "b", "node_id": null}\n```'
+        '```proposal\n{"action": "create_note", "title": "t", "body_md": "b", "node_id": null}\n```'
     )
     assert validate_proposal_grounding(create, []) == []
 
     proposals: list[tuple[str, dict[str, Any]]] = [
-        ("edit_note", {"note_id": 3, "new_body_md": "x"}),
+        ("edit_note", {"note_id": "3", "new_body_md": "x"}),
         ("create_note", {"title": "t", "body_md": "b"}),
     ]
     kept, drops = filter_ungrounded(proposals, ["N3"])
@@ -1606,18 +1464,14 @@ def test_unread_edit_repairs_after_read(
         gateway.responses.append("Fixing it.\n\n" + proposal_text)
         gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append("Fixing it.\n\n" + proposal_text)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix the sign error"},
         )
         proposal = get_proposal(test_client, session["id"])
         assert len(gateway.calls) == 3
-        repair_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[1]
-        )
+        repair_prompt = "\n".join(str(message.content) for message in gateway.calls[1])
         assert "unread_target" in repair_prompt
         assert f"READ [N{note_id}]" in repair_prompt
         assert proposal["action"] == "edit_note"
@@ -1642,13 +1496,8 @@ def test_text_edit_ops_resolution() -> None:
     with raises(ProposalError, match="anchor_ambiguous"):
         resolve_text_edits("a b a", [TextEditOp(op="replace", find="a", text="z")])
     assert resolve_text_edits("", [TextEditOp(op="append", text="first")]) == "first"
-    assert (
-        resolve_text_edits("head", [TextEditOp(op="prepend", text="NOTE")])
-        == "NOTE\nhead"
-    )
-    removed = resolve_text_edits(
-        base, [TextEditOp(op="replace", find=" beta", text="")]
-    )
+    assert resolve_text_edits("head", [TextEditOp(op="prepend", text="NOTE")]) == "NOTE\nhead"
+    removed = resolve_text_edits(base, [TextEditOp(op="replace", find=" beta", text="")])
     assert removed == "# Note\n\nalpha gamma"
 
 
@@ -1657,31 +1506,31 @@ def test_text_edit_payload_shapes() -> None:
 
     with raises(ValidationError, match="replace requires"):
         EditNotePayload.model_validate(
-            {"note_id": 1, "text_edits": [{"op": "replace", "text": "x"}]}
+            {"note_id": "1", "text_edits": [{"op": "replace", "text": "x"}]}
         )
     with raises(ValidationError, match="find applies to replace only"):
         EditNotePayload.model_validate(
             {
-                "note_id": 1,
+                "note_id": "1",
                 "text_edits": [{"op": "append", "find": "a", "text": "x"}],
             }
         )
     with raises(ValidationError, match="conflicting_edit"):
         EditNotePayload.model_validate(
             {
-                "note_id": 1,
+                "note_id": "1",
                 "new_body_md": "full",
                 "text_edits": [{"op": "append", "text": "x"}],
             }
         )
     with raises(ValidationError, match="conflicting_edit"):
-        EditNotePayload.model_validate({"note_id": 1})
+        EditNotePayload.model_validate({"note_id": "1"})
     text = (
         "```proposal\n"
         + json.dumps(
             {
                 "action": "edit_note",
-                "note_id": 1,
+                "note_id": "1",
                 "new_body_md": "full",
                 "text_edits": [{"op": "append", "text": "x"}],
             }
@@ -1698,9 +1547,7 @@ def test_anchored_edit_note_resolves_and_executes(
     test_client, gateway, app = client
     with test_client:
         course_id = make_course(test_client)
-        note_id = make_note(
-            test_client, course_id, "# Derivation note\n\nThe derivative is $2x$."
-        )
+        note_id = make_note(test_client, course_id, "# Derivation note\n\nThe derivative is $2x$.")
         anchored = (
             "```proposal\n"
             + json.dumps(
@@ -1710,7 +1557,7 @@ def test_anchored_edit_note_resolves_and_executes(
                     "reason": "sign error",
                     "text_edits": [
                         {"op": "replace", "find": "$2x$", "text": "$-2x$"},
-                        {"op": "append", "text": "Checked."}
+                        {"op": "append", "text": "Checked."},
                     ],
                 }
             )
@@ -1718,30 +1565,22 @@ def test_anchored_edit_note_resolves_and_executes(
         )
         gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append("Fixing it.\n\n" + anchored)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix the sign error only"},
         )
         proposal = get_proposal(test_client, session["id"])
         payload = proposal["payload"]
-        assert payload["original_md"] == (
-            "# Derivation note\n\nThe derivative is $2x$."
-        )
-        assert payload["new_body_md"] == (
-            "# Derivation note\n\nThe derivative is $-2x$.\nChecked."
-        )
+        assert payload["original_md"] == ("# Derivation note\n\nThe derivative is $2x$.")
+        assert payload["new_body_md"] == ("# Derivation note\n\nThe derivative is $-2x$.\nChecked.")
         assert payload["text_edits"][0]["find"] == "$2x$"
 
         approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert approved.status_code == 200, approved.text
         assert approved.json()["status"] == "executed"
         stored = app.state.session_factory()
-        versions = stored.scalars(
-            select(NoteVersion).where(NoteVersion.note_id == note_id)
-        ).all()
+        versions = stored.scalars(select(NoteVersion).where(NoteVersion.note_id == note_id)).all()
         stored.close()
         assert len(versions) == 1
         note = test_client.get(f"/api/v1/notes/{note_id}").json()
@@ -1763,9 +1602,7 @@ def test_anchored_edit_anchor_mismatch_drops(
                 {
                     "action": "edit_note",
                     "note_id": note_id,
-                    "text_edits": [
-                        {"op": "replace", "find": "not in the note", "text": "x"}
-                    ],
+                    "text_edits": [{"op": "replace", "find": "not in the note", "text": "x"}],
                 }
             )
             + "\n```"
@@ -1773,9 +1610,7 @@ def test_anchored_edit_anchor_mismatch_drops(
         gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append("Fixing it.\n\n" + bad_anchor)
         gateway.responses.append("Fixing it.\n\n" + bad_anchor)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix"},
@@ -1783,9 +1618,7 @@ def test_anchored_edit_anchor_mismatch_drops(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert assistant["proposals"] == []
-        assert any(
-            "anchor_mismatch" in warning for warning in assistant["warnings"]
-        )
+        assert any("anchor_mismatch" in warning for warning in assistant["warnings"])
         assert assistant["trace"]["proposals_dropped"][-1] == "anchor_mismatch"
 
 
@@ -1799,18 +1632,14 @@ def test_proposal_list_endpoint_and_notifications_aggregate(
         course_a = make_course(test_client)
         course_b = make_course(test_client)
         gateway.responses.append(VALID_PROPOSAL)
-        session_a = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_a}
-        ).json()
+        session_a = test_client.post("/api/v1/chat/sessions", json={"course_id": course_a}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session_a['id']}/messages",
             json={"content": "save a summary"},
         )
         first = get_proposal(test_client, session_a["id"])
         gateway.responses.append(VALID_PROPOSAL)
-        session_b = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_b}
-        ).json()
+        session_b = test_client.post("/api/v1/chat/sessions", json={"course_id": course_b}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session_b['id']}/messages",
             json={"content": "save a summary"},
@@ -1826,43 +1655,32 @@ def test_proposal_list_endpoint_and_notifications_aggregate(
         ]
         for row in listed["proposals"]:
             assert row["session_id"] in (session_a["id"], session_b["id"])
-            assert row["message_id"] > 0
+            assert row["message_id"]
 
-        pending = test_client.get(
-            "/api/v1/chat/proposals", params={"status": "proposed"}
-        ).json()
+        pending = test_client.get("/api/v1/chat/proposals", params={"status": "proposed"}).json()
         assert {row["id"] for row in pending["proposals"]} == {
             first["id"],
             second["id"],
         }
 
         test_client.post(f"/api/v1/chat/proposals/{second['id']}/dismiss")
-        pending = test_client.get(
-            "/api/v1/chat/proposals", params={"status": "proposed"}
-        ).json()
+        pending = test_client.get("/api/v1/chat/proposals", params={"status": "proposed"}).json()
         assert [row["id"] for row in pending["proposals"]] == [first["id"]]
 
-        paged = test_client.get(
-            "/api/v1/chat/proposals", params={"limit": 1}
-        ).json()
+        paged = test_client.get("/api/v1/chat/proposals", params={"limit": 1}).json()
         assert len(paged["proposals"]) == 1
-        assert paged["next_cursor"] == str(paged["proposals"][0]["id"])
+        assert paged["next_cursor"].split("|")[1] == str(paged["proposals"][0]["id"])
         follow_up = test_client.get(
             "/api/v1/chat/proposals",
             params={"limit": 1, "cursor": paged["next_cursor"]},
         ).json()
         assert follow_up["proposals"][0]["id"] == first["id"]
 
-        bad = test_client.get(
-            "/api/v1/chat/proposals", params={"status": "nope"}
-        )
+        bad = test_client.get("/api/v1/chat/proposals", params={"status": "nope"})
         assert bad.status_code == 422
 
         stored = app.state.session_factory()
-        assert (
-            stored.query(ChatProposalRow).filter_by(id=second["id"]).first()
-            is not None
-        )
+        assert stored.query(ChatProposalRow).filter_by(id=second["id"]).first() is not None
         stored.close()
         aggregate = test_client.get("/api/v1/notifications").json()
         assert aggregate["pending_proposals"] == 1

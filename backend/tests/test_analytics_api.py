@@ -8,7 +8,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Analytics quiz",
     "questions": [
         {
@@ -49,7 +49,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -61,10 +61,10 @@ class StaticGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="static",
@@ -78,7 +78,7 @@ class StaticGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -87,7 +87,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-analytics-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-analytics-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=StaticGateway(),
@@ -97,12 +97,12 @@ def make_client() -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def seed_answers(
-    client: TestClient, course_id: int, plan: list[tuple[int, Any, int]]
+    client: TestClient, course_id: str, plan: list[tuple[int, Any, int]]
 ) -> dict[str, Any]:
     imported = client.post(
         "/api/v1/quiz/import",
@@ -112,9 +112,7 @@ def seed_answers(
     assert imported.status_code == 200, imported.text
     activity = imported.json()["activity"]
     questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
-    attempt_id = int(
-        client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
-    )
+    attempt_id = str(client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"])
     for question_index, response, time_ms in plan:
         answered = client.post(
             f"/api/v1/quiz/attempts/{attempt_id}/answers",
@@ -217,7 +215,7 @@ def test_recommendations_read_drill_review() -> None:
         due_cards = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "basic",
+                "kind": "card_basic",
                 "front_md": "F",
                 "back_md": "B",
                 "course_id": course_id,
@@ -225,9 +223,7 @@ def test_recommendations_read_drill_review() -> None:
         )
         assert due_cards.status_code == 201
         recs_with_cards = client.get("/api/v1/analytics/recommendations").json()
-        review = next(
-            (entry for entry in recs_with_cards if entry["kind"] == "review"), None
-        )
+        review = next((entry for entry in recs_with_cards if entry["kind"] == "review"), None)
         assert review is not None
         assert review["evidence"]["due_cards"] >= 1
 
@@ -254,9 +250,7 @@ def test_item_analysis_and_flags() -> None:
         with app.state.session_factory() as db:
             from sqlalchemy import text
 
-            rows = db.execute(
-                text("SELECT COUNT(*) FROM concept_skill_stats")
-            ).one()
+            rows = db.execute(text("SELECT COUNT(*) FROM concept_skill_stats")).one()
             rollups = db.execute(text("SELECT COUNT(*) FROM daily_rollups")).one()
             item_rows = db.execute(text("SELECT COUNT(*) FROM item_stats")).one()
         assert rows[0] >= 1
@@ -274,30 +268,100 @@ def test_exam_answers_excluded_from_mastery() -> None:
             json=CAQ_DOC,
         )
         activity = imported.json()["activity"]
-        questions = client.get(
-            f"/api/v1/quiz/activities/{activity['id']}/questions"
-        ).json()
-        practice = int(
+        questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
+        practice = str(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
         )
         client.post(
             f"/api/v1/quiz/attempts/{practice}/answers",
             json={"question_id": questions[0]["id"], "response": 0, "time_ms": 9000},
         )
-        exam = int(
-            client.post(
-                f"/api/v1/quiz/activities/{activity['id']}/attempts?mode=exam"
-            ).json()["id"]
+        exam = str(
+            client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts?mode=exam").json()["id"]
         )
         client.post(
             f"/api/v1/quiz/attempts/{exam}/answers",
             json={"question_id": questions[0]["id"], "response": 1, "time_ms": 9000},
         )
         diagnostics = client.get("/api/v1/analytics/diagnostics").json()
-        proc = next(
-            c
-            for c in diagnostics["weakness_matrix"]
-            if c["concept"] == "derivatives"
-        )
+        proc = next(c for c in diagnostics["weakness_matrix"] if c["concept"] == "derivatives")
         assert proc["n"] == 1
         assert proc["accuracy"] == 1.0
+
+
+def test_item_analysis_exposes_discrimination_and_distractor_efficiency() -> None:
+    client = make_client()
+    with client:
+        course_id = make_course(client)
+        seed = seed_answers(client, course_id, [(0, 0, 10000), (1, True, 20000)])
+        items = {
+            entry["question_id"]: entry for entry in client.get("/api/v1/analytics/items").json()
+        }
+        single = items[seed["questions"][0]["id"]]
+        assert single["discrimination"] is None
+        assert single["distractor_efficiency"] == 0.0
+        assert single["elo_outlier"] is False
+
+        assert client.get(
+            "/api/v1/analytics/items", params={"course_id": course_id}
+        ).json() == list(items.values())
+
+
+def test_analytics_export_json_and_csv_shapes() -> None:
+    client = make_client()
+    with client:
+        course_id = make_course(client)
+        seed = seed_answers(client, course_id, [(0, 0, 10000), (1, True, 20000)])
+
+        exported = client.get("/api/v1/analytics/export", params={"format": "json"})
+        assert exported.status_code == 200, exported.text
+        payload = exported.json()
+        assert payload["version"] == 1
+        assert payload["course_id"] is None
+        assert payload["daily"] and payload["daily"][0]["answers_n"] >= 2
+        assert payload["concepts"] and "weakness_score" in payload["concepts"][0]
+        assert {entry["question_id"] for entry in payload["items"]} == {
+            question["id"] for question in seed["questions"]
+        }
+
+        scoped = client.get(
+            "/api/v1/analytics/export", params={"format": "json", "course_id": course_id}
+        ).json()
+        assert scoped["course_id"] == course_id
+        assert len(scoped["items"]) == 2
+
+        csv_response = client.get("/api/v1/analytics/export", params={"format": "csv"})
+        assert csv_response.status_code == 200, csv_response.text
+        assert csv_response.headers["content-type"].startswith("text/csv")
+        lines = csv_response.text.splitlines()
+        assert lines[0].split(",") == [
+            "section",
+            "day",
+            "answers_n",
+            "correct_n",
+            "cards_reviewed",
+            "minutes",
+            "study_seconds",
+            "xp",
+            "concept",
+            "concept_id",
+            "skill",
+            "n",
+            "accuracy",
+            "avg_time_ratio",
+            "weakness_score",
+            "enough_data",
+            "question_id",
+            "p_correct",
+            "discrimination",
+            "distractor_efficiency",
+            "avg_time_ms",
+            "flag",
+            "elo_outlier",
+            "stem_excerpt",
+        ]
+        sections = {line.split(",")[0] for line in lines[1:]}
+        assert {"daily", "concept", "item"} <= sections
+
+        bad = client.get("/api/v1/analytics/export", params={"format": "xml"})
+        assert bad.status_code == 422

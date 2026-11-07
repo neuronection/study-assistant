@@ -70,21 +70,15 @@ def test_paths_outside_roots_rejected(desktop_client: TestClient, tmp_path: Path
         == 404
     )
     assert (
-        desktop_client.get("/api/v1/desktop/file", params={"path": str(outside)}).status_code
-        == 404
+        desktop_client.get("/api/v1/desktop/file", params={"path": str(outside)}).status_code == 404
     )
     missing = root / "missing.pdf"
     assert (
-        desktop_client.get("/api/v1/desktop/file", params={"path": str(missing)}).status_code
-        == 404
+        desktop_client.get("/api/v1/desktop/file", params={"path": str(missing)}).status_code == 404
     )
     traversal = str(root / ".." / "secret.txt")
-    assert (
-        desktop_client.get("/api/v1/desktop/file", params={"path": traversal}).status_code == 404
-    )
-    not_a_dir = desktop_client.get(
-        "/api/v1/desktop/folder", params={"path": str(root / "a.pdf")}
-    )
+    assert desktop_client.get("/api/v1/desktop/file", params={"path": traversal}).status_code == 404
+    not_a_dir = desktop_client.get("/api/v1/desktop/folder", params={"path": str(root / "a.pdf")})
     assert not_a_dir.status_code == 422
 
 

@@ -28,18 +28,12 @@ def test_valid_checklist() -> None:
 
 
 def test_valid_choice_and_slider_and_equation() -> None:
-    assert (
-        validate_widget_block(_block("choice", {"prompt": "Pick", "options": ["x", "y"]}))
-        == []
-    )
+    assert validate_widget_block(_block("choice", {"prompt": "Pick", "options": ["x", "y"]})) == []
     assert (
         validate_widget_block(_block("slider", {"prompt": "n", "min": 0, "max": 10, "step": 1}))
         == []
     )
-    assert (
-        validate_widget_block(_block("equation_input", {"prompt": "f(x)"}))
-        == []
-    )
+    assert validate_widget_block(_block("equation_input", {"prompt": "f(x)"})) == []
 
 
 def test_valid_numberline_chart_geo() -> None:

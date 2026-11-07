@@ -35,9 +35,7 @@ def _names(app: TestClient) -> tuple[str, str]:
 
 
 def _register(client: TestClient, email: str) -> str:
-    created = client.post(
-        "/api/v1/auth/register", json={"email": email, "password": PASSWORD}
-    )
+    created = client.post("/api/v1/auth/register", json={"email": email, "password": PASSWORD})
     assert created.status_code == 201, created.text
     return str(created.json()["id"])
 
@@ -65,9 +63,7 @@ def test_forged_and_kind_mismatched_tokens_rejected(raw_client: TestClient) -> N
         auth_mode=AuthMode.PASSWORD,
     )
     assert (
-        raw_client.get(
-            "/api/v1/auth/me", headers={"Cookie": f"{access}={refresh_as_access}"}
-        )
+        raw_client.get("/api/v1/auth/me", headers={"Cookie": f"{access}={refresh_as_access}"})
     ).status_code == 401
 
     garbage = raw_client.get("/api/v1/auth/me", headers={"Cookie": f"{access}=not-a-jwt"})
@@ -153,9 +149,7 @@ def test_session_cookie_flags_are_exact(raw_client: TestClient) -> None:
     assert created.status_code == 201
     lines = created.headers.get_list("set-cookie")
     assert_cookie_flags(lines, "nx_access", http_only=True, secure=False, path="/")
-    assert_cookie_flags(
-        lines, "nx_refresh", http_only=True, secure=False, path="/api/v1/auth"
-    )
+    assert_cookie_flags(lines, "nx_refresh", http_only=True, secure=False, path="/api/v1/auth")
     assert_cookie_flags(lines, "nx_csrf", http_only=False, secure=False, path="/")
     same_site = next(line for line in lines if line.startswith("nx_access="))
     assert "samesite=lax" in same_site.lower()

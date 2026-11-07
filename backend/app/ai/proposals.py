@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from ..core.vocab import PLAN_ITEM_KINDS, QUESTION_TYPES
+from ..core.vocab import PLAN_ITEM_KINDS, QuestionType
 from .mentions import KIND_BY_LETTER, LETTER_BY_KIND
 
 
@@ -69,20 +69,18 @@ class _TextEditsPayloadMixin(BaseModel):
 class CreateNotePayload(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body_md: str = Field(min_length=1, max_length=50000)
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 class EditNotePayload(_TextEditsPayloadMixin):
-    note_id: int
+    note_id: str
     new_body_md: str | None = Field(default=None, min_length=1, max_length=50000)
     reason: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
     def _one_way_to_edit(self) -> "EditNotePayload":
         if self.new_body_md is None and not self.text_edits:
-            raise ValueError(
-                "conflicting_edit: set either new_body_md or text_edits"
-            )
+            raise ValueError("conflicting_edit: set either new_body_md or text_edits")
         if self.new_body_md is not None and self.text_edits:
             raise ValueError(
                 "conflicting_edit: new_body_md and text_edits are mutually "
@@ -92,22 +90,20 @@ class EditNotePayload(_TextEditsPayloadMixin):
 
 
 class AppendNotePayload(BaseModel):
-    note_id: int
+    note_id: str
     markdown: str = Field(min_length=1, max_length=50000)
     heading: str | None = Field(default=None, max_length=300)
 
 
 class EditMaterialPayload(_TextEditsPayloadMixin):
-    material_id: int
+    material_id: str
     new_markdown: str | None = Field(default=None, min_length=1, max_length=200000)
     reason: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
     def _one_way_to_edit(self) -> "EditMaterialPayload":
         if self.new_markdown is None and not self.text_edits:
-            raise ValueError(
-                "conflicting_edit: set either new_markdown or text_edits"
-            )
+            raise ValueError("conflicting_edit: set either new_markdown or text_edits")
         if self.new_markdown is not None and self.text_edits:
             raise ValueError(
                 "conflicting_edit: new_markdown and text_edits are mutually "
@@ -117,33 +113,33 @@ class EditMaterialPayload(_TextEditsPayloadMixin):
 
 
 class AppendMaterialPayload(BaseModel):
-    material_id: int
+    material_id: str
     markdown: str = Field(min_length=1, max_length=50000)
     heading: str | None = Field(default=None, max_length=300)
 
 
 class GenerateFlashcardsPayload(BaseModel):
-    material_id: int | None = None
-    note_id: int | None = None
+    material_id: str | None = None
+    note_id: str | None = None
     count: int = Field(default=10, ge=1, le=30)
 
 
 class CreateMaterialPayload(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body_md: str = Field(min_length=1, max_length=50000)
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 class CreateConceptPayload(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 class AttachLinkPayload(BaseModel):
     url: str = Field(min_length=1, max_length=2048)
     title: str | None = Field(default=None, max_length=300)
-    node_id: int | None = None
+    node_id: str | None = None
 
     @field_validator("url")
     @classmethod
@@ -156,12 +152,12 @@ class AttachLinkPayload(BaseModel):
 
 class MoveToNodePayload(BaseModel):
     kind: Literal["note", "quiz", "exercise", "material"]
-    id: int
-    node_id: int
+    id: str
+    node_id: str
 
 
 class TagNotePayload(BaseModel):
-    note_id: int
+    note_id: str
     add: list[str] = Field(min_length=1, max_length=10)
 
 
@@ -200,17 +196,17 @@ class GeneratePlanPayload(BaseModel):
 
 
 class AssignMaterialPayload(BaseModel):
-    material_id: int
-    node_id: int
+    material_id: str
+    node_id: str
 
 
 class CoverConceptPayload(BaseModel):
-    concept_id: int
-    node_id: int
+    concept_id: str
+    node_id: str
 
 
 class SetNodeAiHintPayload(BaseModel):
-    node_id: int
+    node_id: str
     hint: str = Field(min_length=1, max_length=2000)
 
 
@@ -218,9 +214,9 @@ class GenerateQuizPayload(BaseModel):
     topic: str | None = Field(default=None, max_length=500)
     count: int = Field(default=8, ge=1, le=30)
     difficulty: int | None = Field(default=None, ge=1, le=5)
-    node_id: int | None = None
-    material_ids: list[int] = Field(default_factory=list, max_length=10)
-    note_ids: list[int] = Field(default_factory=list, max_length=10)
+    node_id: str | None = None
+    material_ids: list[str] = Field(default_factory=list, max_length=10)
+    note_ids: list[str] = Field(default_factory=list, max_length=10)
     instructions: str | None = Field(default=None, max_length=2000)
     question_types: list[str] = Field(default_factory=list, max_length=12)
     shuffle: bool = False
@@ -228,10 +224,10 @@ class GenerateQuizPayload(BaseModel):
     @field_validator("question_types")
     @classmethod
     def _known_question_types(cls, value: list[str]) -> list[str]:
-        unknown = [t for t in value if t not in QUESTION_TYPES]
+        unknown = [t for t in value if t not in QuestionType.values()]
         if unknown:
             raise ValueError(
-                f"unknown question type(s) {unknown} (allowed: {', '.join(QUESTION_TYPES)})"
+                f"unknown question type(s) {unknown} (allowed: {', '.join(QuestionType.values())})"
             )
         return value
 
@@ -240,9 +236,9 @@ class GenerateExercisePayload(BaseModel):
     topic: str | None = Field(default=None, max_length=500)
     steps: int = Field(default=4, ge=1, le=20)
     difficulty: int | None = Field(default=None, ge=1, le=5)
-    node_id: int | None = None
-    material_ids: list[int] = Field(default_factory=list, max_length=10)
-    note_ids: list[int] = Field(default_factory=list, max_length=10)
+    node_id: str | None = None
+    material_ids: list[str] = Field(default_factory=list, max_length=10)
+    note_ids: list[str] = Field(default_factory=list, max_length=10)
     instructions: str | None = Field(default=None, max_length=2000)
 
 
@@ -265,15 +261,14 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "create_note": ProposalActionSpec(
         payload_model=CreateNotePayload,
         doc_line=(
-            '{"action": "create_note", "title": str, "body_md": markdown, '
-            '"node_id": int|null}'
+            '{"action": "create_note", "title": str, "body_md": markdown, "node_id": str|null}'
         ),
         api_executed=True,
     ),
     "edit_note": ProposalActionSpec(
         payload_model=EditNotePayload,
         doc_line=(
-            '{"action": "edit_note", "note_id": int, "new_body_md": markdown, '
+            '{"action": "edit_note", "note_id": str, "new_body_md": markdown, '
             '"reason": str|null} — or, for a targeted change, "text_edits": '
             '[{"op": "replace", "find": "exact current text", "text": '
             '"replacement"} | {"op": "append", "text": …} | {"op": "prepend", '
@@ -286,8 +281,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "append_note": ProposalActionSpec(
         payload_model=AppendNotePayload,
         doc_line=(
-            '{"action": "append_note", "note_id": int, "markdown": markdown, '
-            '"heading": str|null}'
+            '{"action": "append_note", "note_id": str, "markdown": markdown, "heading": str|null}'
         ),
         snapshot="note_body",
         context_ids=(("note_id", "note"),),
@@ -295,7 +289,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "edit_material": ProposalActionSpec(
         payload_model=EditMaterialPayload,
         doc_line=(
-            '{"action": "edit_material", "material_id": int, '
+            '{"action": "edit_material", "material_id": str, '
             '"new_markdown": markdown, "reason": str|null} — or, for a '
             'targeted change, "text_edits": [{"op": "replace", "find": '
             '"exact current text", "text": "replacement"} | {"op": "append", '
@@ -308,7 +302,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "append_material": ProposalActionSpec(
         payload_model=AppendMaterialPayload,
         doc_line=(
-            '{"action": "append_material", "material_id": int, '
+            '{"action": "append_material", "material_id": str, '
             '"markdown": markdown, "heading": str|null}'
         ),
         snapshot="extraction_md",
@@ -316,25 +310,26 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     ),
     "assign_material": ProposalActionSpec(
         payload_model=AssignMaterialPayload,
-        doc_line='{"action": "assign_material", "material_id": int, "node_id": int}',
+        doc_line='{"action": "assign_material", "material_id": str, "node_id": str}',
         context_ids=(("material_id", "material"),),
     ),
     "cover_concept": ProposalActionSpec(
         payload_model=CoverConceptPayload,
-        doc_line='{"action": "cover_concept", "concept_id": int, "node_id": int}',
+        doc_line='{"action": "cover_concept", "concept_id": str, "node_id": str}',
     ),
     "set_node_ai_hint": ProposalActionSpec(
         payload_model=SetNodeAiHintPayload,
-        doc_line='{"action": "set_node_ai_hint", "node_id": int, "hint": str}',
+        doc_line='{"action": "set_node_ai_hint", "node_id": str, "hint": str}',
     ),
     "generate_quiz": ProposalActionSpec(
         payload_model=GenerateQuizPayload,
         doc_line=(
             '{"action": "generate_quiz", "topic": str|null, "count": 1-30, '
-            '"difficulty": 1-5|null, "node_id": int|null, "material_ids": [int], '
+            '"difficulty": 1-5|null, "node_id": str|null, "material_ids": [int], '
             '"note_ids": [int], "instructions": str|null, '
             '"question_types": ["single"|"multi"|"truefalse"|"text"|"numeric"|'
-            '"equation"|"numberline"|"table_fill"|"composite"|"graph_read"|"code"], '
+            '"equation"|"numberline"|"table_fill"|"composite"|"graph_read"|"code"|'
+            '"matching"|"ordering"|"cloze"|"essay"], '
             '"shuffle": bool}'
         ),
         api_executed=True,
@@ -343,7 +338,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
         payload_model=GenerateExercisePayload,
         doc_line=(
             '{"action": "generate_exercise", "topic": str|null, "steps": 1-20, '
-            '"difficulty": 1-5|null, "node_id": int|null, "material_ids": [int], '
+            '"difficulty": 1-5|null, "node_id": str|null, "material_ids": [int], '
             '"note_ids": [int], "instructions": str|null}'
         ),
         api_executed=True,
@@ -359,8 +354,8 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "generate_flashcards": ProposalActionSpec(
         payload_model=GenerateFlashcardsPayload,
         doc_line=(
-            '{"action": "generate_flashcards", "material_id": int|null, '
-            '"note_id": int|null, "count": 1-30}'
+            '{"action": "generate_flashcards", "material_id": str|null, '
+            '"note_id": str|null, "count": 1-30}'
         ),
         api_executed=True,
         context_ids=(("material_id", "material"), ("note_id", "note")),
@@ -368,49 +363,42 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "create_material": ProposalActionSpec(
         payload_model=CreateMaterialPayload,
         doc_line=(
-            '{"action": "create_material", "title": str, "body_md": markdown, '
-            '"node_id": int|null}'
+            '{"action": "create_material", "title": str, "body_md": markdown, "node_id": str|null}'
         ),
     ),
     "create_concept": ProposalActionSpec(
         payload_model=CreateConceptPayload,
         doc_line=(
             '{"action": "create_concept", "name": str, "description": str|null, '
-            '"node_id": int|null}'
+            '"node_id": str|null}'
         ),
     ),
     "attach_link": ProposalActionSpec(
         payload_model=AttachLinkPayload,
         doc_line=(
             '{"action": "attach_link", "url": "https://...", "title": str|null, '
-            '"node_id": int|null}'
+            '"node_id": str|null}'
         ),
     ),
     "move_to_node": ProposalActionSpec(
         payload_model=MoveToNodePayload,
         doc_line=(
             '{"action": "move_to_node", "kind": "note"|"quiz"|"exercise"|'
-            '"material", "id": int, "node_id": int}'
+            '"material", "id": str, "node_id": str}'
         ),
     ),
     "tag_note": ProposalActionSpec(
         payload_model=TagNotePayload,
-        doc_line=(
-            '{"action": "tag_note", "note_id": int, "add": [str]}'
-        ),
+        doc_line=('{"action": "tag_note", "note_id": str, "add": [str]}'),
         context_ids=(("note_id", "note"),),
     ),
     "set_exam_date": ProposalActionSpec(
         payload_model=SetExamDatePayload,
-        doc_line=(
-            '{"action": "set_exam_date", "exam_date": "YYYY-MM-DD"}'
-        ),
+        doc_line=('{"action": "set_exam_date", "exam_date": "YYYY-MM-DD"}'),
     ),
     "generate_plan": ProposalActionSpec(
         payload_model=GeneratePlanPayload,
-        doc_line=(
-            '{"action": "generate_plan"}'
-        ),
+        doc_line=('{"action": "generate_plan"}'),
     ),
     "add_plan_items": ProposalActionSpec(
         payload_model=AddPlanItemsPayload,
@@ -431,11 +419,9 @@ MAX_PROPOSALS_PER_TURN = 3
 PROPOSAL_DOC = (
     "You may end your reply with up to THREE action proposals for the student "
     "to approve (never execute anything yourself — the student clicks):\n"
-    "```proposal\n"
-    + "\n".join(spec.doc_line for spec in PROPOSAL_ACTIONS.values())
-    + "\n```\n"
+    "```proposal\n" + "\n".join(spec.doc_line for spec in PROPOSAL_ACTIONS.values()) + "\n```\n"
     "Use ids only from the offered manifest. When a payload has node_id, it "
-    "must be the integer id of a [T#] node from the course structure "
+    "must be the id shown in a [T#] node handle from the course structure "
     "(or null to leave placement unchanged). edit_note, append_note, "
     "edit_material and append_material REQUIRE the target's full content to "
     "be read in this turn first: call READ [N#]/[M#], then propose the edit. "
@@ -460,8 +446,7 @@ def validate_proposal_text(text: str) -> list[str]:
         return problems
     if len(fences) > MAX_PROPOSALS_PER_TURN:
         problems.append(
-            f"{len(fences)} proposal blocks found — at most "
-            f"{MAX_PROPOSALS_PER_TURN} per reply"
+            f"{len(fences)} proposal blocks found — at most {MAX_PROPOSALS_PER_TURN} per reply"
         )
     for fence in fences:
         try:
@@ -475,9 +460,7 @@ def validate_proposal_text(text: str) -> list[str]:
         action = str(raw["action"])
         spec = PROPOSAL_ACTIONS.get(action)
         if spec is None:
-            problems.append(
-                f"unknown proposal action '{action}' — allowed: {proposal_actions()}"
-            )
+            problems.append(f"unknown proposal action '{action}' — allowed: {proposal_actions()}")
             continue
         try:
             spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
@@ -499,14 +482,14 @@ CONTEXT_ID_FIELDS: dict[str, str] = {
     "note_ids": "note",
 }
 
-_OFFERED_REF_RE = re.compile(r"([MNCTQE])(\d+)")
+_OFFERED_REF_RE = re.compile(r"([MNCTQE])([0-9a-fA-F][0-9a-fA-F-]{0,39})")
 
 
 def _singular_context_problems(
     action: str,
     payload: BaseModel,
     spec: ProposalActionSpec,
-    offered: dict[str, set[int]],
+    offered: dict[str, set[str]],
 ) -> list[str]:
     problems: list[str] = []
     for field_name, kind in spec.context_ids:
@@ -523,18 +506,16 @@ def _singular_context_problems(
 def validate_proposal_context(
     text: str,
     offered_refs: list[str],
-    course_node_ids: set[int] | None = None,
+    course_node_ids: set[str] | None = None,
 ) -> list[str]:
     fences = PROPOSAL_FENCE_RE.findall(text)
     if not fences or not offered_refs:
         return []
-    offered: dict[str, set[int]] = {}
+    offered: dict[str, set[str]] = {}
     for ref in offered_refs:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            offered.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            offered.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(match.group(2))
     problems: list[str] = []
     for fence in fences:
         try:
@@ -548,9 +529,7 @@ def validate_proposal_context(
         if spec is None:
             continue
         try:
-            payload = spec.payload_model.model_validate(
-                raw.get("payload") or _payload_from(raw)
-            )
+            payload = spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
         except ValidationError:
             continue
         for field_name, kind in CONTEXT_ID_FIELDS.items():
@@ -579,27 +558,21 @@ def validate_proposal_context(
                 "offered ids"
             )
         node_id = getattr(payload, "node_id", None)
-        if (
-            node_id is not None
-            and course_node_ids is not None
-            and node_id not in course_node_ids
-        ):
+        if node_id is not None and course_node_ids is not None and node_id not in course_node_ids:
             problems.append(
                 f"proposal {action} targets node {node_id} which does not exist "
-                "in this course — use the integer id of a [T#] node from the "
+                "in this course — use the id shown in a [T#] node from the "
                 "course structure, or null"
             )
     return problems
 
 
-def _grounding_target(
-    payload: BaseModel, spec: ProposalActionSpec
-) -> tuple[str, int, str] | None:
+def _grounding_target(payload: BaseModel, spec: ProposalActionSpec) -> tuple[str, str, str] | None:
     """The (field, id, kind) an edit-in-place op must have had read."""
     for field_name, kind in spec.context_ids:
         value = getattr(payload, field_name, None)
         if value is not None:
-            return (field_name, int(value), kind)
+            return (field_name, str(value), kind)
     return None
 
 
@@ -613,13 +586,11 @@ def validate_proposal_grounding(
     fences = PROPOSAL_FENCE_RE.findall(text)
     if not fences:
         return []
-    read_ids: dict[str, set[int]] = {}
+    read_ids: dict[str, set[str]] = {}
     for ref in read_refs or []:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(match.group(2))
     problems: list[str] = []
     for fence in fences:
         try:
@@ -633,9 +604,7 @@ def validate_proposal_grounding(
         if spec is None or spec.snapshot is None:
             continue
         try:
-            payload = spec.payload_model.model_validate(
-                raw.get("payload") or _payload_from(raw)
-            )
+            payload = spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
         except ValidationError:
             continue
         target = _grounding_target(payload, spec)
@@ -660,23 +629,19 @@ def filter_ungrounded(
     """Extraction-time twin of `validate_proposal_grounding`: after the
     repair budget is spent, ungrounded edit-in-place proposals are dropped
     with the `ungrounded` code instead of becoming cards doomed to stale."""
-    read_ids: dict[str, set[int]] = {}
+    read_ids: dict[str, set[str]] = {}
     for ref in read_refs or []:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(match.group(2))
     kept: list[tuple[str, dict[str, Any]]] = []
     drops: list[str] = []
     for action, payload in proposals:
         spec = PROPOSAL_ACTIONS.get(action)
-        target: tuple[str, int, str] | None = None
+        target: tuple[str, str, str] | None = None
         if spec is not None and spec.snapshot is not None:
             try:
-                target = _grounding_target(
-                    spec.payload_model.model_validate(payload), spec
-                )
+                target = _grounding_target(spec.payload_model.model_validate(payload), spec)
             except ValidationError:
                 target = None
         if target is not None and target[1] not in read_ids.get(target[2], set()):

@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from ..services.platform.backup import (
@@ -20,12 +20,15 @@ from ..services.platform.backup import (
     load_effective_settings,
     postgres_url,
     read_archive,
+    read_manifest,
     restore_database_pg,
+    sqlite_schema_revision,
     store_settings_override,
 )
 from ..services.platform.profiles import get_or_create_default
+from .deps import require_admin
 
-router = APIRouter(prefix="/backup", tags=["backup"])
+router = APIRouter(prefix="/backup", tags=["backup"], dependencies=[Depends(require_admin)])
 
 MAX_UPLOAD = 512 * 1024 * 1024
 
@@ -86,17 +89,13 @@ def _defaults_from_settings(request: Request) -> EffectiveBackupSettings:
         interval_hours=settings.backup_interval_hours,
         keep_daily=settings.backup_keep_daily,
         keep_weekly=settings.backup_keep_weekly,
-        sync_dir=str(settings.backup_sync_dir)
-        if settings.backup_sync_dir
-        else None,
+        sync_dir=str(settings.backup_sync_dir) if settings.backup_sync_dir else None,
     )
 
 
 def _status(request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
-    effective = load_effective_settings(
-        _defaults_from_settings(request), _settings_dir(request)
-    )
+    effective = load_effective_settings(_defaults_from_settings(request), _settings_dir(request))
     recovery_path = settings.data_dir / "last-recovery.json"
     recovery: dict[str, Any] | None = None
     if recovery_path.is_file():
@@ -177,29 +176,42 @@ def delete_backup(name: str, request: Request) -> dict[str, Any]:
 @router.get("/export")
 def export_backup(request: Request) -> Response:
     settings = request.app.state.settings
-    package = build_backup(
-        settings.db_path, settings.blobs_dir, database_url=settings.db_url
-    )
+    package = build_backup(settings.db_path, settings.blobs_dir, database_url=settings.db_url)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return Response(
         content=package,
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="studyassistant-{stamp}.zip"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="studyassistant-{stamp}.zip"'},
     )
 
 
-def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
+def apply_restore(request: Request, data: bytes) -> dict[str, Any]:
     if len(data) > MAX_UPLOAD:
         raise HTTPException(status_code=422, detail="backup too large")
     try:
         database, blobs = read_archive(data)
+        manifest = read_manifest(data)
     except BackupError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if not database_is_healthy(database):
+        raise HTTPException(status_code=422, detail="backup database failed integrity check")
+
+    from ..local import head_revision
+
+    expected = head_revision()
+    archive_schema = manifest.get("schema")
+    if archive_schema != expected:
+        if archive_schema is None:
+            detail = (
+                "backup was created by an earlier release and cannot be restored: "
+                "this release uses a new datastore schema"
+            )
+        else:
+            detail = f"backup schema {archive_schema!r} does not match this release ({expected!r})"
+        raise HTTPException(status_code=422, detail=detail)
+    if database.kind == DB_KIND_SQLITE and sqlite_schema_revision(database.data) != expected:
         raise HTTPException(
-            status_code=422, detail="backup database failed integrity check"
+            status_code=422, detail="backup database schema does not match this release"
         )
 
     settings = request.app.state.settings
@@ -209,6 +221,14 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
         raise HTTPException(
             status_code=422, detail="backup database kind does not match this deployment"
         )
+
+    blobs_root = settings.blobs_dir.resolve()
+    destinations: list[tuple[Path, bytes]] = []
+    for rel_path, blob_data in blobs.items():
+        target = (settings.blobs_dir / rel_path).resolve()
+        if not target.is_relative_to(blobs_root) or target == blobs_root:
+            raise HTTPException(status_code=422, detail="backup contains an unsafe blob path")
+        destinations.append((target, blob_data))
 
     request.app.state.engine.dispose()
     if target_pg is not None:
@@ -228,14 +248,16 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
             os.replace(tmp_path, settings.db_path)
         finally:
             tmp_path.unlink(missing_ok=True)
-    for rel_path, blob_data in blobs.items():
-        target = settings.blobs_dir / rel_path
+    for target, blob_data in destinations:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(blob_data)
 
-    from ..main import _run_migrations
+    # Restore is the declared D6 exception (reference-architecture §4):
+    # an ops action that migrates — the swapped-in DB comes to head before
+    # the instance serves it again. The C3 gate allows exactly this site.
+    from ..local import run_migrations  # gate-allow: run_migrations (F12 restore)
 
-    _run_migrations(request.app.state.engine)
+    run_migrations(request.app.state.engine)  # gate-allow: run_migrations (F12 restore)
 
     from sqlalchemy import select, text
 
@@ -252,11 +274,7 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
             get_or_create_default(db, user_id)
         for task_def in TASK_DEFS:
             if db.get(TaskAssignment, task_def.task) is None:
-                db.add(
-                    TaskAssignment(
-                        task=task_def.task, model_id=None, fallback_model_id=None
-                    )
-                )
+                db.add(TaskAssignment(task=task_def.task, model_id=None, fallback_model_id=None))
         seed_default_task_assignments(db)
         db.commit()
         count = db.execute(text("SELECT COUNT(*) FROM materials")).one()
@@ -265,7 +283,7 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
 
 @router.post("/restore", status_code=200, response_model=RestoreOut)
 async def restore_backup(request: Request, file: UploadFile) -> dict[str, Any]:
-    return _apply_restore(request, await file.read())
+    return apply_restore(request, await file.read())
 
 
 @router.post("/{name}/restore", status_code=200, response_model=RestoreOut)
@@ -276,4 +294,4 @@ def restore_backup_by_name(name: str, request: Request) -> dict[str, Any]:
     path = settings.backups_dir / name
     if not path.is_file():
         raise HTTPException(status_code=404, detail="backup not found")
-    return _apply_restore(request, path.read_bytes())
+    return apply_restore(request, path.read_bytes())

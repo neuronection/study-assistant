@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from sqlalchemy import select
@@ -17,10 +17,24 @@ from ...domain.models import (
     TaskAssignment,
     utcnow,
 )
+from ...domain.payloads import ProviderStatus
+from ..decide.types import (
+    DECISION_DEFAULT_SLOT,
+    DECISION_SLOT_PREFIX,
+    DECISION_SLOTS,
+    decision_slot_capability,
+    transport_decision_caps,
+)
 
-PROVIDER_TYPES = ("google", "openai_compatible", "anthropic")
+PROVIDER_TYPES = ("google", "openai_compatible", "anthropic", "decision")
 
-DEFAULT_REQUIRES = tuple(c.value for c in Capability)
+CAPABILITY_REQUIRES = tuple(
+    capability.value for capability in Capability if capability is not Capability.DECISION
+)
+
+# ADR-0036 §1: the `decision` default slot joins the vocabulary beside the
+# four kind overrides — one `DefaultTaskAssignment` on requires='decision'.
+DEFAULT_REQUIRES = (*CAPABILITY_REQUIRES, DECISION_DEFAULT_SLOT, *DECISION_SLOTS)
 
 DEFAULT_BASE_URLS: dict[str, str] = {
     "google": "https://generativelanguage.googleapis.com",
@@ -122,15 +136,37 @@ def infer_caps(external_id: str, methods: list[str] | None = None) -> list[str]:
         return []
     caps = ["text"]
     vision_hints = (
-        "gemini", "gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt-5", "claude-3",
-        "claude-4", "claude-sonnet", "claude-opus", "claude-haiku", "vision",
-        "-vl", "llava", "pixtral", "gemma3",
+        "gemini",
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4-turbo",
+        "gpt-5",
+        "gpt-6",
+        "claude-3",
+        "claude-4",
+        "claude-sonnet",
+        "claude-opus",
+        "claude-haiku",
+        "vision",
+        "-vl",
+        "llava",
+        "pixtral",
+        "gemma3",
     )
     if any(hint in name for hint in vision_hints):
         caps.append("vision")
     tool_hints = (
-        "gpt-4", "gpt-5", "o3", "o4", "claude", "gemini", "deepseek", "qwen",
-        "llama-3", "mistral",
+        "gpt-4",
+        "gpt-5",
+        "gpt-6",
+        "o3",
+        "o4",
+        "claude",
+        "gemini",
+        "deepseek",
+        "qwen",
+        "llama-3",
+        "mistral",
     )
     if any(hint in name for hint in tool_hints):
         caps.append("tools")
@@ -223,7 +259,7 @@ class ProvidersService:
 
     def update(
         self,
-        provider_id: int,
+        provider_id: str,
         *,
         name: str | None = None,
         base_url: str | None = None,
@@ -247,7 +283,7 @@ class ProvidersService:
         self._session.flush()
         return provider
 
-    def delete(self, provider_id: int) -> bool:
+    def delete(self, provider_id: str) -> bool:
         provider = self._session.get(Provider, provider_id)
         if provider is None:
             return False
@@ -286,12 +322,15 @@ class ProvidersService:
     def record_status(
         self, provider: Provider, *, ok: bool, error: str | None, model_count: int | None = None
     ) -> None:
-        provider.status = {
-            "last_tested_at": utcnow().isoformat(),
-            "ok": ok,
-            "error": error,
-            "model_count": model_count,
-        }
+        provider.status = cast(
+            ProviderStatus,
+            {
+                "last_tested_at": utcnow().isoformat(),
+                "ok": ok,
+                "error": error,
+                "model_count": model_count,
+            },
+        )
         self._session.flush()
 
     def discover(
@@ -299,19 +338,19 @@ class ProvidersService:
         provider: Provider,
         transport: httpx.BaseTransport | None = None,
     ) -> list[AiModel]:
+        existing = list(
+            self._session.scalars(select(AiModel).where(AiModel.provider_id == provider.id))
+        )
+        if provider.type == "decision":
+            return existing
         remote = fetch_remote_models(
             provider.type, provider.base_url, self.api_key(provider), transport
         )
-        existing = {
-            model.external_id: model
-            for model in self._session.scalars(
-                select(AiModel).where(AiModel.provider_id == provider.id)
-            )
-        }
+        known = {model.external_id: model for model in existing}
         seen: set[str] = set()
         for item in remote:
             seen.add(item.external_id)
-            model = existing.get(item.external_id)
+            model = known.get(item.external_id)
             if model is None:
                 self._session.add(
                     AiModel(
@@ -327,7 +366,7 @@ class ProvidersService:
             else:
                 model.missing = False
                 model.last_seen_at = utcnow()
-        for external_id, model in existing.items():
+        for external_id, model in known.items():
             if external_id not in seen:
                 model.missing = True
         self._session.flush()
@@ -342,7 +381,7 @@ class ProvidersService:
 
 def _check_capability(
     session: Session,
-    model_id: int | None,
+    model_id: str | None,
     requires: str,
     field: str,
 ) -> None:
@@ -353,6 +392,27 @@ def _check_capability(
         raise ProviderError(f"{field} model not found")
     if not model.enabled:
         raise ProviderError(f"{field} model is not enabled")
+    if requires.startswith(DECISION_SLOT_PREFIX):
+        capability = decision_slot_capability(requires)
+        if capability is None:
+            raise ProviderError(f"'{requires}' is not an assignable decision slot")
+        if Capability.DECISION.value not in (model.caps or []):
+            raise ProviderError("task requires the 'decision' capability")
+        declared = transport_decision_caps(model.decision_transport)
+        if capability not in declared:
+            raise ProviderError(f"the model's transport does not serve '{requires}'")
+        return
+    if requires == DECISION_DEFAULT_SLOT:
+        # ADR-0036 §7: the default must be an explicit decision model whose
+        # transport declares decision capabilities; per-kind serviceability
+        # is the resolver's honest per-kind check at resolution time.
+        if Capability.DECISION.value not in (model.caps or []):
+            raise ProviderError("task requires the 'decision' capability")
+        if not transport_decision_caps(model.decision_transport):
+            raise ProviderError("the model's transport declares no decision capabilities")
+        return
+    if Capability.DECISION.value in (model.caps or []):
+        raise ProviderError("decision models are assigned to decision:* slots only")
     if requires not in (model.caps or []):
         raise ProviderError(f"task requires the '{requires}' capability")
 
@@ -360,8 +420,8 @@ def _check_capability(
 def assign_task(
     session: Session,
     task: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
+    fallback_model_id: str | None,
 ) -> TaskAssignment:
     from ..tasks import TASKS_BY_NAME
 
@@ -387,11 +447,18 @@ def assign_task(
 def assign_default_task(
     session: Session,
     requires: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
+    fallback_model_id: str | None = None,
 ) -> DefaultTaskAssignment:
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")
+    # ADR-0037: capability defaults (incl. `decision`) are single-slot —
+    # only the specialist `decision:<kind>` override rows carry fallbacks.
+    if fallback_model_id is not None and requires not in DECISION_SLOTS:
+        raise ProviderError(
+            f"capability defaults are single-slot: '{requires}' carries no fallback — "
+            "only decision:<kind> overrides do"
+        )
 
     _check_capability(session, model_id, requires, "assigned")
     _check_capability(session, fallback_model_id, requires, "fallback")
@@ -410,10 +477,10 @@ def assign_default_task(
 
 def assign_course_task(
     session: Session,
-    course_id: int,
+    course_id: str,
     task: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
+    fallback_model_id: str | None,
 ) -> CourseTaskAssignment:
     from ...domain.models import Course
     from ..tasks import TASKS_BY_NAME
@@ -444,39 +511,34 @@ def assign_course_task(
 
 def assign_course_default_task(
     session: Session,
-    course_id: int,
+    course_id: str,
     requires: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
 ) -> CourseDefaultTaskAssignment:
     from ...domain.models import Course
 
+    # ADR-0037: course capability defaults are single-slot.
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")
     if session.get(Course, course_id) is None:
         raise ProviderError(f"course {course_id} not found")
 
     _check_capability(session, model_id, requires, "assigned")
-    _check_capability(session, fallback_model_id, requires, "fallback")
     assignment = session.get(CourseDefaultTaskAssignment, (course_id, requires))
     if assignment is None:
         assignment = CourseDefaultTaskAssignment(
             course_id=course_id,
             requires=requires,
             model_id=model_id,
-            fallback_model_id=fallback_model_id,
         )
         session.add(assignment)
     else:
         assignment.model_id = model_id
-        assignment.fallback_model_id = fallback_model_id
     session.flush()
     return assignment
 
 
-def list_course_assignments(
-    session: Session, course_id: int
-) -> dict[str, CourseTaskAssignment]:
+def list_course_assignments(session: Session, course_id: str) -> dict[str, CourseTaskAssignment]:
     return {
         assignment.task: assignment
         for assignment in session.scalars(
@@ -486,7 +548,7 @@ def list_course_assignments(
 
 
 def list_course_default_assignments(
-    session: Session, course_id: int
+    session: Session, course_id: str
 ) -> dict[str, CourseDefaultTaskAssignment]:
     return {
         assignment.requires: assignment
@@ -502,9 +564,7 @@ def seed_default_task_assignments(session: Session) -> None:
     for requires in DEFAULT_REQUIRES:
         if session.get(DefaultTaskAssignment, requires) is None:
             session.add(
-                DefaultTaskAssignment(
-                    requires=requires, model_id=None, fallback_model_id=None
-                )
+                DefaultTaskAssignment(requires=requires, model_id=None, fallback_model_id=None)
             )
     session.flush()
 

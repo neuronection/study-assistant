@@ -78,6 +78,7 @@ FILL_BLANK_DRAFT = json.dumps(
     }
 )
 
+
 class StructsGateway(LLMGateway):
     def __init__(self, responses: list[str]) -> None:
         super().__init__(session_factory=None)
@@ -86,10 +87,10 @@ class StructsGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="exgen-model",
@@ -103,7 +104,7 @@ class StructsGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -116,13 +117,13 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
 
 def make_client(responses: list[str]) -> TestClient:
-    tmp = Path(tempfile.mkdtemp(prefix="ca-structs-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-structs-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=StructsGateway(responses),
@@ -132,8 +133,8 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 DRAFTS = {
@@ -145,12 +146,7 @@ DRAFTS = {
 
 
 def test_validate_structural_payload_accepts_and_rejects() -> None:
-    assert (
-        validate_structural_payload(
-            "matching", json.loads(MATCHING_DRAFT)["payload"]
-        )
-        == []
-    )
+    assert validate_structural_payload("matching", json.loads(MATCHING_DRAFT)["payload"]) == []
     problems = validate_structural_payload(
         "matching", {"pairs": [{"left": "a", "right": "b"}, {"left": "a", "right": "c"}]}
     )
@@ -176,33 +172,22 @@ def test_validate_structural_payload_accepts_and_rejects() -> None:
         != []
     )
     assert (
-        validate_structural_payload("fill_blank", {"prompt_md": "no blanks", "answers": []})
-        != []
+        validate_structural_payload("fill_blank", {"prompt_md": "no blanks", "answers": []}) != []
     )
 
 
 def test_check_structural_grading() -> None:
-    ok, stage = check_structural(
-        "matching", json.loads(MATCHING_DRAFT)["payload"], [0, 1, 2, 3]
-    )
+    ok, stage = check_structural("matching", json.loads(MATCHING_DRAFT)["payload"], [0, 1, 2, 3])
     assert ok and stage == "matching: correct"
-    ok, stage = check_structural(
-        "matching", json.loads(MATCHING_DRAFT)["payload"], [0, 1, 3, 2]
-    )
+    ok, stage = check_structural("matching", json.loads(MATCHING_DRAFT)["payload"], [0, 1, 3, 2])
     assert not ok and "2/4" in stage
 
-    ok, _ = check_structural(
-        "ordering", json.loads(ORDERING_DRAFT)["payload"], [0, 1, 2, 3, 4]
-    )
+    ok, _ = check_structural("ordering", json.loads(ORDERING_DRAFT)["payload"], [0, 1, 2, 3, 4])
     assert ok
-    ok, stage = check_structural(
-        "ordering", json.loads(ORDERING_DRAFT)["payload"], [4, 3, 2, 1, 0]
-    )
+    ok, stage = check_structural("ordering", json.loads(ORDERING_DRAFT)["payload"], [4, 3, 2, 1, 0])
     assert not ok and "1/5" in stage
 
-    ok, _ = check_structural(
-        "categorize", json.loads(CATEGORIZE_DRAFT)["payload"], [0, 1, 0, 1]
-    )
+    ok, _ = check_structural("categorize", json.loads(CATEGORIZE_DRAFT)["payload"], [0, 1, 0, 1])
     assert ok
     ok, stage = check_structural(
         "categorize", json.loads(CATEGORIZE_DRAFT)["payload"], [0, 0, 0, 1]
@@ -213,16 +198,14 @@ def test_check_structural_grading() -> None:
         "fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], ["$nx^{n-1}$", "zero"]
     )
     assert ok
-    ok, _ = check_structural(
-        "fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], ["wrong", "0"]
-    )
+    ok, _ = check_structural("fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], ["wrong", "0"])
     assert not ok
 
     assert check_structural("matching", {"pairs": []}, "garbage")[0] is False
 
 
 def test_public_input_hides_answers() -> None:
-    spec = public_input("matching", json.loads(MATCHING_DRAFT)["payload"], seed=7)
+    spec = public_input("matching", json.loads(MATCHING_DRAFT)["payload"], seed="7")
     assert spec["widget"] == "matching"
     assert [entry["label"] for entry in spec["rights"]] != [
         "$2x$",
@@ -232,11 +215,11 @@ def test_public_input_hides_answers() -> None:
     ]
     assert sorted(entry["index"] for entry in spec["rights"]) == [0, 1, 2, 3]
 
-    spec = public_input("ordering", json.loads(ORDERING_DRAFT)["payload"], seed=7)
+    spec = public_input("ordering", json.loads(ORDERING_DRAFT)["payload"], seed="7")
     assert [entry["id"] for entry in spec["items"]] != [0, 1, 2, 3, 4]
     assert sorted(entry["id"] for entry in spec["items"]) == [0, 1, 2, 3, 4]
 
-    spec = public_input("fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], seed=7)
+    spec = public_input("fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], seed="7")
     assert spec["blank_count"] == 2
     assert "answers" not in spec
 
@@ -307,6 +290,7 @@ def test_generate_rejects_unknown_kind() -> None:
     )
     assert response.status_code == 422
 
+
 EXPLAIN_DRAFT = json.dumps(
     {
         "title": "Explain the chain rule",
@@ -345,9 +329,7 @@ ERROR_SPOT_DRAFT = json.dumps(
             "answers_correct": ["6*x", "2*cos(2*x)", "e**x"],
             "correct_line": "$d/dx (\\sin(2x)) = 2\\cos(2x)$",
             "requires_fix": False,
-            "rubric": [
-                {"id": "chain", "text": "the missing inner derivative factor 2"}
-            ],
+            "rubric": [{"id": "chain", "text": "the missing inner derivative factor 2"}],
         },
     }
 )
@@ -360,9 +342,7 @@ CORRECT_SOLUTION_DRAFT = json.dumps(
         "payload": {
             "prompt_md": "Fix: $d/dx (\\sin(2x)) = \\cos(2x)$",
             "fix": "2\\cos(2x)",
-            "rubric": [
-                {"id": "factor", "text": "restores the inner-derivative factor 2"}
-            ],
+            "rubric": [{"id": "factor", "text": "restores the inner-derivative factor 2"}],
         },
     }
 )
@@ -391,9 +371,7 @@ def test_validate_rubric_payload() -> None:
         payload = json.loads(draft)["payload"]
         kind = json.loads(draft)["kind"]
         assert validate_rubric_payload(kind, payload) == [], kind
-    assert (
-        validate_rubric_payload("explain", {"rubric": []}) != []
-    )
+    assert validate_rubric_payload("explain", {"rubric": []}) != []
     assert (
         validate_rubric_payload(
             "explain",
@@ -502,10 +480,7 @@ def test_rubric_generate_and_ai_graded_answer_flow() -> None:
         answer = client.post(
             f"/api/v1/exercises/sessions/{session['id']}/answer",
             json={
-                "response": (
-                    "The chain rule differentiates a composite: "
-                    "outer f' times inner g'."
-                )
+                "response": ("The chain rule differentiates a composite: outer f' times inner g'.")
             },
         )
         assert answer.status_code == 200, (kind, answer.text)

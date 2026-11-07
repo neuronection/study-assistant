@@ -26,9 +26,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
     getStudyNext: () => getStudyNext(),
     getRecommendations: () => getRecommendations(),
     listCourses: () => listCourses(),
-    courseTree: (id: number) => courseTree(id),
+    courseTree: (id: string) => courseTree(id),
     generateQuiz: (body: unknown) => generateQuiz(body),
-    createChatSession: (courseId: number, nodeId: number | null, title?: string) =>
+    createChatSession: (courseId: string, nodeId: string | null, title?: string) =>
       createChatSession(courseId, nodeId, title),
     listUpcomingItems: (days?: number) => listUpcomingItems(days),
     setDailyGoal: (body: unknown) => setDailyGoal(body),
@@ -78,7 +78,7 @@ describe('HomePage (Today screen)', () => {
   test('shows the readiness ring, trend and weakest concepts', async () => {
     getExamStatus.mockResolvedValue([
       {
-        course_id: 5,
+        course_id: '5',
         course_title: 'Calculus',
         exam_date: '2030-01-01',
         days_left: 9,
@@ -105,7 +105,7 @@ describe('HomePage (Today screen)', () => {
   test('shows the honest not-enough-data state', async () => {
     getExamStatus.mockResolvedValue([
       {
-        course_id: 5,
+        course_id: '5',
         course_title: 'Calculus',
         exam_date: '2030-01-01',
         days_left: 9,
@@ -141,8 +141,8 @@ describe('HomePage (Today screen)', () => {
     setDailyGoal.mockReset()
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -181,9 +181,9 @@ describe('HomePage (Today screen)', () => {
       review_courses: ['Calculus I'],
       plan_rows: [
         {
-          item_id: 1,
+          item_id: '1',
           title: 'Review limits',
-          course_id: 3,
+          course_id: '3',
           course_title: 'Calculus I',
           due_date: '2026-09-16',
           overdue: true,
@@ -322,14 +322,14 @@ describe('HomePage (Today screen)', () => {
         evidence: { misses: 5, n: 8, accuracy: 0.375 },
       },
     ])
-    useWorkspaceStore.setState({ courseId: 5, hydrated: true })
-    generateQuiz.mockResolvedValue({ id: 42, title: 'u-substitution', question_count: 8 })
+    useWorkspaceStore.setState({ courseId: '5', hydrated: true })
+    generateQuiz.mockResolvedValue({ id: '42', title: 'u-substitution', question_count: 8 })
     renderHome()
     const drillButton = await screen.findByRole('button', { name: /drill/i })
     fireEvent.click(drillButton)
     await waitFor(() =>
       expect(generateQuiz).toHaveBeenCalledWith({
-        course_id: 5,
+        course_id: '5',
         topic: 'u-substitution',
         skill: 'procedural',
         count: 8,
@@ -349,13 +349,13 @@ describe('HomePage (Today screen)', () => {
         evidence: { misses: 5, n: 8, accuracy: 0.375 },
       },
     ])
-    useWorkspaceStore.setState({ courseId: 5, hydrated: true })
-    createChatSession.mockResolvedValue({ id: 99, course_id: 5, node_id: null, title: 'Ask about u-substitution' })
+    useWorkspaceStore.setState({ courseId: '5', hydrated: true })
+    createChatSession.mockResolvedValue({ id: '99', course_id: '5', node_id: null, title: 'Ask about u-substitution' })
     renderHome()
     const askButton = await screen.findByRole('button', { name: /ask the tutor/i })
     fireEvent.click(askButton)
     await waitFor(() =>
-      expect(createChatSession).toHaveBeenCalledWith(5, null, 'Ask about u-substitution')
+      expect(createChatSession).toHaveBeenCalledWith('5', null, 'Ask about u-substitution')
     )
   })
 
@@ -370,15 +370,15 @@ describe('HomePage (Today screen)', () => {
       },
     ])
     listCourses.mockResolvedValue([
-      { id: 5, title: 'Calculus I', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
+      { id: '5', title: 'Calculus I', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
     ])
-    generateQuiz.mockResolvedValue({ id: 42, title: 'u-substitution', question_count: 8 })
+    generateQuiz.mockResolvedValue({ id: '42', title: 'u-substitution', question_count: 8 })
     renderHome()
     const challengeButton = await screen.findByRole('button', { name: /challenge/i })
     fireEvent.click(challengeButton)
     await waitFor(() =>
       expect(generateQuiz).toHaveBeenCalledWith(
-        expect.objectContaining({ course_id: 5, difficulty: 4 })
+        expect.objectContaining({ course_id: '5', difficulty: 4 })
       )
     )
   })
@@ -395,8 +395,8 @@ describe('HomePage (Today screen)', () => {
       },
     ])
     listCourses.mockResolvedValue([
-      { id: 5, title: 'Calculus I', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
-      { id: 6, title: 'Linear Algebra', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
+      { id: '5', title: 'Calculus I', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
+      { id: '6', title: 'Linear Algebra', subject: null, level: null, description: null, color: null, archived_at: null, material_count: 0 },
     ])
     renderHome()
     await screen.findByText(/u-substitution/)
@@ -421,8 +421,8 @@ describe('HomePage exam card', () => {
     getExamStatus.mockResolvedValue([])
     getOverview.mockResolvedValue(OVERVIEW)
     getRecommendations.mockResolvedValue([])
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -453,7 +453,7 @@ describe('HomePage exam card', () => {
   test('renders countdown, coverage and a jump to the most-behind node', async () => {
     getExamStatus.mockResolvedValue([
       {
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         exam_date: '2026-08-31',
         days_left: 10,
@@ -462,7 +462,7 @@ describe('HomePage exam card', () => {
         remaining_nodes: 3,
         nodes_per_day: 0.3,
         on_track: true,
-        most_behind_node: { id: 12, title: 'Integrals' },
+        most_behind_node: { id: '12', title: 'Integrals' },
       },
     ])
     renderHome()
@@ -476,7 +476,7 @@ describe('HomePage exam card', () => {
   test('off-track exams render the danger pace line', async () => {
     getExamStatus.mockResolvedValue([
       {
-        course_id: 4,
+        course_id: '4',
         course_title: 'Linear Algebra',
         exam_date: '2026-08-25',
         days_left: 4,
@@ -485,7 +485,7 @@ describe('HomePage exam card', () => {
         remaining_nodes: 8,
         nodes_per_day: 2.0,
         on_track: false,
-        most_behind_node: { id: 20, title: 'Eigenvalues' },
+        most_behind_node: { id: '20', title: 'Eigenvalues' },
       },
     ])
     renderHome()
@@ -516,12 +516,12 @@ describe('HomePage exam card', () => {
       },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
+      'sa-recent-nodes.default',
+      JSON.stringify([{ courseId: '3', nodeId: '5', at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -533,7 +533,7 @@ describe('HomePage exam card', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -542,7 +542,7 @@ describe('HomePage exam card', () => {
         is_root: true,
         children: [
           {
-            id: 5,
+            id: '5',
             title: 'Derivatives',
             summary: null,
             objectives: [],
@@ -564,12 +564,12 @@ describe('HomePage exam card', () => {
 
   test('continue card resolves recent nodes to live titles and breadcrumbs', async () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
+      'sa-recent-nodes.default',
+      JSON.stringify([{ courseId: '3', nodeId: '5', at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -581,7 +581,7 @@ describe('HomePage exam card', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -590,7 +590,7 @@ describe('HomePage exam card', () => {
         is_root: true,
         children: [
           {
-            id: 5,
+            id: '5',
             title: 'Derivatives',
             summary: null,
             objectives: [],
@@ -609,7 +609,7 @@ describe('HomePage exam card', () => {
     expect(screen.getByText('1 minute ago')).toBeInTheDocument()
     expect(screen.getAllByText('Calculus I').length).toBeGreaterThan(0)
     expect(screen.getByText('Continue where you left off')).toBeInTheDocument()
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     view.unmount()
   })
 
@@ -633,12 +633,12 @@ describe('HomePage exam card', () => {
     emptyView.unmount()
 
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 999, at: Date.now() - 60000 }])
+      'sa-recent-nodes.default',
+      JSON.stringify([{ courseId: '3', nodeId: '999', at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -650,7 +650,7 @@ describe('HomePage exam card', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],

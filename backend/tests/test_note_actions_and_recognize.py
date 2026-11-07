@@ -1,5 +1,6 @@
 import base64
 import time
+import uuid
 from typing import Any
 
 from fastapi import FastAPI
@@ -19,10 +20,10 @@ class ScriptedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="scripted",
@@ -36,7 +37,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -46,7 +47,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         text = self.generate(task, messages, model)
         for i in range(0, len(text), 8):
@@ -57,7 +58,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         from app.ai.gateway import StreamChunk
 
@@ -73,7 +74,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -82,7 +83,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-notes2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-notes2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ScriptedGateway(responses),
@@ -95,8 +96,8 @@ def make_client(responses: list[str]) -> TestClient:
 PNG = base64.b64encode(b"fakepng").decode()
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_recognize_returns_latex_candidates() -> None:
@@ -143,7 +144,7 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
     client = make_client([])
     with client:
         quiz = {
-            "$schema": "caq/v1",
+            "$schema": "saq/v1",
             "title": "Write quiz",
             "questions": [
                 {
@@ -165,10 +166,10 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
             params={"dry_run": "false", "course_id": make_course(client)},
             json=quiz,
         ).json()["activity"]
-        question_id = client.get(
-            f"/api/v1/quiz/activities/{activity['id']}/questions"
-        ).json()[0]["id"]
-        attempt_id = int(
+        question_id = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0][
+            "id"
+        ]
+        attempt_id = str(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
         )
         answered = client.post(
@@ -190,7 +191,7 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
 
             row = db.execute(
                 text("SELECT response, input_mode FROM answers WHERE attempt_id = :a"),
-                {"a": attempt_id},
+                {"a": uuid.UUID(attempt_id).hex},
             ).one()
         import json as jsonlib
 
@@ -203,7 +204,7 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
 def test_note_action_summarize() -> None:
     client = make_client(["Summary: the power rule gives $nx^{n-1}$."])
     with client:
-        note_id = int(
+        note_id = str(
             client.post(
                 "/api/v1/notes",
                 json={

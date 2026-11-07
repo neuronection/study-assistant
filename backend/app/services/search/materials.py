@@ -1,11 +1,14 @@
+import time
 from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from ...core.ids import hex_id, uuid_str
 from ...domain.models import MaterialLink, TreeNode
-from ...storage import vectors
+from ...services.retrieval.telemetry import record_query
+from ...storage.vector_store import StudyVectorStore, content_space_for
 from .fusion import (
     TIER_WEIGHT_EXACT,
     TIER_WEIGHT_PREFIX,
@@ -21,9 +24,7 @@ _COURSE_FILTER = "AND materials.course_id = :course_id"
 
 # snippet(material_fts, 1, '…', '…', '…', 12) twin for PostgreSQL: one
 # highlighted fragment of at most 12 words over the markdown column.
-_PG_HEADLINE_OPTIONS = (
-    "'MaxFragments=1, MaxWords=12, MinWords=1, StartSel=…, StopSel=…'"
-)
+_PG_HEADLINE_OPTIONS = "'MaxFragments=1, MaxWords=12, MinWords=1, StartSel=…, StopSel=…'"
 _PG_TRIGRAM_ORDER = "similarity(search_text, :match) DESC"
 _PG_TRIGRAM_SNIPPET = "left(material_fts_trigram.markdown, 72)"
 
@@ -32,11 +33,16 @@ def _is_postgres(session: Session) -> bool:
     return session.get_bind().dialect.name == "postgresql"
 
 
+def _material_join(table: str) -> str:
+    """Join the hex-keyed FTS twin to the UUID material row on both dialects."""
+    return f"replace(materials.id::text, '-', '') = {table}.material_id"
+
+
 def _fts_ranking(
     session: Session,
     match: Match,
     limit: int,
-    course_id: int | None = None,
+    course_id: str | None = None,
     *,
     table: str = "material_fts",
 ) -> list[dict[str, Any]]:
@@ -46,16 +52,21 @@ def _fts_ranking(
     try:
         if _is_postgres(session):
             expr = match.pg.sql
+            join = _material_join(table)
             rows = session.execute(
                 text(
                     f"SELECT {table}.material_id AS material_id, materials.title AS title, "
                     f"ts_headline('simple', {table}.markdown, ({expr}), "
                     f"{_PG_HEADLINE_OPTIONS}) AS snippet "
-                    f"FROM {table} JOIN materials ON materials.id = {table}.material_id "
+                    f"FROM {table} JOIN materials ON {join} "
                     f"WHERE {table}.tsv @@ ({expr}) {course_filter} "
                     f"ORDER BY ts_rank({table}.tsv, ({expr})) DESC LIMIT :limit"
                 ),
-                {"limit": limit, "course_id": course_id, **match.pg.params},
+                {
+                    "limit": limit,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                    **match.pg.params,
+                },
             ).mappings()
         else:
             rows = session.execute(
@@ -66,18 +77,22 @@ def _fts_ranking(
                     f"WHERE {table} MATCH :match {course_filter} "
                     "ORDER BY rank LIMIT :limit"
                 ),
-                {"match": match.fts5, "limit": limit, "course_id": course_id},
+                {
+                    "match": match.fts5,
+                    "limit": limit,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                },
             ).mappings()
     except Exception:
         return []
-    return [dict(row) for row in rows]
+    return [{**dict(row), "material_id": uuid_str(str(row["material_id"]))} for row in rows]
 
 
 def _trigram_ranking(
     session: Session,
     query: str,
     limit: int,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> list[dict[str, Any]]:
     match = trigram_match(query)
     if match.is_empty:
@@ -85,6 +100,7 @@ def _trigram_ranking(
     course_filter = _COURSE_FILTER if course_id is not None else ""
     try:
         if _is_postgres(session):
+            join = _material_join("material_fts_trigram")
             rows = session.execute(
                 text(
                     "SELECT material_fts_trigram.material_id AS material_id, "
@@ -92,11 +108,15 @@ def _trigram_ranking(
                     "material_fts_trigram.markdown AS markdown, "
                     f"{_PG_TRIGRAM_SNIPPET} AS snippet "
                     "FROM material_fts_trigram "
-                    "JOIN materials ON materials.id = material_fts_trigram.material_id "
+                    f"JOIN materials ON {join} "
                     f"WHERE {match.pg.sql} {course_filter} "
                     f"ORDER BY {_PG_TRIGRAM_ORDER} LIMIT :limit"
                 ),
-                {"limit": limit * 3, "course_id": course_id, **match.pg.params},
+                {
+                    "limit": limit * 3,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                    **match.pg.params,
+                },
             ).mappings()
         else:
             rows = session.execute(
@@ -110,7 +130,11 @@ def _trigram_ranking(
                     f"WHERE material_fts_trigram MATCH :match {course_filter} "
                     "ORDER BY rank LIMIT :limit"
                 ),
-                {"match": match.fts5, "limit": limit * 3, "course_id": course_id},
+                {
+                    "match": match.fts5,
+                    "limit": limit * 3,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                },
             ).mappings()
     except Exception:
         return []
@@ -120,7 +144,7 @@ def _trigram_ranking(
             continue
         hits.append(
             {
-                "material_id": row["material_id"],
+                "material_id": uuid_str(str(row["material_id"])),
                 "title": row["title"],
                 "snippet": row["snippet"],
             }
@@ -135,21 +159,21 @@ def _vector_ranking(
     embed_query: EmbedQuery,
     query: str,
     limit: int,
-    course_id: int | None = None,
-) -> list[dict[str, Any]]:
+    course_id: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
     try:
         embedded = embed_query(query)
         if embedded is None or not embedded[1]:
-            return []
+            return ([], "provider_unassigned")
         _model, vectors_batch = embedded
         query_vector = vectors_batch[0]
-        hits = vectors.search(session, query_vector, limit=limit)
+        hits = StudyVectorStore(session).search(query_vector, limit=limit, course_id=course_id)
     except Exception:
-        return []
+        return ([], "embed_failed")
     if not hits:
-        return []
+        return ([], None)
     chunk_ids = [chunk_id for chunk_id, _distance in hits]
-    placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
+    placeholders = ",".join(f"'{hex_id(chunk_id)}'" for chunk_id in chunk_ids)
     course_filter = _COURSE_FILTER if course_id is not None else ""
     rows = session.execute(
         text(
@@ -159,9 +183,9 @@ def _vector_ranking(
             "JOIN materials ON materials.id = extractions.material_id "
             f"WHERE chunks.id IN ({placeholders}) {course_filter}"
         ),
-        {"course_id": course_id},
+        {"course_id": hex_id(course_id) if course_id is not None else None},
     ).mappings()
-    by_chunk = {row["chunk_id"]: row for row in rows}
+    by_chunk = {uuid_str(str(row["chunk_id"])): row for row in rows}
     results: list[dict[str, Any]] = []
     for chunk_id, _distance in hits:
         row = by_chunk.get(chunk_id)
@@ -170,20 +194,20 @@ def _vector_ranking(
         excerpt = row["chunk_text"][:180].replace("\n", " ")
         results.append(
             {
-                "material_id": row["material_id"],
+                "material_id": uuid_str(str(row["material_id"])),
                 "title": row["title"],
                 "snippet": f"…{excerpt}…",
             }
         )
-    return results
+    return (results, None)
 
 
 def node_placements_for_materials(
     session: Session,
-    material_ids: Sequence[int],
+    material_ids: Sequence[str],
     cap: int = 5,
-) -> dict[int, list[dict[str, Any]]]:
-    ids = [int(material_id) for material_id in material_ids]
+) -> dict[str, list[dict[str, Any]]]:
+    ids = [str(material_id) for material_id in material_ids]
     if not ids:
         return {}
     statement = (
@@ -197,15 +221,15 @@ def node_placements_for_materials(
         .where(MaterialLink.material_id.in_(ids))
         .order_by(TreeNode.sort_path, MaterialLink.id)
     )
-    placements: dict[int, list[dict[str, Any]]] = {}
+    placements: dict[str, list[dict[str, Any]]] = {}
     for row in session.execute(statement):
-        rows = placements.setdefault(int(row.material_id), [])
+        rows = placements.setdefault(uuid_str(str(row.material_id)), [])
         if len(rows) >= cap:
             continue
         rows.append(
             {
-                "course_id": int(row.course_id),
-                "node_id": int(row.node_id),
+                "course_id": str(row.course_id),
+                "node_id": str(row.node_id),
                 "node_title": str(row.title),
             }
         )
@@ -217,16 +241,38 @@ def hybrid_search(
     query: str,
     limit: int,
     embed_query: EmbedQuery,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    started = time.monotonic()
     exact_hits = _fts_ranking(session, phrase_match(query), limit, course_id)
     rankings: list[tuple[list[dict[str, Any]], float]] = [(exact_hits, TIER_WEIGHT_EXACT)]
+    candidates = len(exact_hits)
     if len(exact_hits) < limit:
         prefix_hits = _fts_ranking(session, prefix_terms_match(query), limit, course_id)
         rankings.append((prefix_hits, TIER_WEIGHT_PREFIX))
+        candidates += len(prefix_hits)
         if len(exact_hits) + len(prefix_hits) < limit:
             fuzzy_hits = _trigram_ranking(session, query, limit, course_id)
             rankings.append((fuzzy_hits, TIER_WEIGHT_TRIGRAM))
-    vector_hits = _vector_ranking(session, embed_query, query, limit, course_id)
+            candidates += len(fuzzy_hits)
+    vector_hits, degraded_reason = _vector_ranking(session, embed_query, query, limit, course_id)
     rankings.append((vector_hits, TIER_WEIGHT_VECTOR))
-    return fuse_rrf(rankings, key="material_id", limit=limit)
+    candidates += len(vector_hits)
+    hits = fuse_rrf(rankings, key="material_id", limit=limit)
+    record_query(
+        latency_ms=max(1, int((time.monotonic() - started) * 1000)),
+        candidates=candidates,
+        zero_results=not hits,
+        kind="material",
+        space_id=_active_space_id(session),
+        degraded_reason=degraded_reason,
+    )
+    return hits
+
+
+def _active_space_id(session: Session) -> str | None:
+    try:
+        space = content_space_for(session)
+    except Exception:
+        return None
+    return space.space_id if space is not None else None

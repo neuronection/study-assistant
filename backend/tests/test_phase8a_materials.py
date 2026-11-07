@@ -18,147 +18,68 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_txt(client: TestClient, filename: str, course_id: int) -> int:
+def upload_txt(client: TestClient, filename: str, course_id: str) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, f"content of {filename}".encode(), "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
 
-def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
-    db_path = tmp_path / "legacy.db"
+def test_baseline_has_no_v1_chapter_schema(tmp_path: Path) -> None:
+    """The outline tree is the only structure — v1 tables never exist.
+
+    `chapters`/`sections`/`section_materials` were replaced by
+    `tree_nodes` + `material_links`, and `material_groups` was retired
+    (plan 81 E). The squash (plan 81 F) drops them from the baseline
+    instead of replaying their create-then-migrate history.
+    """
+    db_path = tmp_path / "baseline.db"
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(alembic_cfg, "0013_skills")
+    command.upgrade(alembic_cfg, "head")
 
     import sqlite3
 
     raw = sqlite3.connect(db_path)
-    now = "2026-08-19 10:00:00+00:00"
-    raw.execute(
-        "INSERT INTO profiles (id, name, created_at) VALUES (1, 'legacy', ?)", (now,)
-    )
-    raw.execute(
-        "INSERT INTO courses (id, profile_id, title, created_at, updated_at) "
-        "VALUES (10, 1, 'Real course', ?, ?)",
-        (now, now),
-    )
-    raw.execute(
-        "INSERT INTO chapters (id, course_id, title, order_idx, created_at) "
-        "VALUES (20, 10, 'Chapter', 0, ?)",
-        (now,),
-    )
-    raw.execute(
-        "INSERT INTO sections (id, chapter_id, title, order_idx, created_at) "
-        "VALUES (30, 20, 'Section', 0, ?)",
-        (now,),
-    )
-    raw.execute(
-        "INSERT INTO blobs (sha256, rel_path, size, created_at) VALUES "
-        "('aa11', 'aa/11/aa11', 4, ?), ('bb22', 'bb/22/bb22', 4, ?)",
-        (now, now),
-    )
-    raw.execute(
-        "INSERT INTO materials (id, profile_id, course_id, kind, title, blob_sha, filename, "
-        "status, content_hash, created_at) VALUES "
-        "(100, 1, 10, 'txt', 'owned', 'aa11', 'owned.txt', 'ready', 'aa11', ?), "
-        "(101, 1, NULL, 'txt', 'orphan', 'bb22', 'orphan.txt', 'ready', 'bb22', ?)",
-        (now, now),
-    )
-    raw.execute(
-        "INSERT INTO material_folders (id, profile_id, parent_id, name, path, created_at) VALUES "
-        "(40, 1, NULL, 'single', 'single', ?), "
-        "(45, 1, NULL, 'mixed', 'mixed', ?)",
-        (now, now),
-    )
-    raw.execute("UPDATE materials SET folder_id = 40 WHERE id = 100")
-    raw.execute("UPDATE materials SET folder_id = 45 WHERE id = 101")
-    raw.execute(
-        "INSERT INTO material_sources (id, profile_id, label, path, recursive, include_globs, "
-        "course_id, enabled, created_at) VALUES (50, 1, 'src', '/tmp', 1, NULL, NULL, 1, ?)",
-        (now,),
-    )
-    raw.execute(
-        "INSERT INTO section_materials (section_id, material_id, rationale, auto_assigned) "
-        "VALUES (30, 100, 'legacy allocation', 1)"
-    )
-    raw.commit()
-    raw.close()
-
-    command.upgrade(alembic_cfg, "0065_identity_core")
-
-    raw = sqlite3.connect(db_path)
-    cur = raw.cursor()
-    assert (
-        cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0065_identity_core"
-    )
-    unsorted_id = cur.execute(
-        "SELECT id FROM courses WHERE title = 'Unsorted' AND profile_id = 1"
-    ).fetchone()
-    assert unsorted_id is not None
-    unsorted_id = unsorted_id[0]
-    assert (
-        cur.execute("SELECT course_id FROM materials WHERE id = 101").fetchone()[0]
-        == unsorted_id
-    )
-    assert cur.execute("SELECT course_id FROM materials WHERE id = 100").fetchone()[0] == 10
-    assert cur.execute("SELECT course_id FROM material_folders WHERE id = 40").fetchone()[0] == 10
-    assert (
-        cur.execute("SELECT course_id FROM material_folders WHERE id = 45").fetchone()[0]
-        == unsorted_id
-    )
-    assert (
-        cur.execute("SELECT course_id FROM material_sources WHERE id = 50").fetchone()[0]
-        == unsorted_id
-    )
-    tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert "section_materials" not in tables
-    assert "chapters" not in tables
-    assert "sections" not in tables
-    nodes = cur.execute(
-        "SELECT id, parent_id, depth, is_root, title FROM tree_nodes WHERE course_id = 10 "
-        "ORDER BY depth, id"
-    ).fetchall()
-    root = next(row for row in nodes if row[3] == 1)
-    chapter_node = next(row for row in nodes if row[4] == "Chapter")
-    section_node = next(row for row in nodes if row[4] == "Section")
-    assert root[2] == 0 and chapter_node[2] == 1 and section_node[2] == 2
-    assert chapter_node[1] == root[0] and section_node[1] == chapter_node[0]
-    links = cur.execute(
-        "SELECT course_id, node_id, material_id, rationale FROM material_links"
-    ).fetchall()
-    assert links == [(10, section_node[0], 100, "legacy allocation")]
+    tables = {row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    for v1 in ("chapters", "sections", "section_materials", "material_groups"):
+        assert v1 not in tables
+    assert {"tree_nodes", "material_links", "material_folders"} <= tables
+    material_columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)")}
+    assert "group_id" not in material_columns
+    link_columns = {row[1] for row in raw.execute("PRAGMA table_info(material_links)")}
+    assert {"course_id", "node_id", "material_id", "rationale"} <= link_columns
     raw.close()
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     assert tree and tree[0]["is_root"] is True
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
 def test_assign_material_at_all_scopes(client: TestClient) -> None:
@@ -184,9 +105,7 @@ def test_assign_material_at_all_scopes(client: TestClient) -> None:
     )
     assert section_link.status_code == 201
 
-    cross = client.post(
-        f"/api/v1/nodes/{section_id}/materials", json={"material_id": foreign_id}
-    )
+    cross = client.post(f"/api/v1/nodes/{section_id}/materials", json={"material_id": foreign_id})
     assert cross.status_code == 422
     assert "material not in this course" in cross.json()["detail"]
 
@@ -253,7 +172,7 @@ def test_outline_commit_allocates_via_links(client: TestClient) -> None:
 
 
 CAQ_SINGLE: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Purge probe",
     "questions": [
         {
@@ -275,9 +194,7 @@ CAQ_SINGLE: dict[str, Any] = {
 def test_delete_course_purges_content(client: TestClient) -> None:
     course_id = make_course(client, "Doomed")
     material_id = upload_txt(client, "doomed.txt", course_id)
-    folder = client.post(
-        "/api/v1/folders", json={"name": "Doomed folder", "course_id": course_id}
-    )
+    folder = client.post("/api/v1/folders", json={"name": "Doomed folder", "course_id": course_id})
     assert folder.status_code == 201
     root = root_node(client, course_id)
     chapter_id = make_node(client, course_id, root, "Ch")
@@ -293,9 +210,7 @@ def test_delete_course_purges_content(client: TestClient) -> None:
     session = client.post("/api/v1/chat/sessions", json={"course_id": course_id})
     assert session.status_code == 201
 
-    deleted = client.delete(
-        f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-    )
+    deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
     assert deleted.status_code == 200
 
     assert client.get(f"/api/v1/materials/{material_id}").status_code == 404
@@ -381,9 +296,7 @@ def test_unfiled_listing_and_material_links_endpoint(client: TestClient) -> None
     assert loose_id in unfiled_ids
     assert filed_id in unfiled_ids
 
-    folder = client.post(
-        "/api/v1/folders", json={"name": "Box", "course_id": course_id}
-    ).json()
+    folder = client.post("/api/v1/folders", json={"name": "Box", "course_id": course_id}).json()
     filed = client.post(
         "/api/v1/materials",
         params={"course_id": course_id, "folder_id": folder["id"]},

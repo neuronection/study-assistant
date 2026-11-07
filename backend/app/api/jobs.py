@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from typing import Any, cast
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -17,14 +19,14 @@ JOB_STATUSES = frozenset(status.value for status in JobStatus)
 
 
 class JobOut(BaseModel):
-    id: int
+    id: str
     type: str
     status: JobStatus
     progress: int
     stage: str | None
     error: str | None
     label: str
-    material_id: int | None
+    material_id: str | None
     retriable: bool
     stale: bool = False
     created_at: str | None
@@ -60,7 +62,7 @@ def _iso(value: Any) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def _material_label(session: Session, payload: dict[str, Any] | None) -> str | None:
+def _material_label(session: Session, payload: Mapping[str, Any] | None) -> str | None:
     material_id = _material_id(payload)
     if material_id is None:
         return None
@@ -70,39 +72,32 @@ def _material_label(session: Session, payload: dict[str, Any] | None) -> str | N
     return material.filename or f"Material #{material.id}"
 
 
-def _material_id(payload: dict[str, Any] | None) -> int | None:
+def _payload_uuid(payload: Mapping[str, Any] | None, key: str) -> str | None:
     if not payload:
         return None
-    material_id = payload.get("material_id")
-    if material_id is None:
-        return None
-    try:
-        return int(material_id)
-    except (TypeError, ValueError):
-        return None
-
-
-def _chat_session_id(payload: dict[str, Any] | None) -> int | None:
-    if not payload:
-        return None
-    value = payload.get("chat_session_id")
+    value = payload.get(key)
     if value is None:
         return None
     try:
-        return int(value)
+        UUID(str(value))
     except (TypeError, ValueError):
         return None
+    return str(value)
 
 
-def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
+def _material_id(payload: Mapping[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "material_id")
+
+
+def _chat_session_id(payload: Mapping[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "chat_session_id")
+
+
+def _note_label(session: Session, payload: Mapping[str, Any] | None) -> str | None:
     if not payload:
         return None
-    value = payload.get("note_id")
-    if value is None:
-        return None
-    try:
-        note_id = int(value)
-    except (TypeError, ValueError):
+    note_id = _payload_uuid(payload, "note_id")
+    if note_id is None:
         return None
     note = session.get(Note, note_id)
     if note is None:
@@ -110,22 +105,14 @@ def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
     return note.title
 
 
-def _note_id(payload: dict[str, Any] | None) -> int | None:
-    if not payload:
-        return None
-    value = payload.get("note_id")
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+def _note_id(payload: Mapping[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "note_id")
 
 
-def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[int]:
-    material_ids: set[int] = set()
-    chat_ids: set[int] = set()
-    note_ids: set[int] = set()
+def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[str]:
+    material_ids: set[str] = set()
+    chat_ids: set[str] = set()
+    note_ids: set[str] = set()
     for job in jobs:
         material_id = _material_id(job.payload)
         if material_id is not None:
@@ -136,34 +123,27 @@ def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[i
         note_id = _note_id(job.payload)
         if note_id is not None:
             note_ids.add(note_id)
-    stale: set[int] = set()
+    stale: set[str] = set()
     if material_ids:
-        found = set(
-            session.scalars(select(Material.id).where(Material.id.in_(material_ids)))
-        )
+        found = set(session.scalars(select(Material.id).where(Material.id.in_(material_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (material_id := _material_id(job.payload)) is not None
-            and material_id not in found
+            if (material_id := _material_id(job.payload)) is not None and material_id not in found
         )
     if chat_ids:
-        found = set(
-            session.scalars(select(ChatSession.id).where(ChatSession.id.in_(chat_ids)))
-        )
+        found = set(session.scalars(select(ChatSession.id).where(ChatSession.id.in_(chat_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (chat_id := _chat_session_id(job.payload)) is not None
-            and chat_id not in found
+            if (chat_id := _chat_session_id(job.payload)) is not None and chat_id not in found
         )
     if note_ids:
         found = set(session.scalars(select(Note.id).where(Note.id.in_(note_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (note_id := _note_id(job.payload)) is not None
-            and note_id not in found
+            if (note_id := _note_id(job.payload)) is not None and note_id not in found
         )
     return stale
 
@@ -172,7 +152,7 @@ def _to_out(
     session: Session,
     job: Job,
     retriable_types: frozenset[str] | set[str],
-    stale_ids: set[int] | None = None,
+    stale_ids: set[str] | None = None,
 ) -> JobOut:
     retriable = (
         job.status == "failed"
@@ -217,7 +197,9 @@ def list_jobs(
 ) -> list[JobOut]:
     if status is not None and status not in JOB_STATUSES:
         raise HTTPException(status_code=422, detail="unknown job status")
-    query = select(Job).order_by(Job.id.desc()).limit(max(1, min(limit, 500)))
+    query = (
+        select(Job).order_by(Job.created_at.desc(), Job.id.desc()).limit(max(1, min(limit, 500)))
+    )
     if status is not None:
         query = query.where(Job.status == status)
     if type is not None:
@@ -229,12 +211,8 @@ def list_jobs(
 
 
 @router.get("/summary")
-def jobs_summary(
-    request: Request, session: Session = Depends(get_session)
-) -> JobsSummary:
-    rows = session.execute(
-        select(Job.status, func.count(Job.id)).group_by(Job.status)
-    ).all()
+def jobs_summary(request: Request, session: Session = Depends(get_session)) -> JobsSummary:
+    rows = session.execute(select(Job.status, func.count(Job.id)).group_by(Job.status)).all()
     counts: dict[str, int] = {str(status): int(count) for status, count in rows}
     retriable_types = request.app.state.jobs.retriable_handlers()
     failed_jobs = list(session.scalars(select(Job).where(Job.status == JobStatus.FAILED)))
@@ -259,14 +237,13 @@ def jobs_summary(
 def job_types(request: Request) -> list[JobTypeOut]:
     retriable_types = request.app.state.jobs.retriable_handlers()
     return [
-        JobTypeOut(type=entry, label=entry.replace("_", " "))
-        for entry in sorted(retriable_types)
+        JobTypeOut(type=entry, label=entry.replace("_", " ")) for entry in sorted(retriable_types)
     ]
 
 
 @router.get("/{job_id}")
 def get_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -279,7 +256,7 @@ def get_job(
 
 @router.post("/{job_id}/cancel")
 def cancel_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -301,9 +278,7 @@ def cancel_job(
         session.commit()
         if not int(cast(Any, claimed).rowcount or 0):
             raise HTTPException(status_code=409, detail="job already started")
-        request.app.state.jobs.publish_progress(
-            job_id, 0, "cancelled", "cancelled"
-        )
+        request.app.state.jobs.publish_progress(job_id, 0, "cancelled", "cancelled")
     else:
         request_cancel(job_id)
     retriable_types = request.app.state.jobs.retriable_handlers()
@@ -313,7 +288,7 @@ def cancel_job(
 
 @router.post("/{job_id}/retry")
 def retry_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -322,13 +297,9 @@ def retry_job(
         raise HTTPException(status_code=404, detail="job not found")
     retriable_types = request.app.state.jobs.retriable_handlers()
     if job.status != JobStatus.FAILED:
-        raise HTTPException(
-            status_code=422, detail="only failed jobs can be retried"
-        )
+        raise HTTPException(status_code=422, detail="only failed jobs can be retried")
     if job.type in NON_RETRYABLE_TYPES or job.type not in retriable_types:
-        raise HTTPException(
-            status_code=422, detail=f"job type '{job.type}' cannot be retried"
-        )
+        raise HTTPException(status_code=422, detail=f"job type '{job.type}' cannot be retried")
     _reset(job)
     session.commit()
     request.app.state.jobs.publish_progress(job_id, 0, "queued", "queued")
@@ -392,7 +363,7 @@ def delete_failed_jobs(
 
 @router.delete("/{job_id}", status_code=204)
 def delete_job(
-    job_id: int,
+    job_id: str,
     session: Session = Depends(get_session),
 ) -> None:
     job = session.get(Job, job_id)

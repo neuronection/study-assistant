@@ -163,9 +163,7 @@ def test_seeder_seeds_demo_workspace_idempotently_only_in_the_demo_instance(
 
     connection = sqlite3.connect(demo_dir / "study.sqlite3")
     try:
-        emails = {
-            row[0] for row in connection.execute("SELECT email FROM users")
-        }
+        emails = {row[0] for row in connection.execute("SELECT email FROM users")}
         assert emails == {
             f"ava.lindqvist{SEED_DOMAIN}",
             f"marco.ferreira{SEED_DOMAIN}",
@@ -205,6 +203,9 @@ def test_instance_config_is_public_and_profile_exempt(raw_client: TestClient) ->
         "demo_mode": False,
         "auth_mode": "authenticated",
         "registration_enabled": True,
+        # §4 entrypoint mode is public fact — the §4.5 control blocks
+        # "Remove login" on server instances (S14).
+        "identity_mode": "server",
     }
 
 
@@ -261,7 +262,5 @@ def test_demo_token_rejected_on_non_demo_instance(tmp_path: Path) -> None:
     )
     access_name = cookie_names(kit.config).access
     with AnonymousTestClient(app) as anonymous:
-        response = anonymous.get(
-            "/api/v1/auth/me", headers={"Cookie": f"{access_name}={token}"}
-        )
+        response = anonymous.get("/api/v1/auth/me", headers={"Cookie": f"{access_name}={token}"})
     assert response.status_code == 401

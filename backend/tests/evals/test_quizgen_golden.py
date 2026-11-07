@@ -19,16 +19,14 @@ def test_quizgen_validation_golden_set() -> None:
     for case in golden["cases"]:
         problems = validate_question(case["draft"], 0)
         if problems != case["expect_problems"]:
-            failures.append(
-                f"{case['name']}: expected {case['expect_problems']}, got {problems}"
-            )
+            failures.append(f"{case['name']}: expected {case['expect_problems']}, got {problems}")
     assert not failures, "golden drift:\n" + "\n".join(failures)
 
 
 def test_golden_covers_every_question_type() -> None:
     golden = load_golden()
     covered = {case["draft"].get("type") for case in golden["cases"]}
-    from app.core.vocab import QUESTION_TYPES
+    from app.core.vocab import QuestionType
 
-    missing = set(QUESTION_TYPES) - covered
+    missing = set(QuestionType.values()) - covered
     assert not missing, f"golden set never exercises: {sorted(missing)}"

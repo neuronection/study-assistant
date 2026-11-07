@@ -5,6 +5,12 @@ from .chat import (
     ChatProposal as ChatProposal,
 )
 from .chat import (
+    ChatProposalAnchor as ChatProposalAnchor,
+)
+from .chat import (
+    ChatQuizPending as ChatQuizPending,
+)
+from .chat import (
     ChatSession as ChatSession,
 )
 from .chat import (
@@ -24,6 +30,9 @@ from .content import (
 )
 from .content import (
     ConceptLink as ConceptLink,
+)
+from .content import (
+    ExternalReviewEvent as ExternalReviewEvent,
 )
 from .content import (
     ExternalSource as ExternalSource,
@@ -71,6 +80,9 @@ from .content import (
     NoteDrawing as NoteDrawing,
 )
 from .content import (
+    NoteLink as NoteLink,
+)
+from .content import (
     NoteVersion as NoteVersion,
 )
 from .core import JSON as JSON
@@ -89,7 +101,6 @@ from .core import ForeignKeyConstraint as ForeignKeyConstraint
 from .core import Index as Index
 from .core import Integer as Integer
 from .core import Mapped as Mapped
-from .core import MaterialGroup as MaterialGroup
 from .core import Profile as Profile
 from .core import String as String
 from .core import Text as Text
@@ -98,6 +109,7 @@ from .core import UniqueConstraint as UniqueConstraint
 from .core import date as date
 from .core import datetime as datetime
 from .core import mapped_column as mapped_column
+from .core import new_uuid as new_uuid
 from .core import relationship as relationship
 from .core import text as text
 from .core import utcnow as utcnow
@@ -113,6 +125,12 @@ from .identity import (
 )
 from .identity import (
     User as User,
+)
+from .notifications import (
+    Notification as Notification,
+)
+from .notifications import (
+    NotificationKindRow as NotificationKindRow,
 )
 from .ops import (
     AiInteraction as AiInteraction,
@@ -162,6 +180,21 @@ from .ops import (
 from .ops import (
     TaskAssignment as TaskAssignment,
 )
+from .retrieval import (
+    RetrievalCoverageSnapshot as RetrievalCoverageSnapshot,
+)
+from .retrieval import (
+    RetrievalQueryRollup as RetrievalQueryRollup,
+)
+from .retrieval import (
+    VectorDocument as VectorDocument,
+)
+from .retrieval import (
+    VectorRecord as VectorRecord,
+)
+from .retrieval import (
+    VectorSpace as VectorSpace,
+)
 from .study import (
     Activity as Activity,
 )
@@ -170,6 +203,12 @@ from .study import (
 )
 from .study import (
     Attempt as Attempt,
+)
+from .study import (
+    CalendarEventLink as CalendarEventLink,
+)
+from .study import (
+    CalendarLink as CalendarLink,
 )
 from .study import (
     ErrorPattern as ErrorPattern,

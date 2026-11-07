@@ -44,9 +44,9 @@ function renderLauncher(onClose: () => void = () => undefined) {
   return render(
     <QueryClientProvider client={client}>
       <StudyLauncherDialog
-        courseId={3}
-        nodeId={5}
-        rootNodeId={1}
+        courseId="3"
+        nodeId="5"
+        rootNodeId="1"
         onClose={onClose}
         onNoteCreated={() => undefined}
       />
@@ -89,7 +89,7 @@ describe('StudyLauncherDialog', () => {
     fireEvent.click(screen.getByText('Quiz'))
     expect(screen.getByTestId('generate-dialog')).toHaveAttribute('data-task', 'quiz')
     expect(generateDialog).toHaveBeenCalledWith(
-      expect.objectContaining({ courseId: 3, scopeNodeId: 5, rootNodeId: 1 })
+      expect.objectContaining({ courseId: '3', scopeNodeId: '5', rootNodeId: '1' })
     )
   })
 
@@ -105,7 +105,7 @@ describe('StudyLauncherDialog', () => {
     fireEvent.click(screen.getByText('Write a note'))
     expect(screen.getByTestId('note-compose-dialog')).toBeInTheDocument()
     expect(noteComposeDialog).toHaveBeenCalledWith(
-      expect.objectContaining({ courseId: 3, nodeId: 5, rootNodeId: 1 })
+      expect.objectContaining({ courseId: '3', nodeId: '5', rootNodeId: '1' })
     )
   })
 })

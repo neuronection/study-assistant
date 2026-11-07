@@ -32,7 +32,7 @@ class Message:
 
 @dataclass(frozen=True)
 class ResolvedModel:
-    provider_id: int
+    provider_id: str
     provider_type: str
     base_url: str
     external_id: str
@@ -44,6 +44,7 @@ class ResolvedModel:
     reasoning_effort: str | None = None
     temperature: float | None = None
     max_tokens: int | None = None
+    chat_transport: str | None = None
 
 
 @dataclass(frozen=True)

@@ -1,12 +1,12 @@
 # Import and export formats
 
 Study Assistant exchanges data through a small family of documented formats: the
-`caq/v1` quiz format, `ca-course/v2` course bundles and `ca-skills/v1` skill
-packs, alongside Anki `.apkg` decks and full `ca-backup/v1` archives. Imports
+`saq/v1` quiz format, `sa-course/v2` course bundles and `sa-skills/v1` skill
+packs, alongside Anki `.apkg` decks and full `sa-backup/v1` archives. Imports
 run through the **same validators as generated content** — external output is
 never trusted, validators decide.
 
-## Quiz interchange format — `caq/v1`
+## Quiz interchange format — `saq/v1`
 
 `caq` is the single-file JSON format for sharing quizzes and for authoring them
 with external AI assistants.
@@ -15,7 +15,7 @@ with external AI assistants.
 
 ```jsonc
 {
-  "$schema": "caq/v1",
+  "$schema": "saq/v1",
   "title": "Chain Rule — Practice Set",
   "questions": [ /* 1–50 question objects */ ]
 }
@@ -75,7 +75,7 @@ agent self-serve `schema.json`.
 
 ---
 
-## Course bundles — `ca-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
+## Course bundles — `sa-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
 
 Whole-course sharing without personal data by default — a classmate (or
 next-semester you) receives the *content*: materials with their extractions,
@@ -83,7 +83,7 @@ notes, tree, concepts, quizzes, exercises, **flashcards with their FSRS
 schedules (v2)**, **exam date (v2)**, and **discovered error patterns (v2)**.
 Attempts/answers and note version history stay behind explicit opt-in flags;
 mistakes, analytics, chats and read-status **never travel** — that is what
-`ca-backup/v1` (Settings → Data) is for. The exporter emits v2 only; the
+`sa-backup/v1` (Settings → Data) is for. The exporter emits v2 only; the
 importer accepts **v1 and v2** (v1 → v2 defaults: no card schedules, no exam
 date, no history).
 
@@ -123,7 +123,7 @@ without extraction). Commit always **imports as a new course** with full id
 remapping: tree paths rebuilt natively via the tree service, concept ids
 remapped into question tags, extractions written directly and re-chunked with
 FTS rebuild (**no re-OCR**). **Material drawings** are recreated as new
-rows and their `ca-drawing://{old}` refs are remapped to the fresh ids in both
+rows and their `sa-drawing://{old}` refs are remapped to the fresh ids in both
 the extraction markdown and blocks (their OCR joins the imported FTS). Title
 collision → "… (imported)".
 
@@ -140,7 +140,7 @@ re-importing it on a fresh machine produces a byte-identical bundle
 
 ```
 GET  /api/v1/courses/{id}/export[?include_history=true][&include_note_versions=true]
-                                              → ca-course/v2 zip download (v2 only)
+                                              → sa-course/v2 zip download (v2 only)
 POST /api/v1/courses/import?dry_run=true|false  body: zip (v1 + v2) → {imported:{postprocess_job_ids}}
 ```
 
@@ -148,7 +148,7 @@ UI: Courses page — **Export** link on each course card, **Import course** with
 dry-run preview → confirm → opens the imported workspace (postprocess progress
 in the activity rail).
 
-## Skill packs — `ca-skills/v1` (plan 50 B, ADR-110)
+## Skill packs — `sa-skills/v1` (plan 50 B, ADR-110)
 
 Custom skill prompts travel as plain JSON: **skill definitions (task/key/name/
 description) + their full system-scope version history** (templates, params,
@@ -160,7 +160,7 @@ by construction.
 
 ```json
 {
-  "format": "ca-skills/v1",
+  "format": "sa-skills/v1",
   "exported_at": "<iso>",
   "skills": [
     {

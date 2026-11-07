@@ -22,6 +22,7 @@ import {
   Plus,
   Search,
   Settings,
+  Download,
   X,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -32,6 +33,7 @@ import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { FileDock, fileDockOpen } from './FileDock'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
+import { loadUpdateCheck } from './UpdateBadge'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
@@ -45,7 +47,7 @@ import { useThemePreference } from '@/components/theme/use-theme-preference'
 import { UserMenu } from '@/components/ui/user-menu'
 import { Popover } from '@/components/ui/popover'
 import { SidebarNav } from '@/components/ui/sidebar-nav'
-import { ChatPanel } from '@/features/chat/ChatPanel'
+import { StudyChatPanel } from '@/features/chat/StudyChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
@@ -156,18 +158,18 @@ function CourseSwitcher({
   onPick,
 }: {
   courses: Course[]
-  courseId: number | null
+  courseId: string | null
   selectLabel: string
   allLabel: string
   manageLabel: string
   searchLabel: string
   emptyLabel: string
   label: string
-  onPick: (courseId: number | null) => void
+  onPick: (courseId: string | null) => void
 }) {
   const [closeSignal, setCloseSignal] = useState(0)
   const [query, setQuery] = useState('')
-  const pick = (nextId: number | null) => {
+  const pick = (nextId: string | null) => {
     setCloseSignal((current) => current + 1)
     onPick(nextId)
   }
@@ -316,7 +318,7 @@ function AppLogo() {
         aria-hidden
       >
         <defs>
-          <linearGradient id="ca-logo-grad" x1="0" y1="0" x2="32" y2="32">
+          <linearGradient id="sa-logo-grad" x1="0" y1="0" x2="32" y2="32">
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#8b5cf6" />
           </linearGradient>
@@ -347,9 +349,9 @@ export function AppShell() {
   const queryClient = useQueryClient()
   const params = useParams({ strict: false }) as { courseId?: string; nodeId?: string }
   const workspaceSearch = useSearch({ strict: false }) as {
-    material?: number
-    note?: number
-    study?: number | 'new'
+    material?: string
+    note?: string
+    study?: string
   }
   const fileOpen = fileDockOpen(workspaceSearch)
   const rail = useRailLayout(fileOpen)
@@ -375,6 +377,19 @@ export function AppShell() {
   const user = getCurrentUser()
   const [theme, setTheme] = useThemePreference()
   const [demoMode, setDemoMode] = useState(false)
+  const [updateCheck, setUpdateCheck] = useState<Awaited<
+    ReturnType<typeof loadUpdateCheck>
+  >>(null)
+  useEffect(() => {
+    let alive = true
+    void loadUpdateCheck().then((value) => {
+      if (alive) setUpdateCheck(value)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const canSeeUpdateRow = Boolean(getCurrentUser()?.is_admin)
   useEffect(() => {
     let alive = true
     void loadDemoMode().then((value) => {
@@ -471,7 +486,7 @@ export function AppShell() {
     }
   }, [courses.data, courseId, setCourse])
 
-  const openCourse = async (targetId: number | null) => {
+  const openCourse = async (targetId: string | null) => {
     if (targetId !== courseId) {
       setCourse(targetId)
       await queryClient.invalidateQueries()
@@ -660,10 +675,24 @@ export function AppShell() {
                 items={[
                   { id: 'settings', label: t('nav.settings'), icon: Settings },
                   { id: 'about', label: t('nav.about'), icon: Info },
+                  ...(canSeeUpdateRow &&
+                  updateCheck?.update_available &&
+                  updateCheck.latest_version
+                    ? [
+                        {
+                          id: 'update',
+                          label: t('update.releaseNotes'),
+                          icon: Download,
+                        },
+                      ]
+                    : []),
                 ]}
                 onItemSelect={(id) => {
                   if (id === 'settings') void navigate({ to: '/settings' })
                   if (id === 'about') void navigate({ to: '/about' })
+                  if (id === 'update' && updateCheck) {
+                    window.open(updateCheck.release_url, '_blank', 'noreferrer')
+                  }
                 }}
                 onLogout={() => void logoutSession()}
                 logoutLabel={t('auth.signOut')}
@@ -711,7 +740,7 @@ export function AppShell() {
       <FileDock />
       {chatOpen && !rail.chatDeferred ? (
         <StudyChatProvider sessionId={sessionId ?? chatSession?.id ?? null}>
-          <ChatPanel
+          <StudyChatPanel
             layoutWidth={rail.chatWidth ?? undefined}
             onSessionCreated={adoptSidebarSession}
             onSelectSession={adoptSidebarSession}

@@ -8,12 +8,10 @@ from app.ai.gateway import LLMGateway
 from app.ai.mentions import MentionRegistry
 from app.domain.models import ChatMessage, ChatSession, Course, Profile
 from app.services.knowledge.tree import TreeService
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 
 
-def build_course(
-    db_session: Session, owner: Any, title: str = "Calculus I"
-) -> tuple[Course, Any]:
+def build_course(db_session: Session, owner: Any, title: str = "Calculus I") -> tuple[Course, Any]:
     profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
@@ -24,7 +22,7 @@ def build_course(
 
 
 def make_session(
-    db_session: Session, profile: Any, course: Course, node_id: int | None
+    db_session: Session, profile: Any, course: Course, node_id: str | None
 ) -> ChatSession:
     session_row = ChatSession(
         profile_id=profile.id,
@@ -38,16 +36,14 @@ def make_session(
         ChatMessage(
             session_id=session_row.id,
             role="user",
-            blocks=[{"type": "md", "md": "hello"}],
+            blocks=[{"type": "text", "md": "hello"}],
         )
     )
     db_session.commit()
     return session_row
 
 
-def test_structure_block_renders_neighborhood(
-    db_session: Session, owner: Any
-) -> None:
+def test_structure_block_renders_neighborhood(db_session: Session, owner: Any) -> None:
     course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
@@ -78,9 +74,7 @@ def test_structure_block_renders_neighborhood(
     assert base is not None and base.summary == "Integration by parts"
 
 
-def test_structure_block_course_level_lists_chapters(
-    db_session: Session, owner: Any
-) -> None:
+def test_structure_block_course_level_lists_chapters(db_session: Session, owner: Any) -> None:
     course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
@@ -97,9 +91,7 @@ def test_structure_block_course_level_lists_chapters(
     assert registry.get(f"T{chapter.id}") is not None
 
 
-def test_structure_group_cap_trims_with_marker(
-    db_session: Session, owner: Any
-) -> None:
+def test_structure_group_cap_trims_with_marker(db_session: Session, owner: Any) -> None:
     course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
@@ -135,16 +127,14 @@ def test_leaf_node_omits_children_group(db_session: Session, owner: Any) -> None
 
 def test_registry_add_enriches_missing_summary() -> None:
     registry = MentionRegistry()
-    registry.add("node", 5, "Chapter", 1)
-    enriched = registry.add("node", 5, "Chapter", 1, "Techniques")
+    registry.add("node", "5", "Chapter", "1")
+    enriched = registry.add("node", "5", "Chapter", "1", "Techniques")
     assert enriched.summary == "Techniques"
-    again = registry.add("node", 5, "Chapter", 1)
+    again = registry.add("node", "5", "Chapter", "1")
     assert again.summary == "Techniques"
 
 
-def test_prepared_sources_block_starts_with_structure(
-    db_session: Session, owner: Any
-) -> None:
+def test_prepared_sources_block_starts_with_structure(db_session: Session, owner: Any) -> None:
     course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
@@ -160,7 +150,7 @@ def test_prepared_sources_block_starts_with_structure(
     prep = service.prepare_turn_context(session_row, user_message)
     assert prep.sources_block.startswith("Course structure")
     assert "Location: Calculus I > Derivatives" in prep.sources_block
-    assert "T2 = Derivatives — Rates of change" in prep.sources_block
+    assert f"T{chapter.id} = Derivatives — Rates of change" in prep.sources_block
 
 
 class NoGateway(LLMGateway):
@@ -169,13 +159,11 @@ class NoGateway(LLMGateway):
     def __init__(self) -> None:
         super().__init__(session_factory=None)
 
-    def resolve(self, task: str, course_id: int | None = None) -> Any:
+    def resolve(self, task: str, course_id: str | None = None) -> Any:
         raise AssertionError("gateway must not be used while building structure context")
 
 
-def test_read_node_registers_children_and_materials(
-    db_session: Session, owner: Any
-) -> None:
+def test_read_node_registers_children_and_materials(db_session: Session, owner: Any) -> None:
     from app.domain.models import (
         Material,
         MaterialLink,
@@ -196,9 +184,7 @@ def test_read_node_registers_children_and_materials(
     )
     db_session.add(material)
     db_session.flush()
-    db_session.add(
-        MaterialLink(course_id=course.id, node_id=chapter.id, material_id=material.id)
-    )
+    db_session.add(MaterialLink(course_id=course.id, node_id=chapter.id, material_id=material.id))
     db_session.commit()
 
     make_session(db_session, profile, course, chapter.id)

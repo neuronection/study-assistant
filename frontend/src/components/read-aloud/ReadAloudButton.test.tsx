@@ -28,7 +28,7 @@ describe('stripMathForSpeech', () => {
   })
 
   test('replaces links and images with their labels', () => {
-    const text = stripMathForSpeech('![diagram](ca-drawing://1) see [docs](http://x)')
+    const text = stripMathForSpeech('![diagram](sa-drawing://1) see [docs](http://x)')
     expect(text).toContain('diagram')
     expect(text).toContain('docs')
     expect(text).not.toContain('http://x')
@@ -70,7 +70,7 @@ describe('ReadAloudButton', () => {
 
   beforeEach(() => {
     mockDefaults.mockReset()
-    mockDefaults.mockResolvedValue([{ requires: 'text', model_id: 1 }])
+    mockDefaults.mockResolvedValue([{ requires: 'text', model_id: '1' }])
     speechSynthesis = {
       getVoices: vi.fn(() => [{ name: 'Voice' }]),
       cancel: vi.fn(),

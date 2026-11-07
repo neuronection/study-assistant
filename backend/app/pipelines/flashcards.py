@@ -9,6 +9,7 @@ from ..ai.parsing import blocks_to_md
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import FLASHCARDS_SYSTEM
 from ..ai.structured import FlashcardsOut
+from ..core.vocab import FlashcardKind
 from ..domain.models import Exercise, ExerciseStep
 from ..services.knowledge.context import ContextBundle
 from ..services.study.cards import create_card_exercise
@@ -18,7 +19,7 @@ FLASHCARDS_SKILL = "flashcards.generate"
 MAX_REPAIR_ROUNDS = 2
 MAX_CARDS = 30
 
-KINDS = ("basic", "cloze", "reverse")
+KINDS: tuple[FlashcardKind, ...] = tuple(FlashcardKind)
 CLOZE_RE = re.compile(r"\{\{c?\d*::?[^}]*\}\}|\{\{[^}]*\}\}")
 
 
@@ -38,8 +39,8 @@ def validate_card(draft: dict[str, Any], index: int) -> list[str]:
         problems.append(f"{label}: empty front")
     if not back:
         problems.append(f"{label}: empty back")
-    if draft.get("kind") == "cloze" and front and not CLOZE_RE.search(front):
-        problems.append(f"{label}: cloze front needs a {{{{...}}}} deletion")
+    if draft.get("kind") == "card_cloze" and front and not CLOZE_RE.search(front):
+        problems.append(f"{label}: card_cloze front needs a {{{{...}}}} deletion")
     return problems
 
 
@@ -52,8 +53,8 @@ class FlashcardsService:
         self,
         profile_id: str,
         *,
-        course_id: int,
-        node_id: int | None = None,
+        course_id: str,
+        node_id: str | None = None,
         count: int = 8,
         source: str = "note",
         source_ref: str | None = None,
@@ -63,7 +64,7 @@ class FlashcardsService:
         count = max(1, min(count, MAX_CARDS))
         prompt = (
             f"Write exactly {count} flashcards from the following source. Mix kinds "
-            "(mostly basic, some cloze, a reverse or two).\n\nSource:\n"
+            "(mostly card_basic, some card_cloze, a card_reverse or two).\n\nSource:\n"
             + content[:6000]
         )
         if context is not None:
@@ -100,16 +101,12 @@ class FlashcardsService:
             render_vars={"count": str(count)},
             max_rounds=MAX_REPAIR_ROUNDS,
             error_type=FlashcardsError,
-            audit=AuditRef(
-                "flashcards", None, f"generate {count} cards from {source}"
-            ),
+            audit=AuditRef("flashcards", None, f"generate {count} cards from {source}"),
             schema=FlashcardsOut,
         )
         problems = result.problems
         if problems:
-            raise FlashcardsError(
-                "cards did not pass validation: " + "; ".join(problems[:10])
-            )
+            raise FlashcardsError("cards did not pass validation: " + "; ".join(problems[:10]))
         drafts = result.draft.get("cards", [])[:count]
 
         cards: list[Exercise] = []
@@ -133,9 +130,7 @@ class FlashcardsService:
         rows = self._session.execute(
             select(ExerciseStep.prompt)
             .join(Exercise, Exercise.id == ExerciseStep.exercise_id)
-            .where(
-                Exercise.profile_id == profile_id, Exercise.kind.like("card_%")
-            )
+            .where(Exercise.profile_id == profile_id, Exercise.kind.like("card_%"))
         )
         fronts: set[str] = set()
         for (front,) in rows:

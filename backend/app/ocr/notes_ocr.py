@@ -22,9 +22,11 @@ class NotesOcrEngine:
     def __init__(self, gateway: LLMGateway) -> None:
         self._gateway = gateway
 
-    def transcribe(self, data: bytes, mime: str, session: Session | None = None) -> str:
+    def transcribe(
+        self, data: bytes, mime: str, session: Session | None = None, preprocess: str = "auto"
+    ) -> str:
         payload, payload_mime = prepare_ocr_image(
-            data, mime, ocr_image_max_edge(session)
+            data, mime, ocr_image_max_edge(session), preprocess=preprocess
         )
         system = NOTES_OCR_SYSTEM
         if session is not None:

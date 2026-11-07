@@ -27,10 +27,10 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 30.0) -> None:
     raise AssertionError("condition never met before timeout")
 
 
-def make_course(client: TestClient, title: str = "Regular") -> int:
+def make_course(client: TestClient, title: str = "Regular") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def get_scratch(client: TestClient) -> dict[str, Any]:
@@ -40,35 +40,32 @@ def get_scratch(client: TestClient) -> dict[str, Any]:
     return body
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     response = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
-def upload_text(
-    client: TestClient, course_id: int, filename: str, content: str
-) -> dict[str, Any]:
+def upload_text(client: TestClient, course_id: str, filename: str, content: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials/text",
         json={"course_id": course_id, "filename": filename, "content": content},
     )
     assert response.status_code == 200, response.text
     body: dict[str, Any] = response.json()
-    material_id = int(body["material"]["id"])
+    material_id = str(body["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return body
 
@@ -89,7 +86,7 @@ def test_scratchpad_is_created_once_and_hidden(client: TestClient) -> None:
 
 def test_promote_moves_subtree_placements_and_content(client: TestClient) -> None:
     scratch = get_scratch(client)["course"]
-    scratch_id = int(scratch["id"])
+    scratch_id = str(scratch["id"])
     scratch_root = root_node(client, scratch_id)
     topic = make_node(client, scratch_id, scratch_root, "Group theory")
     make_node(client, scratch_id, topic, "Cyclic groups")
@@ -106,10 +103,8 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
     assert note.status_code == 201, note.text
 
     material = upload_text(client, scratch_id, "groups.md", "# groups")
-    material_id = int(material["material"]["id"])
-    assigned = client.post(
-        f"/api/v1/nodes/{topic}/materials", json={"material_id": material_id}
-    )
+    material_id = str(material["material"]["id"])
+    assigned = client.post(f"/api/v1/nodes/{topic}/materials", json={"material_id": material_id})
     assert assigned.status_code in (200, 201), assigned.text
 
     chat = client.post(
@@ -117,7 +112,7 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
         json={"course_id": scratch_id, "node_id": topic, "title": "scratch chat"},
     )
     assert chat.status_code in (200, 201), chat.text
-    chat_id = int(chat.json()["id"])
+    chat_id = str(chat.json()["id"])
 
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]
     db = db_factory()
@@ -138,7 +133,7 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
     new_course = promoted.json()
     assert new_course["origin"] == "manual"
     assert new_course["hidden"] is False
-    new_id = int(new_course["id"])
+    new_id = str(new_course["id"])
 
     visible = client.get("/api/v1/courses").json()
     assert any(course["id"] == new_id for course in visible)
@@ -146,18 +141,12 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
 
     new_root = root_node(client, new_id)
     tree = client.get(f"/api/v1/courses/{new_id}/tree").json()
-    root_entry = next(entry for entry in tree if int(entry["id"]) == new_root)
-    moved_titles = {
-        node["title"]: node for entry in tree for node in _flatten(entry)
-    }
+    root_entry = next(entry for entry in tree if str(entry["id"]) == new_root)
+    moved_titles = {node["title"]: node for entry in tree for node in _flatten(entry)}
     assert set(moved_titles) >= {"Group theory", "Cyclic groups"}
     moved_topic = moved_titles["Group theory"]
-    assert any(
-        int(child["id"]) == int(moved_topic["id"]) for child in root_entry["children"]
-    )
-    child_titles = {
-        child["title"] for child in moved_titles["Group theory"]["children"]
-    }
+    assert any(str(child["id"]) == str(moved_topic["id"]) for child in root_entry["children"])
+    child_titles = {child["title"] for child in moved_titles["Group theory"]["children"]}
     assert "Cyclic groups" in child_titles
 
     detail = client.get(f"/api/v1/materials/{material_id}").json()
@@ -167,16 +156,14 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
 
     db = db_factory()
     try:
-        assert db.get(Note, int(note.json()["id"])).course_id == new_id
+        assert db.get(Note, str(note.json()["id"])).course_id == new_id
         chat_row = db.get(ChatSession, chat_id)
         assert chat_row is not None
         assert chat_row.course_id == new_id
-        assert db.scalars(
-            select(NodeConcept.id).where(NodeConcept.node_id == topic)
-        ).first() is None
-        scratch_notes = db.scalars(
-            select(Note.id).where(Note.course_id == scratch_id)
-        ).all()
+        assert (
+            db.scalars(select(NodeConcept.id).where(NodeConcept.node_id == topic)).first() is None
+        )
+        scratch_notes = db.scalars(select(Note.id).where(Note.course_id == scratch_id)).all()
         assert scratch_notes == []
     finally:
         db.close()
@@ -204,13 +191,13 @@ def test_promote_rejects_nodes_outside_the_scratchpad(client: TestClient) -> Non
 
 def test_shared_material_stays_owned_by_the_scratchpad(client: TestClient) -> None:
     scratch = get_scratch(client)["course"]
-    scratch_id = int(scratch["id"])
+    scratch_id = str(scratch["id"])
     scratch_root = root_node(client, scratch_id)
     moved_node = make_node(client, scratch_id, scratch_root, "Moved topic")
     kept_node = make_node(client, scratch_id, scratch_root, "Kept topic")
 
     material = upload_text(client, scratch_id, "shared.md", "# shared")
-    material_id = int(material["material"]["id"])
+    material_id = str(material["material"]["id"])
     for node_id in (moved_node, kept_node):
         assigned = client.post(
             f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
@@ -226,15 +213,13 @@ def test_shared_material_stays_owned_by_the_scratchpad(client: TestClient) -> No
     detail = client.get(f"/api/v1/materials/{material_id}").json()
     assert detail["material"]["course_id"] == scratch_id
     links = client.get(f"/api/v1/materials/{material_id}/links").json()
-    link_courses = {int(link["course_id"]) for link in links}
-    assert link_courses == {scratch_id, int(promoted.json()["id"])}
+    link_courses = {str(link["course_id"]) for link in links}
+    assert link_courses == {scratch_id, str(promoted.json()["id"])}
 
 
-def test_analytics_exclude_scratch_courses(
-    client: TestClient, profile_id: str
-) -> None:
+def test_analytics_exclude_scratch_courses(client: TestClient, profile_id: str) -> None:
     scratch = get_scratch(client)["course"]
-    scratch_id = int(scratch["id"])
+    scratch_id = str(scratch["id"])
     normal_id = make_course(client, "Normal course")
 
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]
@@ -248,7 +233,7 @@ def test_analytics_exclude_scratch_courses(
             db.flush()
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "1+1?"}],
                 options=[{"type": "text", "md": "2"}, {"type": "text", "md": "3"}],
                 answer={"index": 0},

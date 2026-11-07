@@ -33,6 +33,21 @@ FRONTEND_DIST = os.path.join(ROOT, "frontend", "dist")
 if not os.path.isfile(os.path.join(FRONTEND_DIST, "index.html")):
     raise SystemExit("frontend/dist/index.html missing — run `pnpm --filter frontend build` first")
 
+_DATA_SUFFIXES = (".json", ".md", ".jsonl", ".txt", ".yaml", ".yml", ".csv")
+
+
+def _package_data(source_dir: str, dest_dir: str) -> list[tuple[str, str]]:
+    """Non-Python runtime files under a package dir, mirrored into the bundle."""
+    collected: list[tuple[str, str]] = []
+    for entry in glob.glob(os.path.join(source_dir, "**", "*"), recursive=True):
+        if not os.path.isfile(entry) or not entry.endswith(_DATA_SUFFIXES):
+            continue
+        relative = os.path.relpath(os.path.dirname(entry), source_dir)
+        target = dest_dir if relative == "." else os.path.join(dest_dir, relative)
+        collected.append((entry, target))
+    return collected
+
+
 ENTRY = os.path.join(ROOT, "backend", "studyassistant", "__main__.py")
 RUNTIME_HOOK = os.path.join(SPEC_DIR, "runtime_hook.py")
 
@@ -60,7 +75,12 @@ datas = [
     (FRONTEND_DIST, "frontend/dist"),
     (os.path.join(ROOT, "backend", "alembic"), "alembic"),
     (os.path.join(ROOT, "backend", "alembic.ini"), "."),
+    (os.path.join(ROOT, "backend", "app", "data"), "app/data"),
+    (os.path.join(ROOT, "contracts"), "contracts"),
 ]
+datas += _package_data(
+    os.path.join(ROOT, "backend", "app", "extensions"), "app/extensions"
+)
 datas += collect_data_files("webview")
 binaries = collect_dynamic_libs("sqlite_vec")
 

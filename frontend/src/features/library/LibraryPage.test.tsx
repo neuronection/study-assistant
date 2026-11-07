@@ -131,7 +131,7 @@ vi.mock('@/components/editor/LazyMarkdownEditor', () => ({
 
 const COURSES = [
   {
-    id: 3,
+    id: '3',
     title: 'Calculus I',
     subject: null,
     level: null,
@@ -143,37 +143,36 @@ const COURSES = [
 ]
 
 const FOLDERS = [
-  { id: 11, name: 'Lectures', path: 'Lectures', course_id: 3, parent_id: null, created_at: '', source_id: null },
+  { id: '11', name: 'Lectures', path: 'Lectures', course_id: '3', parent_id: null, created_at: '', source_id: null },
   {
-    id: 12,
+    id: '12',
     name: 'Week 1',
     path: 'Lectures/Week 1',
-    course_id: 3,
-    parent_id: 11,
+    course_id: '3',
+    parent_id: '11',
     created_at: '',
     source_id: null,
   },
   {
-    id: 13,
+    id: '13',
     name: 'My Lectures',
     path: 'My Lectures',
-    course_id: 3,
+    course_id: '3',
     parent_id: null,
     created_at: '',
-    source_id: 77,
+    source_id: '77',
   },
 ]
 
 const MATERIAL = {
-  id: 7,
+  id: '7',
   title: 'chain-rule.pdf',
   kind: 'pdf',
   status: 'ready',
   filename: 'chain-rule.pdf',
   mime: 'application/pdf',
   pages: 1,
-  course_id: 3,
-  group_id: null,
+  course_id: '3',
   folder_id: null,
   blob_sha: 'a'.repeat(64),
   created_at: '2026-08-18T00:00:00Z',
@@ -183,8 +182,8 @@ const MATERIAL = {
 const DETAIL = {
   material: MATERIAL,
   extraction: {
-    id: 1,
-    material_id: 7,
+    id: '1',
+    material_id: '7',
     version: 1,
     extractor: 'pymupdf',
     markdown: 'the **chain rule**',
@@ -198,9 +197,9 @@ function makeRouter(initial: string) {
   const libraryRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/library',
-    validateSearch: (search: Record<string, unknown>): { course?: number; folder?: number } => ({
-      course: typeof search.course === 'number' ? search.course : undefined,
-      folder: typeof search.folder === 'number' ? search.folder : undefined,
+    validateSearch: (search: Record<string, unknown>): { course?: string; folder?: string } => ({
+      course: search.course === undefined ? undefined : String(search.course),
+      folder: search.folder === undefined ? undefined : String(search.folder),
     }),
     component: LibraryPage,
   })
@@ -269,7 +268,7 @@ describe('LibraryPage', () => {
     renderAt('/library?course=3')
     expect(await screen.findByText('Lectures')).toBeInTheDocument()
     expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
-    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, 3, true))
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, '3', true))
     expect(await screen.findByText('2 folders · 1 materials')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Upload$/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New…' })).toBeInTheDocument()
@@ -323,43 +322,43 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     getMaterialLinks.mockResolvedValue([
       {
-        node_id: 44,
+        node_id: '44',
         owner_title: 'Node',
         breadcrumb: [
-          { id: 1, title: 'Calculus I' },
-          { id: 44, title: 'Node' },
+          { id: '1', title: 'Calculus I' },
+          { id: '44', title: 'Node' },
         ],
         is_course_level: false,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: true,
         rationale: 'weak concept',
         via_folder: null,
       },
       {
-        node_id: 1,
+        node_id: '1',
         owner_title: 'Calculus I',
-        breadcrumb: [{ id: 1, title: 'Calculus I' }],
+        breadcrumb: [{ id: '1', title: 'Calculus I' }],
         is_course_level: true,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: false,
         rationale: null,
-        via_folder: { id: 11, name: 'Lectures' },
+        via_folder: { id: '11', name: 'Lectures' },
       },
       {
-        node_id: 44,
+        node_id: '44',
         owner_title: 'Node',
         breadcrumb: [
-          { id: 1, title: 'Calculus I' },
-          { id: 44, title: 'Node' },
+          { id: '1', title: 'Calculus I' },
+          { id: '44', title: 'Node' },
         ],
         is_course_level: false,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: false,
         rationale: null,
-        via_folder: { id: 11, name: 'Lectures' },
+        via_folder: { id: '11', name: 'Lectures' },
       },
     ])
     renderAt('/library?course=3')
@@ -372,7 +371,7 @@ describe('LibraryPage', () => {
 
     fireEvent.click(screen.getByText('Calculus I › Node'))
     expect(await screen.findByText('node page')).toBeInTheDocument()
-    expect(getMaterialLinks).toHaveBeenCalledWith(7)
+    expect(getMaterialLinks).toHaveBeenCalledWith('7')
   })
 
   test('linked locations dialog shows the empty state', async () => {
@@ -396,14 +395,14 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     getFolderLinks.mockResolvedValue([
       {
-        node_id: 44,
+        node_id: '44',
         owner_title: 'Node',
         breadcrumb: [
-          { id: 1, title: 'Calculus I' },
-          { id: 44, title: 'Node' },
+          { id: '1', title: 'Calculus I' },
+          { id: '44', title: 'Node' },
         ],
         is_course_level: false,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: false,
         rationale: 'lecture set',
@@ -416,17 +415,17 @@ describe('LibraryPage', () => {
 
     fireEvent.click(screen.getByText('Calculus I › Node'))
     expect(await screen.findByText('node page')).toBeInTheDocument()
-    expect(getFolderLinks).toHaveBeenCalledWith(11)
+    expect(getFolderLinks).toHaveBeenCalledWith('11')
   })
 
   test('workspace store course is applied on entry', async () => {
-    useWorkspaceStore.getState().setCourse(3)
+    useWorkspaceStore.getState().setCourse('3')
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([])
     listSources.mockResolvedValue([])
     renderAt('/library')
-    await waitFor(() => expect(listFolders).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(listFolders).toHaveBeenCalledWith('3'))
     expect(await screen.findByRole('button', { name: 'New…' })).toBeInTheDocument()
   })
 
@@ -449,9 +448,9 @@ describe('LibraryPage', () => {
       target: { files: [new File(['data'], 'sheet.pdf', { type: 'application/pdf' })] },
     })
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    expect(uploadMaterial.mock.calls[0][1]).toBe(3)
-    expect(uploadMaterial.mock.calls[0][2]).toBe(11)
-    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(11))
+    expect(uploadMaterial.mock.calls[0][1]).toBe('3')
+    expect(uploadMaterial.mock.calls[0][2]).toBe('11')
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith('11'))
   })
 
   test('upload banner tracks the ingest job over WS and clears after completion', async () => {
@@ -461,7 +460,7 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     uploadMaterial.mockResolvedValue({
       material: MATERIAL,
-      job_id: 9,
+      job_id: '9',
       deduped: false,
     })
     renderAt('/library?course=3&folder=11')
@@ -519,10 +518,10 @@ describe('LibraryPage', () => {
     renderAt('/library?course=3')
     fireEvent.doubleClick(await screen.findByText('Lectures'))
     expect(await screen.findByText('Week 1')).toBeInTheDocument()
-    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith('11'))
     expect(screen.getByText('Calculus I')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Calculus I'))
-    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, 3, true))
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, '3', true))
   })
 
   test('single click selects without opening; double click opens the material', async () => {
@@ -594,20 +593,20 @@ describe('LibraryPage', () => {
     expect(input.tagName).toBe('TEXTAREA')
     fireEvent.change(input, { target: { value: 'Lects' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith(11, 'Lects'))
+    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith('11', 'Lects'))
 
     fireEvent.contextMenu((await screen.findByText('Lectures')).closest('button')!)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename folder' }))
     const multiline = await screen.findByDisplayValue('Lectures')
     fireEvent.change(multiline, { target: { value: 'Lecture\nNotes' } })
     fireEvent.submit(multiline.closest('form')!)
-    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith(11, 'Lecture Notes'))
+    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith('11', 'Lecture Notes'))
 
     fireEvent.contextMenu((await screen.findByText('Lectures')).closest('button')!)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
     const dialog = await screen.findByRole('dialog', { name: 'Delete folder' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete folder and contents' }))
-    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(11, true))
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith('11', true))
   })
 
   test('folder delete refusal surfaces the backend message', async () => {
@@ -640,11 +639,11 @@ describe('LibraryPage', () => {
       materials: 1,
       node_links: [
         {
-          node_id: 14,
+          node_id: '14',
           owner_title: 'Limits',
           breadcrumb: [
-            { id: 2, title: 'Calculus' },
-            { id: 14, title: 'Limits' },
+            { id: '2', title: 'Calculus' },
+            { id: '14', title: 'Limits' },
           ],
           is_course_level: false,
           course_title: 'Calculus',
@@ -664,7 +663,7 @@ describe('LibraryPage', () => {
     fireEvent.click(
       within(dialog).getByRole('button', { name: 'Delete folder and contents' })
     )
-    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(11, true))
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith('11', true))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
 
@@ -675,7 +674,7 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     searchMock.mockResolvedValue({
       query: 'limits',
-      hits: [{ material_id: 7, title: 'chain-rule.pdf', snippet: '…chain rule…', score: 0.5 }],
+      hits: [{ material_id: '7', title: 'chain-rule.pdf', snippet: '…chain rule…', score: 0.5 }],
     })
     renderAt('/library?course=3')
     fireEvent.click(await screen.findByRole('button', { name: 'Search' }))
@@ -694,11 +693,11 @@ describe('LibraryPage', () => {
       query: 'limits',
       hits: [
         {
-          material_id: 7,
+          material_id: '7',
           title: 'chain-rule.pdf',
           snippet: '…chain rule…',
           score: 0.5,
-          nodes: [{ course_id: 3, node_id: 12, node_title: 'Limits' }],
+          nodes: [{ course_id: '3', node_id: '12', node_title: 'Limits' }],
         },
       ],
     })
@@ -798,7 +797,7 @@ describe('LibraryPage', () => {
 
   test('new text file dialog creates a file', async () => {
     createTextMaterial.mockResolvedValue({
-      materialId: 7,
+      materialId: '7',
       content: '$x^2$ rules',
       refToReal: {},
       jobId: null,
@@ -816,7 +815,7 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() =>
       expect(createTextMaterial).toHaveBeenCalledWith({
-        course_id: 3,
+        course_id: '3',
         folder_id: null,
         filename: 'derivation.md',
         content: '$x^2$ rules',
@@ -839,16 +838,16 @@ describe('LibraryPage', () => {
     const input = await screen.findByDisplayValue('chain-rule.pdf')
     fireEvent.change(input, { target: { value: 'Renamed' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(renameMaterial).toHaveBeenCalledWith(7, 'Renamed'))
+    await waitFor(() => expect(renameMaterial).toHaveBeenCalledWith('7', 'Renamed'))
 
     fireEvent.contextMenu((await screen.findByText('chain-rule.pdf')).closest('button')!)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith('7'))
   })
 
   test('right-click on an unselected mode-bearing file offers Re-extract without its name', async () => {
-    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    reingestMaterialMock.mockResolvedValue({ job_id: '9', material_id: '7', deduped: false })
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([MATERIAL])
@@ -866,7 +865,7 @@ describe('LibraryPage', () => {
   })
 
   test('right-click on a mode-less file re-ingests directly', async () => {
-    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    reingestMaterialMock.mockResolvedValue({ job_id: '9', material_id: '7', deduped: false })
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([
@@ -879,18 +878,18 @@ describe('LibraryPage', () => {
       name: 'Re-ingest this file (OCR again)',
     })
     fireEvent.click(item)
-    await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledWith('7'))
   })
 
   test('right-click on a multi-selection re-ingests every file-backed row', async () => {
-    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    reingestMaterialMock.mockResolvedValue({ job_id: '9', material_id: '7', deduped: false })
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([
       MATERIAL,
       {
         ...MATERIAL,
-        id: 8,
+        id: '8',
         title: 'limits.pdf',
         filename: 'limits.pdf',
         reextract_modes: ['auto', 'text', 'ocr'],
@@ -907,18 +906,18 @@ describe('LibraryPage', () => {
     })
     fireEvent.click(item)
     await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledTimes(2))
-    expect(reingestMaterialMock).toHaveBeenCalledWith(7)
-    expect(reingestMaterialMock).toHaveBeenCalledWith(8)
+    expect(reingestMaterialMock).toHaveBeenCalledWith('7')
+    expect(reingestMaterialMock).toHaveBeenCalledWith('8')
   })
 
   test('right-click offers save-as-material for files with extracted text', async () => {
     deriveMaterialsMock.mockResolvedValue({
       results: [
         {
-          material_id: 7,
+          material_id: '7',
           outcome: 'created',
-          material: { ...MATERIAL, id: 21, title: 'chain-rule', kind: 'md' },
-          job_id: 31,
+          material: { ...MATERIAL, id: '21', title: 'chain-rule', kind: 'md' },
+          job_id: '31',
         },
       ],
       created: 1,
@@ -933,7 +932,7 @@ describe('LibraryPage', () => {
     fireEvent.contextMenu(tile)
     const item = await screen.findByRole('menuitem', { name: 'Save as material' })
     fireEvent.click(item)
-    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith(['7']))
     expect(await screen.findByText('Saved 1 material')).toBeInTheDocument()
   })
 
@@ -948,7 +947,7 @@ describe('LibraryPage', () => {
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([
       { ...MATERIAL, has_extraction: true },
-      { ...MATERIAL, id: 8, title: 'limits.pdf', filename: 'limits.pdf' },
+      { ...MATERIAL, id: '8', title: 'limits.pdf', filename: 'limits.pdf' },
     ])
     renderAt('/library?course=3')
     const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
@@ -958,7 +957,7 @@ describe('LibraryPage', () => {
     fireEvent.contextMenu(tile)
     const item = await screen.findByRole('menuitem', { name: 'Save 1 as materials' })
     fireEvent.click(item)
-    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith(['7']))
     expect(await screen.findByText('Saved 1 material · 1 skipped (no extracted text)')).toBeInTheDocument()
   })
 
@@ -975,7 +974,7 @@ describe('LibraryPage', () => {
 
   test('link node navigates via browse, shows pending, ingests', async () => {
     browseSource.mockResolvedValue({
-      source_id: 77,
+      source_id: '77',
       label: 'My Lectures',
       path: '/home/you/lectures',
       subdir: '',
@@ -983,7 +982,7 @@ describe('LibraryPage', () => {
       subdirs: [{ name: 'week1' }],
       materials: [
         {
-          id: 9,
+          id: '9',
           title: 'board.png',
           kind: 'image',
           status: 'ready',
@@ -996,7 +995,7 @@ describe('LibraryPage', () => {
       ],
     })
     ingestSourceFile.mockResolvedValue({
-      material_id: 12,
+      material_id: '12',
       job_id: null,
       deduped: false,
     })
@@ -1009,16 +1008,16 @@ describe('LibraryPage', () => {
     expect(await screen.findByText('board.png')).toBeInTheDocument()
     expect(await screen.findByText('new-scan.pdf')).toBeInTheDocument()
     expect(await screen.findByText('1 folders · 1 materials · 1 pending')).toBeInTheDocument()
-    await waitFor(() => expect(browseSource).toHaveBeenCalledWith(77, ''))
+    await waitFor(() => expect(browseSource).toHaveBeenCalledWith('77', ''))
     fireEvent.click(screen.getByRole('button', { name: 'Ingest 1 file' }))
     await waitFor(() =>
-      expect(ingestSourceFile).toHaveBeenCalledWith(77, 'new-scan.pdf')
+      expect(ingestSourceFile).toHaveBeenCalledWith('77', 'new-scan.pdf')
     )
   })
 
   test('link node context menu rescans and unlinks', async () => {
     browseSource.mockResolvedValue({
-      source_id: 77,
+      source_id: '77',
       label: 'My Lectures',
       path: '/home/you/lectures',
       subdir: '',
@@ -1039,17 +1038,17 @@ describe('LibraryPage', () => {
     const tile = (await screen.findByText('My Lectures')).closest('button')!
     fireEvent.contextMenu(tile)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Rescan' }))
-    await waitFor(() => expect(scanSource).toHaveBeenCalledWith(77))
+    await waitFor(() => expect(scanSource).toHaveBeenCalledWith('77'))
 
     fireEvent.contextMenu(tile)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Unlink' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Unlink' }))
-    await waitFor(() => expect(unlinkFolder).toHaveBeenCalledWith(13))
+    await waitFor(() => expect(unlinkFolder).toHaveBeenCalledWith('13'))
   })
 
   test('dangling link shows missing target and relink dialog', async () => {
     browseSource.mockResolvedValue({
-      source_id: 77,
+      source_id: '77',
       label: 'My Lectures',
       path: '/gone/lectures',
       subdir: '',
@@ -1059,12 +1058,12 @@ describe('LibraryPage', () => {
       uningested: [],
     })
     relinkSource.mockResolvedValue({
-      id: 77,
+      id: '77',
       label: 'My Lectures',
       path: '/new/lectures',
       recursive: true,
       include_globs: null,
-      course_id: 3,
+      course_id: '3',
       enabled: true,
       material_count: 0,
       last_scanned_at: null,
@@ -1088,17 +1087,17 @@ describe('LibraryPage', () => {
     expect(dialog).toBeInTheDocument()
     fireEvent.click(await within(dialog).findByText('lectures'))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Choose' }))
-    await waitFor(() => expect(relinkSource).toHaveBeenCalledWith(77, '/home/you/lectures'))
+    await waitFor(() => expect(relinkSource).toHaveBeenCalledWith('77', '/home/you/lectures'))
   })
 
   test('add linked folder opens the picker and creates a source', async () => {
     addSource.mockResolvedValue({
-      id: 78,
+      id: '78',
       label: 'lectures',
       path: '/home/you/lectures',
       recursive: true,
       include_globs: null,
-      course_id: 3,
+      course_id: '3',
       enabled: true,
       material_count: 0,
       last_scanned_at: null,
@@ -1132,7 +1131,7 @@ describe('LibraryPage', () => {
       expect(addSource).toHaveBeenCalledWith({
         label: 'lectures',
         path: '/home/you/lectures',
-        course_id: 3,
+        course_id: '3',
       })
     )
   })
@@ -1200,7 +1199,7 @@ describe('LibraryPage', () => {
     fireEvent.contextMenu(screen.getByText('Lectures'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Paste into folder' }))
 
-    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith('7', '11'))
   })
 
   test('copy then paste into a folder duplicates the material', async () => {
@@ -1218,7 +1217,7 @@ describe('LibraryPage', () => {
     fireEvent.contextMenu(screen.getByText('Lectures'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Paste into folder' }))
 
-    await waitFor(() => expect(copyMaterial).toHaveBeenCalledWith(7, 11))
+    await waitFor(() => expect(copyMaterial).toHaveBeenCalledWith('7', '11'))
     expect(moveMaterial).not.toHaveBeenCalled()
   })
 
@@ -1234,7 +1233,7 @@ describe('LibraryPage', () => {
     fireEvent.keyDown(window, { key: 'Delete' })
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
 
-    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith('7'))
   })
 
   test('ctrl+x then ctrl+v moves the selection into the open folder', async () => {
@@ -1250,7 +1249,7 @@ describe('LibraryPage', () => {
     fireEvent.keyDown(window, { key: 'x', ctrlKey: true })
     fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
 
-    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith('7', '11'))
   })
 
   test('dropping a dragged material onto a folder moves it there', async () => {
@@ -1262,11 +1261,11 @@ describe('LibraryPage', () => {
     renderAt('/library?course=3')
     expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
 
-    const payload = JSON.stringify({ folderIds: [], materialIds: [7] })
+    const payload = JSON.stringify({ folderIds: [], materialIds: ['7'] })
     const dataTransfer = {
-      types: ['application/x-ca-item'],
+      types: ['application/x-sa-item'],
       getData: (mime: string) =>
-        mime === 'application/x-ca-item' ? payload : '',
+        mime === 'application/x-sa-item' ? payload : '',
       setData: vi.fn(),
       effectAllowed: '',
     }
@@ -1278,7 +1277,7 @@ describe('LibraryPage', () => {
     fireEvent.dragOver(folder as Element, { dataTransfer })
     fireEvent.drop(folder as Element, { dataTransfer })
 
-    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith('7', '11'))
   })
 
   test('assign to node assigns every selected material', async () => {
@@ -1288,7 +1287,7 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     courseTree.mockResolvedValue([
       {
-        id: 50,
+        id: '50',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -1297,7 +1296,7 @@ describe('LibraryPage', () => {
         is_root: true,
         children: [
           {
-            id: 51,
+            id: '51',
             title: 'Chapter 1',
             summary: null,
             objectives: [],
@@ -1321,7 +1320,7 @@ describe('LibraryPage', () => {
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chapter 1/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(51, 7))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('51', '7'))
     await waitFor(() =>
       expect(screen.getByText('Assigned to node')).toBeInTheDocument()
     )
@@ -1334,7 +1333,7 @@ describe('LibraryPage', () => {
     listSources.mockResolvedValue([])
     courseTree.mockResolvedValue([
       {
-        id: 50,
+        id: '50',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -1343,7 +1342,7 @@ describe('LibraryPage', () => {
         is_root: true,
         children: [
           {
-            id: 51,
+            id: '51',
             title: 'Chapter 1',
             summary: null,
             objectives: [],
@@ -1370,7 +1369,7 @@ describe('LibraryPage', () => {
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chapter 1/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(51, 11))
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith('51', '11'))
     await waitFor(() =>
       expect(screen.getByText('Assigned to node')).toBeInTheDocument()
     )
@@ -1389,15 +1388,15 @@ describe('MaterialDetailPage', () => {
     getMaterial.mockResolvedValue(DETAIL)
     getMaterialLinks.mockResolvedValue([
       {
-        node_id: 21,
+        node_id: '21',
         owner_title: 'Limit intuition',
         breadcrumb: [
-          { id: 1, title: 'Calculus I' },
-          { id: 2, title: 'Limits' },
-          { id: 21, title: 'Limit intuition' },
+          { id: '1', title: 'Calculus I' },
+          { id: '2', title: 'Limits' },
+          { id: '21', title: 'Limit intuition' },
         ],
         is_course_level: false,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: true,
         rationale: 'why',
@@ -1420,19 +1419,19 @@ describe('MaterialDetailPage', () => {
     getMaterial.mockResolvedValue(DETAIL)
     getMaterialLinks.mockResolvedValue([
       {
-        node_id: 21,
+        node_id: '21',
         owner_title: 'Limit intuition',
         breadcrumb: [
-          { id: 1, title: 'Calculus I' },
-          { id: 2, title: 'Limits' },
-          { id: 21, title: 'Limit intuition' },
+          { id: '1', title: 'Calculus I' },
+          { id: '2', title: 'Limits' },
+          { id: '21', title: 'Limit intuition' },
         ],
         is_course_level: false,
-        course_id: 3,
+        course_id: '3',
         course_title: 'Calculus I',
         auto_assigned: false,
         rationale: null,
-        via_folder: { id: 11, name: 'Lectures' },
+        via_folder: { id: '11', name: 'Lectures' },
       },
     ])
     listStudyStates.mockResolvedValue({})
@@ -1496,7 +1495,7 @@ describe('MaterialDetailPage', () => {
     const trigger = await screen.findByRole('button', { name: 'Reading status' })
     fireEvent.pointerDown(trigger)
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Studied' }))
-    await waitFor(() => expect(setStudyState).toHaveBeenCalledWith(7, 'studied'))
+    await waitFor(() => expect(setStudyState).toHaveBeenCalledWith('7', 'studied'))
   })
 })
 
@@ -1509,13 +1508,13 @@ describe('LibraryPage needs placement', () => {
     getUnassignedMaterials.mockResolvedValue({
       count: 2,
       materials: [
-        { id: 61, title: 'orphan-a.pdf' },
-        { id: 62, title: 'orphan-b.pdf' },
+        { id: '61', title: 'orphan-a.pdf' },
+        { id: '62', title: 'orphan-b.pdf' },
       ],
     })
     courseTree.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -1538,7 +1537,7 @@ describe('LibraryPage needs placement', () => {
       await within(placeDialog).findByRole('treeitem', { name: /Calculus I/ })
     )
     fireEvent.click(within(placeDialog).getByRole('button', { name: 'Assign' }))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(3, 61))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('3', '61'))
   })
 
   test('no needs-placement block when everything is placed', async () => {

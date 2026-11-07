@@ -14,8 +14,8 @@ export function FlashcardPrintSheet({
   autoPrint = true,
   onBack,
 }: {
-  courseId?: number
-  nodeId?: number
+  courseId?: string
+  nodeId?: string
   autoPrint?: boolean
   onBack?: () => void
 }) {

@@ -7,10 +7,10 @@ token as an Authorization header; stdio servers receive the user env map on
 top of a minimal default environment. Secrets never enter the stored server
 entry — `build_mcp_config` (services layer) reads them from the keyring per
 config build and they live only in the short-lived config object. External
-tool output is untrusted input (family-ai trust boundary): every consumer
+tool output is untrusted input (the family AI standard trust boundary): every consumer
 validates shapes app-side. The `mcp` SDK import lives ONLY here (+ tests),
 matching this repo's existing `mcp`-SDK server precedent
-(`app/mcp_resources.py`).
+(`app/ai/mcp_resources.py`).
 """
 
 import json
@@ -183,7 +183,7 @@ async def _run_tool_call(
     import anyio
 
     stack, session = await _open_session(config)
-    with stack:
+    async with stack:
         with anyio.fail_after(timeout_sec):
             await session.initialize()
             result = await session.call_tool(tool_name, arguments)
@@ -201,7 +201,7 @@ async def _run_list_tools(config: McpServerConfig) -> list[dict[str, Any]]:
     import anyio
 
     stack, session = await _open_session(config)
-    with stack:
+    async with stack:
         with anyio.fail_after(float(config.timeout_sec)):
             await session.initialize()
             listing = await session.list_tools()
@@ -232,15 +232,12 @@ def call_tool_sync(
     semaphore = _semaphore_for(config.id, config.max_concurrent)
     if not semaphore.acquire(timeout=CONCURRENCY_ACQUIRE_TIMEOUT_SEC):
         raise McpToolError(
-            f"MCP server '{config.name}' is busy — max {config.max_concurrent} "
-            "concurrent call(s)"
+            f"MCP server '{config.name}' is busy — max {config.max_concurrent} concurrent call(s)"
         )
     try:
         return asyncio.run(_run_tool_call(config, tool_name, arguments, effective))
     except TimeoutError as error:
-        raise McpToolError(
-            f"MCP tool '{tool_name}' timed out after {effective:.0f}s"
-        ) from error
+        raise McpToolError(f"MCP tool '{tool_name}' timed out after {effective:.0f}s") from error
     finally:
         semaphore.release()
 

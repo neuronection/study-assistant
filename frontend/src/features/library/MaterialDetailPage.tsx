@@ -21,8 +21,8 @@ export function MaterialDetailPage() {
   const activeTab = DETAIL_TABS.includes(tab as DetailTab) ? (tab as DetailTab) : 'extraction'
 
   const detail = useQuery({
-    queryKey: ['material', Number(materialId)],
-    queryFn: () => getMaterial(Number(materialId)),
+    queryKey: ['material', materialId],
+    queryFn: () => getMaterial(materialId),
   })
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
   const material = detail.data?.material
@@ -60,7 +60,7 @@ export function MaterialDetailPage() {
       </div>
 
       <MaterialDetailBody
-        materialId={Number(materialId)}
+        materialId={materialId}
         activeTab={activeTab}
         onTabChange={(entry) =>
           void navigate({
@@ -77,9 +77,9 @@ export function MaterialDetailPage() {
             ? () =>
                 void navigate({
                   to: '/courses/$courseId',
-                  params: { courseId: String(material.course_id) },
+                  params: { courseId: material.course_id },
                   search: {
-                    material: Number(materialId),
+                    material: materialId,
                     study: 'new' as const,
                   },
                 })

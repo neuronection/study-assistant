@@ -20,7 +20,7 @@ export function DrawingBlock({
   menuVisible = true,
   selected = false,
 }: {
-  drawingId: number
+  drawingId: string
   meta: DrawingMeta | undefined
   onAction: DrawingActionHandler
   menuVisible?: boolean

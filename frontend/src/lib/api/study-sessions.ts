@@ -1,37 +1,20 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
 
-export type StudySessionKind = 'focus' | 'quiz' | 'exercise' | 'review' | 'read' | 'note'
-export type StudySessionSource = 'timer' | 'auto' | 'manual'
+type Schemas = components['schemas']
 
-export interface StudySessionInfo {
-  id: number
-  kind: StudySessionKind
-  source: StudySessionSource
-  course_id: number | null
-  node_id: number | null
-  entity_ref: string | null
-  started_at: string
-  ended_at: string | null
-  duration_sec: number
-}
-
-export interface StudySessionDay {
-  day: string
-  total_sec: number
-  by_kind: Record<string, number>
-}
-
-export interface StudySessionSummary {
-  days: StudySessionDay[]
-  today_sec: number
-  week_sec: number
-}
+export type StudySessionKind = Schemas['StudySessionKind']
+export type StudySessionSource = Schemas['StudySessionSource']
+export type StudySessionInfo = Schemas['StudySessionOut']
+export type StudySessionDay = Schemas['StudySessionDayOut']
+export type StudySessionSummary = Schemas['StudySessionSummaryOut']
 
 export async function startStudySession(body: {
   kind: StudySessionKind
   source?: StudySessionSource
-  course_id?: number | null
-  node_id?: number | null
+  course_id?: string | null
+  node_id?: string | null
   entity_ref?: string | null
 }): Promise<StudySessionInfo> {
   const response = await apiFetch('/api/v1/study-sessions', {
@@ -43,7 +26,7 @@ export async function startStudySession(body: {
 }
 
 export async function beatStudySession(
-  sessionId: number,
+  sessionId: string,
   action: 'heartbeat' | 'end'
 ): Promise<StudySessionInfo> {
   const response = await apiFetch(`/api/v1/study-sessions/${sessionId}`, {

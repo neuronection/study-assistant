@@ -30,8 +30,8 @@ def start_session(
     *,
     kind: StudySessionKind,
     source: StudySessionSource,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     entity_ref: str | None = None,
 ) -> StudySession:
     now = utcnow()
@@ -46,15 +46,13 @@ def start_session(
                 StudySession.ended_at.is_not(None),
                 StudySession.ended_at >= now - timedelta(seconds=RESUME_WINDOW_SEC),
             )
-            .order_by(StudySession.id.desc())
+            .order_by(StudySession.started_at.desc(), StudySession.id.desc())
             .limit(1)
         )
         if resumable is not None:
             resumable.last_beat = now
             resumable.ended_at = now
-            resumable.duration_sec = _clamped_duration(
-                resumable.started_at, resumable.ended_at
-            )
+            resumable.duration_sec = _clamped_duration(resumable.started_at, resumable.ended_at)
             session.flush()
             return resumable
     row = StudySession(
@@ -74,9 +72,7 @@ def start_session(
     return row
 
 
-def beat_session(
-    session: Session, row: StudySession, *, end: bool = False
-) -> StudySession:
+def beat_session(session: Session, row: StudySession, *, end: bool = False) -> StudySession:
     now = utcnow()
     last_beat = _aware(row.last_beat)
     effective_end = min(_aware(now), last_beat + timedelta(seconds=END_GRACE_SEC))
@@ -109,16 +105,12 @@ def session_summary(session: Session, profile_id: str, days: int) -> dict[str, A
         entry = per_day.setdefault(key, {"total_sec": 0, "by_kind": {}})
         entry["total_sec"] += int(duration_sec or 0)
         kind_key = str(kind)
-        entry["by_kind"][kind_key] = entry["by_kind"].get(kind_key, 0) + int(
-            duration_sec or 0
-        )
+        entry["by_kind"][kind_key] = entry["by_kind"].get(kind_key, 0) + int(duration_sec or 0)
     day_list = [
         {"day": key, "total_sec": entry["total_sec"], "by_kind": entry["by_kind"]}
         for key, entry in sorted(per_day.items())
     ]
     week_sec = sum(entry["total_sec"] for entry in day_list[-7:])
     today_key = utcnow().date().isoformat()
-    today_sec = next(
-        (entry["total_sec"] for entry in day_list if entry["day"] == today_key), 0
-    )
+    today_sec = next((entry["total_sec"] for entry in day_list if entry["day"] == today_key), 0)
     return {"days": day_list, "today_sec": today_sec, "week_sec": week_sec}

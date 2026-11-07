@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Download, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus, CalendarDays, List } from 'lucide-react'
+import { CalendarClock, CalendarPlus, Check, Download, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus, CalendarDays, List } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { getExamStatus } from '@/lib/api'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
+import { IcsImportDialog } from './IcsImportDialog'
 import { PlannerWeekSheet } from './PlannerWeekSheet'
 import { PlannerWeekView } from './PlannerWeekView'
 import {
@@ -30,6 +31,8 @@ const KIND_STYLES: Record<string, string> = {
   practice: 'bg-warning/15 text-warning',
   review: 'bg-success/15 text-success',
   milestone: 'bg-danger/15 text-danger',
+  exam: 'bg-danger/15 text-danger',
+  deadline: 'bg-warning/15 text-warning',
 }
 
 type PlannerView = 'list' | 'week'
@@ -73,8 +76,10 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newDate, setNewDate] = useState(todayIso())
+  const [newKind, setNewKind] = useState('study')
   const [error, setError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const [icsOpen, setIcsOpen] = useState(false)
   const [view, setView] = useState<PlannerView>(readPlannerView)
 
   useEffect(() => {
@@ -87,14 +92,14 @@ export function PlannerTab({ courseId }: { courseId: string }) {
 
   const plan = useQuery({
     queryKey: ['plan', courseId],
-    queryFn: () => listPlanItems(Number(courseId)),
+    queryFn: () => listPlanItems(courseId),
   })
   const examEntry = useQuery({
     queryKey: ['exam-status'],
     queryFn: getExamStatus,
   })
   const readiness = (examEntry.data ?? []).find(
-    (entry) => entry.course_id === Number(courseId)
+    (entry) => entry.course_id === courseId
   )
 
   const refresh = async () => {
@@ -103,25 +108,25 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   }
 
   const generate = useMutation({
-    mutationFn: () => generatePlan(Number(courseId)),
+    mutationFn: () => generatePlan(courseId),
     onSuccess: () => void refresh(),
     onError: (err: Error) => setError(err.message),
   })
   const toggleDone = useMutation({
     mutationFn: ({ item, done }: { item: PlanItem; done: boolean }) =>
-      updatePlanItem(Number(courseId), item.id, { done }),
+      updatePlanItem(courseId, item.id, { done }),
     onSuccess: () => void refresh(),
   })
   const reschedule = useMutation({
     mutationFn: ({ item, dueDate }: { item: PlanItem; dueDate: string }) =>
-      updatePlanItem(Number(courseId), item.id, { due_date: dueDate }),
+      updatePlanItem(courseId, item.id, { due_date: dueDate }),
     onSuccess: () => void refresh(),
   })
   const pushDay = (item: PlanItem) =>
     reschedule.mutate({ item, dueDate: shiftIso(item.due_date, 1) })
   const promote = useMutation({
     mutationFn: (item: PlanItem) =>
-      updatePlanItem(Number(courseId), item.id, {
+      updatePlanItem(courseId, item.id, {
         title: item.title,
         due_date: item.due_date,
         kind: item.kind,
@@ -129,14 +134,14 @@ export function PlannerTab({ courseId }: { courseId: string }) {
     onSuccess: () => void refresh(),
   })
   const remove = useMutation({
-    mutationFn: (item: PlanItem) => deletePlanItem(Number(courseId), item.id),
+    mutationFn: (item: PlanItem) => deletePlanItem(courseId, item.id),
     onSuccess: () => void refresh(),
   })
   const add = useMutation({
     mutationFn: () =>
-      createPlanItem(Number(courseId), {
+      createPlanItem(courseId, {
         title: newTitle.trim(),
-        kind: 'study',
+        kind: newKind,
         due_date: newDate,
       }),
     onSuccess: async () => {
@@ -205,8 +210,17 @@ export function PlannerTab({ courseId }: { courseId: string }) {
           <Button
             variant="outline"
             size="sm"
+            title={t('planner.importIcs')}
+            onClick={() => setIcsOpen(true)}
+          >
+            <CalendarPlus aria-hidden />
+            {t('planner.importIcs')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             title={t('planner.downloadIcs')}
-            onClick={() => window.open(planIcsUrl(Number(courseId)), '_blank')}
+            onClick={() => window.open(planIcsUrl(courseId), '_blank')}
           >
             <Download aria-hidden />
             ICS
@@ -249,6 +263,19 @@ export function PlannerTab({ courseId }: { courseId: string }) {
                 }
               }}
             />
+            <select
+              className="bg-surface border-border rounded-md border px-2 py-1.5 text-sm"
+              value={newKind}
+              onChange={(event) => setNewKind(event.target.value)}
+              aria-label={t('planner.itemKind')}
+            >
+              <option value="study">{t('planner.kind_study')}</option>
+              <option value="practice">{t('planner.kind_practice')}</option>
+              <option value="review">{t('planner.kind_review')}</option>
+              <option value="milestone">{t('planner.kind_milestone')}</option>
+              <option value="exam">{t('planner.kind_exam')}</option>
+              <option value="deadline">{t('planner.kind_deadline')}</option>
+            </select>
             <input
               type="date"
               className="bg-surface border-border rounded-md border px-2 py-1.5 text-sm"
@@ -285,7 +312,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
               data-testid="plan-day"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
-                const id = Number(event.dataTransfer.getData('text/plan-item'))
+                const id = event.dataTransfer.getData('text/plan-item')
                 const item = (plan.data ?? []).find((entry) => entry.id === id)
                 if (item !== undefined && item.due_date !== day) {
                   reschedule.mutate({ item, dueDate: day })
@@ -401,6 +428,11 @@ export function PlannerTab({ courseId }: { courseId: string }) {
           {t('planner.generating')}
         </p>
       ) : null}
+      <IcsImportDialog
+        open={icsOpen}
+        courseId={courseId}
+        onClose={() => setIcsOpen(false)}
+      />
     </div>
   )
 }

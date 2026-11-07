@@ -15,7 +15,6 @@ def test_all_phase1_tables_exist(db_session: Session) -> None:
         "profiles",
         "courses",
         "blobs",
-        "material_groups",
         "materials",
         "extractions",
         "chunks",
@@ -31,9 +30,7 @@ def test_fts_is_queryable_and_empty(db_session: Session) -> None:
     assert rows == 0
 
 
-def test_material_lifecycle_roundtrip(
-    db_session: Session, tmp_path: Path, owner: Any
-) -> None:
+def test_material_lifecycle_roundtrip(db_session: Session, tmp_path: Path, owner: Any) -> None:
     profile = Profile(user_id=owner.id, name="Alex")
     db_session.add(profile)
     db_session.flush()

@@ -29,6 +29,7 @@ import {
   createTextMaterial,
   deleteFolder,
   deleteMaterial,
+  downloadBibliography,
   deriveMaterials,
   getFolderDeleteInfo,
   ingestSourceFile,
@@ -85,6 +86,7 @@ import { LinkRefBadge } from './LinkRefBadge'
 import { LinkedLocationsDialog } from './LinkedLocationsDialog'
 import type { LinkedLocationsTarget } from './LinkedLocationsDialog'
 import { NameEditor, normalizeName } from './NameEditor'
+import { BibliographyImportDialog } from './BibliographyImportDialog'
 import { NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput } from './NewTextFileDialog'
 import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
 import {
@@ -119,8 +121,8 @@ interface MenuState {
 }
 
 interface LinkState {
-  folderId: number
-  sourceId: number
+  folderId: string
+  sourceId: string
   subdir: string
 }
 
@@ -149,23 +151,24 @@ export function LibraryPage() {
   const from = useCurrentOrigin()
   const searchParams = useSearch({ from: '/library' })
   const queryClient = useQueryClient()
-  const [deletedItemId, setDeletedItemId] = useState<number | null>(null)
+  const [deletedItemId, setDeletedItemId] = useState<string | null>(null)
   const workspace = useWorkspaceStore()
   const courseId = searchParams.course ?? null
   const folderId = searchParams.folder ?? null
   const [view, setView] = useState<LibraryView>(readStoredView)
-  const [unassignedTarget, setUnassignedTarget] = useState<number | null>(null)
+  const [unassignedTarget, setUnassignedTarget] = useState<string | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
-  const [renamingId, setRenamingId] = useState<number | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
-  const [renamingMaterialId, setRenamingMaterialId] = useState<number | null>(null)
+  const [renamingMaterialId, setRenamingMaterialId] = useState<string | null>(null)
   const [materialDraft, setMaterialDraft] = useState('')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
   const [linkPicker, setLinkPicker] = useState(false)
+  const [bibliographyOpen, setBibliographyOpen] = useState(false)
   const [discoverOpen, setDiscoverOpen] = useState(false)
-  const [relinkSourceId, setRelinkSourceId] = useState<number | null>(null)
+  const [relinkSourceId, setRelinkSourceId] = useState<string | null>(null)
   const [linkState, setLinkState] = useState<LinkState | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState('')
@@ -176,7 +179,7 @@ export function LibraryPage() {
     return () => clearTimeout(id)
   }, [searchQuery])
   const [job, setJob] = useState<JobProgress | null>(null)
-  const [uploadJobId, setUploadJobId] = useState<number | null>(null)
+  const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const jobHideTimer = useRef<number | null>(null)
   const clearJobHideTimer = (): void => {
     if (jobHideTimer.current !== null) {
@@ -226,7 +229,7 @@ export function LibraryPage() {
       (entry) =>
         entry.id === searchParams.folder && entry.source_id === searchParams.source
     )
-    if (folder && folder.source_id !== null) {
+    if (folder && folder.source_id != null) {
       setLinkState({ folderId: folder.id, sourceId: folder.source_id, subdir: '' })
     }
   }, [searchParams.source, searchParams.folder, allFolders, linkState])
@@ -242,13 +245,13 @@ export function LibraryPage() {
   })
   const unassigned = useQuery({
     queryKey: ['materials', 'unassigned', courseId],
-    queryFn: () => getUnassignedMaterials(courseId as number),
+    queryFn: () => getUnassignedMaterials(courseId!),
     enabled: courseId !== null && linkState === null,
   })
   const [starredOnly, setStarredOnly] = useState(false)
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const starMutation = useMutation({
-    mutationFn: async ({ ids, starred }: { ids: number[]; starred: boolean }) => {
+    mutationFn: async ({ ids, starred }: { ids: string[]; starred: boolean }) => {
       await Promise.all(ids.map((id) => patchMaterial(id, { starred })))
     },
     onSuccess: async () => {
@@ -258,7 +261,7 @@ export function LibraryPage() {
   })
   const browse = useQuery({
     queryKey: ['source-browse', linkState?.sourceId ?? 0, linkState?.subdir ?? ''],
-    queryFn: () => browseSource(linkState?.sourceId as number, linkState?.subdir ?? ''),
+    queryFn: () => browseSource(linkState!.sourceId, linkState?.subdir ?? ''),
     enabled: linkState !== null,
   })
   const searchResults = useQuery({
@@ -291,16 +294,16 @@ export function LibraryPage() {
     },
   })
   const renameFolderMutation = useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) => renameFolder(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameFolder(id, name),
     onSuccess: () => void refreshFolders(),
   })
   const renameMaterialMutation = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) =>
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
       renameMaterial(id, title),
     onSuccess: () => refreshMaterials(),
   })
   const deleteFolderMutation = useMutation({
-    mutationFn: ({ id, force }: { id: number; force: boolean }) => deleteFolder(id, force),
+    mutationFn: ({ id, force }: { id: string; force: boolean }) => deleteFolder(id, force),
     onSuccess: async () => {
       if (folderId !== null) {
         await navigate({
@@ -314,7 +317,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const deleteMaterialMutation = useMutation({
-    mutationFn: (id: number) => deleteMaterial(id),
+    mutationFn: (id: string) => deleteMaterial(id),
     onSuccess: (result) => {
       setDeletedItemId(result.deleted_item_id)
       refreshMaterials()
@@ -322,7 +325,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const reingestMutation = useMutation({
-    mutationFn: async (ids: number[]) => {
+    mutationFn: async (ids: string[]) => {
       const jobs = []
       for (const id of ids) {
         jobs.push(await reingestMaterial(id))
@@ -335,7 +338,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const deriveMutation = useMutation({
-    mutationFn: (ids: number[]) => deriveMaterials(ids),
+    mutationFn: (ids: string[]) => deriveMaterials(ids),
     onSuccess: (result) => {
       refreshMaterials()
       const parts: string[] = []
@@ -353,7 +356,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const jobRetryMutation = useMutation({
-    mutationFn: async ({ materialId }: { materialId: number }) => {
+    mutationFn: async ({ materialId }: { materialId: string }) => {
       const jobs = await listJobs({ status: 'failed', limit: 200 })
       const failedJobs = jobs.filter(
         (job) =>
@@ -410,7 +413,7 @@ export function LibraryPage() {
       addSource({
         label: path.split('/').filter(Boolean).pop() ?? 'link',
         path,
-        course_id: courseId as number,
+        course_id: courseId!,
       }),
     onSuccess: async () => {
       setLinkPicker(false)
@@ -420,7 +423,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const relinkMutation = useMutation({
-    mutationFn: ({ id, path }: { id: number; path: string }) => relinkSource(id, path),
+    mutationFn: ({ id, path }: { id: string; path: string }) => relinkSource(id, path),
     onSuccess: async () => {
       setRelinkSourceId(null)
       await refreshBrowse()
@@ -429,13 +432,13 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const ingestMutation = useMutation({
-    mutationFn: ({ sourceId, relpath }: { sourceId: number; relpath: string }) =>
+    mutationFn: ({ sourceId, relpath }: { sourceId: string; relpath: string }) =>
       ingestSourceFile(sourceId, relpath),
     onSuccess: () => refreshMaterials(),
     onError: (error: Error) => setNotice(error.message),
   })
   const scanMutation = useMutation({
-    mutationFn: (sourceId: number) => scanSource(sourceId),
+    mutationFn: (sourceId: string) => scanSource(sourceId),
     onSuccess: async (result) => {
       const extra =
         result.new_relpaths && result.new_relpaths.length > 0
@@ -455,7 +458,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const toggleMirrorMutation = useMutation({
-    mutationFn: ({ sourceId, mirror }: { sourceId: number; mirror: boolean }) =>
+    mutationFn: ({ sourceId, mirror }: { sourceId: string; mirror: boolean }) =>
       setSourceMirror(sourceId, mirror),
     onSuccess: async (source) => {
       setNotice(
@@ -468,7 +471,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const mirrorBackfillMutation = useMutation({
-    mutationFn: (sourceId: number) => mirrorBackfillSource(sourceId),
+    mutationFn: (sourceId: string) => mirrorBackfillSource(sourceId),
     onSuccess: async (result) => {
       setNotice(
         t('sources.mirrorBackfilled', {
@@ -482,11 +485,11 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const revealMutation = useMutation({
-    mutationFn: (sourceId: number) => revealSource(sourceId),
+    mutationFn: (sourceId: string) => revealSource(sourceId),
     onError: (error: Error) => setNotice(error.message),
   })
   const unlinkMutation = useMutation({
-    mutationFn: (folderIdToDelete: number) => unlinkFolder(folderIdToDelete),
+    mutationFn: (folderIdToDelete: string) => unlinkFolder(folderIdToDelete),
     onSuccess: async () => {
       setLinkState(null)
       await refreshMaterials()
@@ -581,27 +584,27 @@ export function LibraryPage() {
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('f'))
-        .map((key) => Number(key.slice(1))),
+        .map((key) => key.slice(1)),
     [selection.selected]
   )
   const selectedMaterialIds = useMemo(
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('m'))
-        .map((key) => Number(key.slice(1))),
+        .map((key) => key.slice(1)),
     [selection.selected]
   )
   const clipboardItem = useClipboardStore((state) => state.item)
   const [assignOpen, setAssignOpen] = useState(false)
   const [askMaterialsOpen, setAskMaterialsOpen] = useState<Material[] | null>(null)
-  const [reExtractTarget, setReExtractTarget] = useState<number | null>(null)
+  const [reExtractTarget, setReExtractTarget] = useState<string | null>(null)
   const [linkedTarget, setLinkedTarget] = useState<LinkedLocationsTarget | null>(null)
   const [assignFoldersOpen, setAssignFoldersOpen] = useState(false)
-  const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
   const paneRef = useRef<HTMLDivElement>(null)
 
   const goToCourse = useCallback(
-    (id: number | null) => {
+    (id: string | null) => {
       workspace.setCourse(id)
       setLinkState(null)
       selection.clear()
@@ -611,7 +614,7 @@ export function LibraryPage() {
   )
 
   const goToFolder = useCallback(
-    (id: number | null) => {
+    (id: string | null) => {
       setLinkState(null)
       selection.clear()
       void navigate({
@@ -623,25 +626,25 @@ export function LibraryPage() {
   )
 
   const moveMaterialMutation = useMutation({
-    mutationFn: ({ id, target }: { id: number; target: number | null }) =>
+    mutationFn: ({ id, target }: { id: string; target: string | null }) =>
       moveMaterial(id, target),
     onSuccess: () => refreshMaterials(),
     onError: (error: Error) => setNotice(error.message),
   })
   const copyMaterialMutation = useMutation({
-    mutationFn: ({ id, target }: { id: number; target: number | null }) =>
+    mutationFn: ({ id, target }: { id: string; target: string | null }) =>
       copyMaterial(id, target),
     onSuccess: () => refreshMaterials(),
     onError: (error: Error) => setNotice(error.message),
   })
   const moveFolderMutation = useMutation({
-    mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) =>
+    mutationFn: ({ id, parentId }: { id: string; parentId: string | null }) =>
       moveFolder(id, parentId),
     onSuccess: () => void refreshFolders(),
     onError: (error: Error) => setNotice(error.message),
   })
   const assignMutation = useMutation({
-    mutationFn: async ({ nodeId, materialIds }: { nodeId: number; materialIds: number[] }) => {
+    mutationFn: async ({ nodeId, materialIds }: { nodeId: string; materialIds: string[] }) => {
       for (const materialId of materialIds) {
         await allocateMaterial(nodeId, materialId)
       }
@@ -655,7 +658,7 @@ export function LibraryPage() {
     onError: (error: Error) => setNotice(error.message),
   })
   const assignFoldersMutation = useMutation({
-    mutationFn: async ({ nodeId, folderIds }: { nodeId: number; folderIds: number[] }) => {
+    mutationFn: async ({ nodeId, folderIds }: { nodeId: string; folderIds: string[] }) => {
       for (const folderId of folderIds) {
         await allocateNodeFolder(nodeId, folderId)
       }
@@ -677,13 +680,13 @@ export function LibraryPage() {
   liveSelection.current = selection.selected
 
   const liveSelectedIds = () => {
-    const folderIds: number[] = []
-    const materialIds: number[] = []
+    const folderIds: string[] = []
+    const materialIds: string[] = []
     for (const key of liveSelection.current) {
       if (key.startsWith('f')) {
-        folderIds.push(Number(key.slice(1)))
+        folderIds.push(key.slice(1))
       } else if (key.startsWith('m')) {
-        materialIds.push(Number(key.slice(1)))
+        materialIds.push(key.slice(1))
       }
     }
     return { folderIds, materialIds }
@@ -696,7 +699,7 @@ export function LibraryPage() {
     }
     useClipboardStore.getState().set({
       kind: 'library',
-      courseId: courseId as number,
+      courseId: courseId!,
       folderIds,
       materialIds,
       mode: 'cut',
@@ -710,14 +713,14 @@ export function LibraryPage() {
     }
     useClipboardStore.getState().set({
       kind: 'library',
-      courseId: courseId as number,
+      courseId: courseId!,
       folderIds: [],
       materialIds,
       mode: 'copy',
     })
   }
 
-  const pasteInto = async (target: number | null) => {
+  const pasteInto = async (target: string | null) => {
     const item = clipboardIds()
     if (item === null || item.courseId !== courseId) {
       return
@@ -812,7 +815,7 @@ export function LibraryPage() {
       if (!mod && event.key === 'Enter' && selection.selected.size === 1) {
         const selectedKey = [...selection.selected][0]
         if (selectedKey.startsWith('f')) {
-          const folder = allFolders.find((entry) => entry.id === Number(selectedKey.slice(1)))
+          const folder = allFolders.find((entry) => entry.id === selectedKey.slice(1))
           if (folder !== undefined) {
             event.preventDefault()
             openLinkFolder(folder)
@@ -908,7 +911,7 @@ export function LibraryPage() {
   }, [course, currentFolder, allFolders, t, goToCourse, goToFolder, linkState, linkFolder])
 
   const openLinkFolder = (entry: Folder) => {
-    if (entry.source_id === null) {
+    if (entry.source_id == null) {
       goToFolder(entry.id)
       return
     }
@@ -931,26 +934,26 @@ export function LibraryPage() {
         {
           key: 'rescan',
           label: t('library.rescan'),
-          onSelect: () => scanMutation.mutate(entry.source_id as number),
+          onSelect: () => scanMutation.mutate(entry.source_id!),
         },
         {
           key: 'mirror-toggle',
           label: t('sources.mirrorToggleOn'),
           onSelect: () =>
             toggleMirrorMutation.mutate({
-              sourceId: entry.source_id as number,
+              sourceId: entry.source_id!,
               mirror: true,
             }),
         },
         {
           key: 'mirror-now',
           label: t('sources.mirrorNow'),
-          onSelect: () => mirrorBackfillMutation.mutate(entry.source_id as number),
+          onSelect: () => mirrorBackfillMutation.mutate(entry.source_id!),
         },
         {
           key: 'reveal',
           label: t('library.revealOnDisk'),
-          onSelect: () => revealMutation.mutate(entry.source_id as number),
+          onSelect: () => revealMutation.mutate(entry.source_id!),
         },
         {
           key: 'assign',
@@ -1037,7 +1040,7 @@ export function LibraryPage() {
     ]
   }
 
-  const hasFailedJobs = (materialId: number): boolean => {
+  const hasFailedJobs = (materialId: string): boolean => {
     const cached = queryClient.getQueryData<JobInfo[]>(['jobs-list', 'failed'])
     if (cached === undefined) {
       return false
@@ -1045,7 +1048,7 @@ export function LibraryPage() {
     return cached.some((job) => job.status === 'failed' && job.retriable && job.material_id === materialId)
   }
 
-  const materialMenu = (id: number, title: string): ContextMenuItem[] => {
+  const materialMenu = (id: string, title: string): ContextMenuItem[] => {
     const wasSelected = selection.selected.has(`m${id}`)
     const keys = wasSelected ? [...selection.selected] : [`m${id}`]
     if (!wasSelected) {
@@ -1054,7 +1057,7 @@ export function LibraryPage() {
     const multi = keys.length > 1
     const effectiveIds = keys
       .filter((key) => key.startsWith('m'))
-      .map((key) => Number(key.slice(1)))
+      .map((key) => key.slice(1))
     const selected = effectiveIds.map((mid) =>
       (materials.data ?? []).find((entry) => entry.id === mid)
     )
@@ -1237,6 +1240,11 @@ export function LibraryPage() {
         label: t('library.addLinkedFolder'),
         onSelect: () => setLinkPicker(true),
       },
+      {
+        key: 'import-bibliography',
+        label: t('library.importBibliography'),
+        onSelect: () => setBibliographyOpen(true),
+      },
     ],
   })
 
@@ -1309,9 +1317,9 @@ export function LibraryPage() {
     ) {
       const inClipboard =
         (key.startsWith('f') &&
-          clipboardItem.folderIds.includes(Number(key.slice(1)))) ||
+          clipboardItem.folderIds.includes(key.slice(1))) ||
         (key.startsWith('m') &&
-          clipboardItem.materialIds.includes(Number(key.slice(1))))
+          clipboardItem.materialIds.includes(key.slice(1)))
       if (inClipboard) {
         return 'cut'
       }
@@ -1319,7 +1327,7 @@ export function LibraryPage() {
     return selection.selected.has(key) ? 'selected' : 'none'
   }
 
-  const buildDragPayload = (event: React.DragEvent, kind: 'f' | 'm', id: number) => {
+  const buildDragPayload = (event: React.DragEvent, kind: 'f' | 'm', id: string) => {
     const key = `${kind}${id}`
     buildDragPayloadShared(event, {
       key,
@@ -1338,7 +1346,7 @@ export function LibraryPage() {
 
   const dropPayload = (
     event: React.DragEvent
-  ): { folderIds: number[]; materialIds: number[] } | null => {
+  ): { folderIds: string[]; materialIds: string[] } | null => {
     const payload = parseDragPayload(event)
     if (payload === null) {
       return null
@@ -1348,7 +1356,7 @@ export function LibraryPage() {
 
   const moveSelectionTo = async (
     event: React.DragEvent,
-    targetFolderId: number | null,
+    targetFolderId: string | null,
     linked: boolean
   ) => {
     const payload = dropPayload(event)
@@ -2046,6 +2054,19 @@ className={cn(
                 {t('library.selectedCount', { count: selection.selected.size })}
               </button>
             ) : null}
+            {selectedMaterialIds.length > 0 ? (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground hover:underline"
+                onClick={() => {
+                  downloadBibliography(selectedMaterialIds).catch((error: Error) =>
+                    setNotice(error.message)
+                  )
+                }}
+              >
+                {t('library.exportCitations')}
+              </button>
+            ) : null}
             {searching
               ? t('library.searchResults', { count: searchResults.data?.hits.length ?? 0 })
               : courseId === null
@@ -2153,6 +2174,11 @@ className={cn(
           onCancel={() => setTextDialog(null)}
         />
       ) : null}
+      <BibliographyImportDialog
+        open={bibliographyOpen}
+        courseId={courseId}
+        onClose={() => setBibliographyOpen(false)}
+      />
       {linkPicker ? (
         <FolderPickerDialog
           title={t('library.addLinkedFolder')}

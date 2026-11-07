@@ -345,9 +345,10 @@ The full manual lives in [`docs/`](docs/README.md), split into a
 
 Honest boundaries — not every limitation is a bug:
 
-- **From source today.** Prebuilt installers (deb, AppImage, Windows exe) arrive with
-  the first tagged release; Linux packaging is verified locally, the Windows build
-  awaits its first CI run.
+- **Prebuilt installers (deb, AppImage, Windows exe).** Tag-driven CI builds and
+  attaches them to GitHub Releases (since v0.12.1); the Windows exe is built by
+  the same tag gate. Building from source remains the documented path for
+  development.
 - **Browser-first.** The pywebview desktop shell has a rendering issue on some setups;
   `pnpm webapp` is the recommended mode for now.
 - **Single user, single machine.** Loopback-only server, one local profile — no
@@ -375,7 +376,8 @@ Support development: [Buy Me a Coffee](https://buymeacoffee.com/neuronection)
 
 ## Contributing
 
-Contributions are welcome. Set up a dev environment via
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), set up a dev environment via
 [Quick start](#quick-start), then run the verification suite before every commit:
 
 ```bash
@@ -406,8 +408,8 @@ its reasoning, and you in control of your information.
   <tr>
     <td width="50%" align="center" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/health-light.svg">
-        <img src="https://neuronection.com/logos/health.svg" height="34" alt="Health Assistant">
+        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/health-light.svg?v=2">
+        <img src="https://neuronection.com/logos/health.svg?v=2" height="34" alt="Health Assistant">
       </picture>
       <br>
       <a href="https://neuronection.com/en/health/"><strong>Health Assistant</strong></a>
@@ -416,8 +418,8 @@ its reasoning, and you in control of your information.
     </td>
     <td width="50%" align="center" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/career-light.svg">
-        <img src="https://neuronection.com/logos/career.svg" height="34" alt="Career Assistant">
+        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/career-light.svg?v=2">
+        <img src="https://neuronection.com/logos/career.svg?v=2" height="34" alt="Career Assistant">
       </picture>
       <br>
       <a href="https://neuronection.com/en/career/"><strong>Career Assistant</strong></a>
@@ -427,14 +429,14 @@ its reasoning, and you in control of your information.
   </tr>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="https://neuronection.com/logos/study.svg" height="34" alt="Study Assistant">
+      <img src="https://neuronection.com/logos/study.svg?v=2" height="34" alt="Study Assistant">
       <br>
       <a href="https://neuronection.com/en/study/"><strong>Study Assistant</strong> <sub>· this repo</sub></a>
       <br><sub>A local-first study workbench, in browser or on desktop — AI-powered course library, handwriting, chat and practice; math-first, subject-agnostic.</sub>
       <br><sub><a href="https://github.com/neuronection/study-assistant">GitHub</a> · <a href="https://github.com/neuronection/study-assistant/tree/main/docs">Docs</a></sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <img src="https://neuronection.com/logos/desktop.svg" height="34" alt="Desktop Assistant">
+      <img src="https://neuronection.com/logos/desktop.svg?v=2" height="34" alt="Desktop Assistant">
       <br>
       <a href="https://neuronection.com/en/desktop/"><strong>Desktop Assistant</strong></a>
       <br><sub>A system-tray AI launcher for Windows, Linux and macOS — global hotkey, streaming chat, voice input, attachments; local-only history.</sub>

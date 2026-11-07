@@ -1,0 +1,400 @@
+{
+  "schema": 1,
+  "adr": "ADR-0051",
+  "plan": 52,
+  "contract": "tokenizer",
+  "contractVersion": "1",
+  "description": "Cross-product acceptance wall for contracts/tokenizer_contract.py (plan 52 T0): tokenizer vocabulary, exact/fallback law, pinned serialization, cache/identity keys, chunk bounds and the conservative heuristic.",
+  "vocabularies": {
+    "kinds": [
+      "tiktoken",
+      "hf_tokenizers",
+      "sentencepiece",
+      "heuristic"
+    ],
+    "sources": [
+      "provider",
+      "curated",
+      "admin",
+      "fallback"
+    ],
+    "reservedKinds": [
+      "sentencepiece"
+    ]
+  },
+  "versions": {
+    "contract": "1",
+    "schema": 1
+  },
+  "defaults": {
+    "minMaxChunkTokens": 32,
+    "minMaxChars": 1,
+    "heuristicBytesPerToken": 2,
+    "heuristicCodepointDivisor": 8
+  },
+  "specs": [
+    {
+      "name": "tiktoken-cl100k",
+      "spec": {
+        "schema_version": 1,
+        "kind": "tiktoken",
+        "identifier": "cl100k_base",
+        "revision": null,
+        "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "exact": true,
+        "max_input_tokens": 8191,
+        "source": "provider"
+      },
+      "expectedCacheKey": "28462846aea8fe78618cfe39e0688a4364f7b75f3c03dc30e40146b3f7e9b4a3",
+      "identity": "tiktoken:cl100k_base#223921b76ee9"
+    },
+    {
+      "name": "hf-pinned",
+      "spec": {
+        "schema_version": 1,
+        "kind": "hf_tokenizers",
+        "identifier": "org/model",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "artifact_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "exact": true,
+        "max_input_tokens": 512,
+        "source": "curated"
+      },
+      "expectedCacheKey": "3e410cd305f660e98376ce7109da748d82aff60db8e11491a20ea9566e16b26c",
+      "identity": "hf_tokenizers:org/model@0123456789abcdef0123456789abcdef01234567#bbbbbbbbbbbb"
+    },
+    {
+      "name": "heuristic-fallback",
+      "spec": {
+        "schema_version": 1,
+        "kind": "heuristic",
+        "identifier": "utf8-heuristic-v1",
+        "revision": null,
+        "artifact_sha256": null,
+        "exact": false,
+        "max_input_tokens": 8191,
+        "source": "fallback"
+      },
+      "expectedCacheKey": "1514c466cfde2c6d102c1fd2cde7d01cf7e11301ba8ec2029ed3962949942491",
+      "identity": "heuristic:utf8-heuristic-v1"
+    },
+    {
+      "name": "reserved-sentencepiece",
+      "spec": {
+        "schema_version": 1,
+        "kind": "sentencepiece",
+        "identifier": "org/model-sp",
+        "revision": "v1.0.0",
+        "artifact_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "exact": true,
+        "max_input_tokens": 512,
+        "source": "admin"
+      },
+      "expectedCacheKey": "5cebaa12eeed5b4403f39b4351a61c1c74283e977d2c40d9afa8eb9f75db75a8",
+      "identity": "sentencepiece:org/model-sp@v1.0.0#cccccccccccc"
+    }
+  ],
+  "invalidSpecs": [
+    {
+      "name": "heuristic-exact",
+      "spec": {
+        "kind": "heuristic",
+        "identifier": "utf8-heuristic-v1",
+        "max_input_tokens": 8191,
+        "source": "fallback",
+        "exact": true
+      }
+    },
+    {
+      "name": "tiktoken-approximate",
+      "spec": {
+        "kind": "tiktoken",
+        "identifier": "cl100k_base",
+        "max_input_tokens": 8191,
+        "source": "provider",
+        "exact": false,
+        "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7"
+      }
+    },
+    {
+      "name": "tiktoken-no-sha",
+      "spec": {
+        "kind": "tiktoken",
+        "identifier": "cl100k_base",
+        "max_input_tokens": 8191,
+        "source": "provider"
+      }
+    },
+    {
+      "name": "hf-no-revision",
+      "spec": {
+        "kind": "hf_tokenizers",
+        "identifier": "org/model",
+        "max_input_tokens": 512,
+        "source": "curated",
+        "artifact_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "name": "sentencepiece-no-revision",
+      "spec": {
+        "kind": "sentencepiece",
+        "identifier": "org/model-sp",
+        "max_input_tokens": 512,
+        "source": "admin",
+        "artifact_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "name": "short-sha",
+      "spec": {
+        "kind": "tiktoken",
+        "identifier": "cl100k_base",
+        "max_input_tokens": 8191,
+        "source": "provider",
+        "artifact_sha256": "abc"
+      }
+    },
+    {
+      "name": "zero-limit",
+      "spec": {
+        "kind": "heuristic",
+        "identifier": "utf8-heuristic-v1",
+        "max_input_tokens": 0,
+        "source": "fallback"
+      }
+    },
+    {
+      "name": "empty-identifier",
+      "spec": {
+        "kind": "heuristic",
+        "identifier": "  ",
+        "max_input_tokens": 8191,
+        "source": "fallback"
+      }
+    },
+    {
+      "name": "unknown-kind",
+      "spec": {
+        "kind": "wordpiece",
+        "identifier": "x",
+        "max_input_tokens": 10,
+        "source": "fallback"
+      }
+    },
+    {
+      "name": "unknown-source",
+      "spec": {
+        "kind": "heuristic",
+        "identifier": "x",
+        "max_input_tokens": 10,
+        "source": "guessed"
+      }
+    },
+    {
+      "name": "unknown-field",
+      "spec": {
+        "schema_version": 1,
+        "kind": "heuristic",
+        "identifier": "x",
+        "max_input_tokens": 10,
+        "source": "fallback",
+        "extra": 1
+      }
+    },
+    {
+      "name": "wrong-schema",
+      "spec": {
+        "schema_version": 2,
+        "kind": "heuristic",
+        "identifier": "x",
+        "max_input_tokens": 10,
+        "source": "fallback"
+      }
+    }
+  ],
+  "chunkConfigs": [
+    {
+      "name": "reference-512-64",
+      "config": {
+        "schema_version": 1,
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 64,
+        "max_chars": 8000
+      },
+      "expectedFingerprint": "e23eaf139ae6aa860c8eb392059f072bcf041f42ddc682f0d4721dac8ea390b3",
+      "fits": [
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 256,
+          "safetyMargin": 64,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 512,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        }
+      ]
+    },
+    {
+      "name": "small-128-16",
+      "config": {
+        "schema_version": 1,
+        "max_chunk_tokens": 128,
+        "overlap_tokens": 16,
+        "max_chars": 2000
+      },
+      "expectedFingerprint": "4f7f8044ee603180b6f3d869b85c76ea3cc415b259e25a8f50ee1828339c22c7",
+      "fits": [
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 256,
+          "safetyMargin": 64,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 512,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        }
+      ]
+    },
+    {
+      "name": "no-overlap",
+      "config": {
+        "schema_version": 1,
+        "max_chunk_tokens": 256,
+        "overlap_tokens": 0,
+        "max_chars": 4000
+      },
+      "expectedFingerprint": "050b8d5c409999eb6ab653a1505a8c6c115c71da28fe37c90269659300fdc776",
+      "fits": [
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 8191,
+          "prefixTokens": 256,
+          "safetyMargin": 64,
+          "expected": true
+        },
+        {
+          "maxInputTokens": 512,
+          "prefixTokens": 0,
+          "safetyMargin": 0,
+          "expected": true
+        }
+      ]
+    }
+  ],
+  "invalidChunkConfigs": [
+    {
+      "name": "overlap-at-half",
+      "config": {
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 256,
+        "max_chars": 8000
+      }
+    },
+    {
+      "name": "overlap-above-half",
+      "config": {
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 300,
+        "max_chars": 8000
+      }
+    },
+    {
+      "name": "negative-overlap",
+      "config": {
+        "max_chunk_tokens": 512,
+        "overlap_tokens": -1,
+        "max_chars": 8000
+      }
+    },
+    {
+      "name": "below-min-tokens",
+      "config": {
+        "max_chunk_tokens": 16,
+        "overlap_tokens": 0,
+        "max_chars": 8000
+      }
+    },
+    {
+      "name": "zero-chars",
+      "config": {
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 64,
+        "max_chars": 0
+      }
+    },
+    {
+      "name": "unknown-field",
+      "config": {
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 64,
+        "max_chars": 8000,
+        "prefix": "x"
+      }
+    },
+    {
+      "name": "wrong-schema",
+      "config": {
+        "schema_version": 2,
+        "max_chunk_tokens": 512,
+        "overlap_tokens": 64,
+        "max_chars": 8000
+      }
+    }
+  ],
+  "heuristic": [
+    {
+      "name": "english",
+      "text": "Senior backend engineer to design, build, and operate distributed data services. You will own reliability, observability, and the on-call rotation while mentoring three engineers.",
+      "expectedTokens": 113
+    },
+    {
+      "name": "greek",
+      "text": "Αναζητούμε έμπειρο μηχανικό λογισμικού για την ανάπτυξη κατανεμημένων υπηρεσιών, με ευθύνη για την αξιοπιστία, την παρακολούθηση και την τεκμηρίωση των συστημάτων.",
+      "expectedTokens": 173
+    },
+    {
+      "name": "german",
+      "text": "Wir suchen eine erfahrene Softwareentwicklerin für die Entwicklung verteilter Datendienste. Sie übernehmen Verantwortung für Zuverlässigkeit, Beobachtbarkeit und die Dokumentation der Systeme.",
+      "expectedTokens": 122
+    },
+    {
+      "name": "cjk",
+      "text": "我們正在尋找一位有經驗的後端工程師，負責設計、建置與維運分散式資料服務，並確保系統的可靠性與可觀測性。",
+      "expectedTokens": 84
+    },
+    {
+      "name": "code_markdown",
+      "text": "## Responsibilities\n\n```python\ndef index(docs: list[str]) -> int:\n    return sum(len(doc) for doc in docs)\n```\n\n- Own the ingestion pipeline\n- Review pull requests\n",
+      "expectedTokens": 103
+    },
+    {
+      "name": "empty",
+      "text": "",
+      "expectedTokens": 0
+    }
+  ]
+}

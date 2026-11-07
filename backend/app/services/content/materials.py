@@ -21,15 +21,23 @@ from ...domain.models import (
     MaterialStudyState,
     TreeNode,
 )
+from ...domain.payloads import BlockDict
 from ...jobs.cancellation import cancel_jobs_for_material
 from ...jobs.payloads import IngestPayload
 from ...jobs.runner import JobRunner
-from ...pipelines.chunking import chunk_markdown
-from ...storage import vectors
+from ...services.retrieval.chunk_profile import chunk_texts_for_space
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
+from ...storage.vector_store import StudyVectorStore
 from .discovery import revert_suggestions_for_material
-from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs, remap_image_refs
+from .drawings import (
+    apply_drawing_view,
+    drawing_ref_ids,
+    drawing_view,
+    md_to_blocks,
+    remap_drawing_refs,
+    remap_image_refs,
+)
 from .notes import normalize_tags
 
 KIND_BY_SUFFIX: dict[str, str] = {
@@ -121,32 +129,22 @@ def detect_kind(filename: str) -> str:
 def purge_material(session: Session, material: Material) -> None:
     cancel_jobs_for_material(session, material.id)
     extraction_ids = list(
-        session.scalars(
-            select(Extraction.id).where(Extraction.material_id == material.id)
-        )
+        session.scalars(select(Extraction.id).where(Extraction.material_id == material.id))
     )
-    chunk_ids = list(
-        session.scalars(
-            select(Chunk.id).where(Chunk.extraction_id.in_(extraction_ids))
-        )
-    ) if extraction_ids else []
+    chunk_ids = (
+        list(session.scalars(select(Chunk.id).where(Chunk.extraction_id.in_(extraction_ids))))
+        if extraction_ids
+        else []
+    )
     if chunk_ids:
-        vectors.delete_for_extraction(session, chunk_ids)
+        StudyVectorStore(session).delete_for_extraction(chunk_ids)
     if extraction_ids:
         session.execute(delete(Chunk).where(Chunk.extraction_id.in_(extraction_ids)))
         session.execute(delete(Extraction).where(Extraction.id.in_(extraction_ids)))
-    session.execute(
-        delete(MaterialIndexCard).where(MaterialIndexCard.material_id == material.id)
-    )
-    session.execute(
-        delete(MaterialStudyState).where(MaterialStudyState.material_id == material.id)
-    )
-    session.execute(
-        delete(MaterialLink).where(MaterialLink.material_id == material.id)
-    )
-    session.execute(
-        delete(MaterialDrawing).where(MaterialDrawing.material_id == material.id)
-    )
+    session.execute(delete(MaterialIndexCard).where(MaterialIndexCard.material_id == material.id))
+    session.execute(delete(MaterialStudyState).where(MaterialStudyState.material_id == material.id))
+    session.execute(delete(MaterialLink).where(MaterialLink.material_id == material.id))
+    session.execute(delete(MaterialDrawing).where(MaterialDrawing.material_id == material.id))
     delete_material_fts(session, material.id)
     revert_suggestions_for_material(session, material.id)
     session.delete(material)
@@ -164,10 +162,9 @@ class MaterialsService:
         filename: str,
         data: bytes,
         mime: str | None,
-        course_id: int,
-        group_id: int | None = None,
-        folder_id: int | None = None,
-        dedup_exclude_id: int | None = None,
+        course_id: str,
+        folder_id: str | None = None,
+        dedup_exclude_id: str | None = None,
     ) -> tuple[Material, bool]:
         if len(data) > MAX_UPLOAD_BYTES:
             raise ValueError("file exceeds upload size limit")
@@ -198,7 +195,6 @@ class MaterialsService:
         material = Material(
             profile_id=profile_id,
             course_id=course_id,
-            group_id=group_id,
             folder_id=folder_id,
             kind=kind,
             duration_sec=duration_sec,
@@ -218,12 +214,12 @@ class MaterialsService:
         self,
         *,
         profile_id: str,
-        course_id: int,
+        course_id: str,
         filename: str,
         content: str,
-        folder_id: int | None = None,
+        folder_id: str | None = None,
         description: str | None = None,
-        dedup_exclude_id: int | None = None,
+        dedup_exclude_id: str | None = None,
     ) -> tuple[Material, bool]:
         name = filename.strip()
         if not name:
@@ -249,11 +245,11 @@ class MaterialsService:
         self,
         *,
         profile_id: str,
-        course_id: int,
+        course_id: str,
         url: str,
         title: str | None = None,
-        node_id: int | None = None,
-        folder_id: int | None = None,
+        node_id: str | None = None,
+        folder_id: str | None = None,
     ) -> tuple[Material, bool]:
         text = (url or "").strip()
         parsed = urlparse(text)
@@ -299,12 +295,13 @@ class MaterialsService:
         )
         self._session.add(material)
         self._session.flush()
+        from .citations import attach_suggestion_citation
+
+        attach_suggestion_citation(self._session, profile_id, material, url_norm)
         if node_id is not None:
             from ..knowledge.tree import TreeService
 
-            placement = TreeService(self._session).placement_node(
-                course_id, node_id
-            )
+            placement = TreeService(self._session).placement_node(course_id, node_id)
             self._session.add(
                 MaterialLink(
                     course_id=course_id,
@@ -323,15 +320,14 @@ class MaterialsService:
         material.title = title[:300]
         self._session.flush()
         return material
+
     def set_description(self, material: Material, description: str | None) -> Material:
         cleaned = description.strip() if description is not None else ""
         material.description = cleaned[:2000] or None
         self._session.flush()
         return material
 
-    def _validated_target_folder(
-        self, material: Material, folder_id: int | None
-    ) -> None:
+    def _validated_target_folder(self, material: Material, folder_id: str | None) -> None:
         if folder_id is None:
             return
         folder = self._session.get(MaterialFolder, folder_id)
@@ -342,14 +338,14 @@ class MaterialsService:
         if folder.source_id is not None:
             raise ValueError("cannot move into a linked folder")
 
-    def move(self, material: Material, folder_id: int | None) -> Material:
+    def move(self, material: Material, folder_id: str | None) -> Material:
         self._validated_target_folder(material, folder_id)
         material.folder_id = folder_id
         self._session.flush()
         return material
 
     def _unique_title(
-        self, base_title: str, label: str, folder_id: int | None, course_id: int
+        self, base_title: str, label: str, folder_id: str | None, course_id: str
     ) -> str:
         taken = set(
             self._session.scalars(
@@ -367,11 +363,11 @@ class MaterialsService:
                 return candidate
             counter += 1
 
-    def _copy_title(self, base_title: str, folder_id: int | None, course_id: int) -> str:
+    def _copy_title(self, base_title: str, folder_id: str | None, course_id: str) -> str:
         return self._unique_title(base_title, "copy", folder_id, course_id)
 
     def _unique_derive_title(
-        self, base_title: str, folder_id: int | None, course_id: int, exclude_id: int
+        self, base_title: str, folder_id: str | None, course_id: str, exclude_id: str
     ) -> str:
         taken = set(
             self._session.scalars(
@@ -393,14 +389,11 @@ class MaterialsService:
                 return candidate
             counter += 1
 
-    def copy(
-        self, material: Material, folder_id: int | None, runner: JobRunner
-    ) -> Material:
+    def copy(self, material: Material, folder_id: str | None, runner: JobRunner) -> Material:
         self._validated_target_folder(material, folder_id)
         copy = Material(
             profile_id=material.profile_id,
             course_id=material.course_id,
-            group_id=material.group_id,
             folder_id=folder_id,
             kind=material.kind,
             title=self._copy_title(material.title, folder_id, material.course_id),
@@ -430,9 +423,7 @@ class MaterialsService:
             self._session.add(row)
             self._session.flush()
             for chunk in self._session.scalars(
-                select(Chunk)
-                .where(Chunk.extraction_id == extraction.id)
-                .order_by(Chunk.ordinal)
+                select(Chunk).where(Chunk.extraction_id == extraction.id).order_by(Chunk.ordinal)
             ):
                 self._session.add(
                     Chunk(
@@ -456,15 +447,13 @@ class MaterialsService:
                 )
             )
         if extraction is not None:
-            JobRunner.enqueue(
-                self._session, "postprocess", {"material_id": copy.id}
-            )
+            JobRunner.enqueue(self._session, "postprocess", {"material_id": copy.id})
             runner.wake()
         self._session.flush()
         return copy
 
     def derive(
-        self, material: Material, folder_id: int | None, node_id: int | None = None
+        self, material: Material, folder_id: str | None, node_id: str | None = None
     ) -> tuple[Material, bool]:
         extraction = self.latest_extraction(material.id)
         if extraction is None or not extraction.markdown.strip():
@@ -475,7 +464,7 @@ class MaterialsService:
             folder = self._session.get(MaterialFolder, material.folder_id)
             if folder is not None and folder.source_id is None:
                 folder_id = material.folder_id
-        target_node_ids: set[int] = set()
+        target_node_ids: set[str] = set()
         if node_id is not None:
             node = self._session.get(TreeNode, node_id)
             if node is None:
@@ -499,7 +488,7 @@ class MaterialsService:
             return derived, True
         source_images = list(material.images)
         if source_images:
-            image_mapping: dict[int, int] = {}
+            image_mapping: dict[str, str] = {}
             for source_image in source_images:
                 new_image = MaterialImage(
                     material_id=derived.id,
@@ -521,17 +510,17 @@ class MaterialsService:
             self._session.flush()
         source_drawings = list(material.drawings)
         if source_drawings:
-            mapping: dict[int, int] = {}
+            mapping: dict[str, str] = {}
             for source_drawing in source_drawings:
                 new_drawing = MaterialDrawing(
                     material_id=derived.id,
                     strokes=source_drawing.strokes,
                     png_sha=source_drawing.png_sha,
-                    view=source_drawing.view,
                     ocr_version=source_drawing.ocr_version,
                     ocr_blocks=source_drawing.ocr_blocks,
                     ocr_markdown=source_drawing.ocr_markdown,
                 )
+                apply_drawing_view(new_drawing, drawing_view(source_drawing))
                 self._session.add(new_drawing)
                 self._session.flush()
                 mapping[source_drawing.id] = new_drawing.id
@@ -564,9 +553,7 @@ class MaterialsService:
         self._session.flush()
         return derived, False
 
-    def derive_batch(
-        self, material_ids: list[int], runner: JobRunner
-    ) -> list[dict[str, Any]]:
+    def derive_batch(self, material_ids: list[str], runner: JobRunner) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         for material_id in material_ids:
             material = self._session.get(Material, material_id)
@@ -584,7 +571,7 @@ class MaterialsService:
                 results.append(skipped)
                 continue
             derived, deduped = self.derive(material, None, None)
-            job_id: int | None = None
+            job_id: str | None = None
             if not deduped:
                 job_id = self.queue_ingest(derived, runner)
             results.append(
@@ -600,9 +587,9 @@ class MaterialsService:
     def _find_duplicate(
         self,
         profile_id: str,
-        course_id: int,
+        course_id: str,
         content_hash: str,
-        exclude_id: int | None = None,
+        exclude_id: str | None = None,
     ) -> Material | None:
         query = select(Material).where(
             Material.profile_id == profile_id,
@@ -612,12 +599,20 @@ class MaterialsService:
         )
         if exclude_id is not None:
             query = query.where(Material.id != exclude_id)
-        return self._session.scalars(query.order_by(Material.id)).first()
+        return self._session.scalars(query.order_by(Material.created_at, Material.id)).first()
 
-    def queue_ingest(self, material: Material, runner: JobRunner, mode: str | None = None) -> int:
+    def queue_ingest(
+        self,
+        material: Material,
+        runner: JobRunner,
+        mode: str | None = None,
+        preprocess: str | None = None,
+    ) -> str:
         payload: IngestPayload = {"material_id": material.id, "blob_sha": material.blob_sha}
         if mode is not None:
             payload["mode"] = mode
+        if preprocess is not None:
+            payload["preprocess"] = preprocess
         job = JobRunner.enqueue(self._session, "ingest", payload)
         runner.wake()
         return job.id
@@ -626,8 +621,8 @@ class MaterialsService:
         self,
         *,
         profile_id: str,
-        course_id: int | None = None,
-        folder_id: int | None = None,
+        course_id: str | None = None,
+        folder_id: str | None = None,
         unfiled: bool = False,
         tag: str | None = None,
         starred: bool | None = None,
@@ -638,9 +633,7 @@ class MaterialsService:
         if folder_id is not None:
             query = query.where(Material.folder_id == folder_id)
         elif unfiled:
-            query = query.where(
-                Material.folder_id.is_(None), Material.source_id.is_(None)
-            )
+            query = query.where(Material.folder_id.is_(None), Material.source_id.is_(None))
         if starred:
             query = query.where(Material.starred.is_(True))
         materials = list(self._session.scalars(query.order_by(Material.created_at.desc())))
@@ -658,13 +651,13 @@ class MaterialsService:
         self._session.flush()
         return material
 
-    def get(self, material_id: int, *, profile_id: str) -> Material | None:
+    def get(self, material_id: str, *, profile_id: str) -> Material | None:
         material = self._session.get(Material, material_id)
         if material is None or material.profile_id != profile_id:
             return None
         return material
 
-    def latest_extraction(self, material_id: int) -> Extraction | None:
+    def latest_extraction(self, material_id: str) -> Extraction | None:
         return self._session.scalars(
             select(Extraction)
             .where(Extraction.material_id == material_id)
@@ -672,25 +665,19 @@ class MaterialsService:
             .limit(1)
         ).first()
 
-    def edit_extraction(
-        self, material: Material, markdown: str
-    ) -> tuple[Extraction, list[int]]:
+    def edit_extraction(self, material: Material, markdown: str) -> tuple[Extraction, list[str]]:
         markdown = markdown.strip()
         if not markdown:
             raise ValueError("extraction markdown cannot be empty")
-        unknown = drawing_ref_ids(markdown) - {
-            drawing.id for drawing in material.drawings
-        }
+        unknown = drawing_ref_ids(markdown) - {drawing.id for drawing in material.drawings}
         if unknown:
             raise ValueError(f"unknown drawing reference(s): {sorted(unknown)}")
         latest = self.latest_extraction(material.id)
         version = (latest.version + 1) if latest is not None else 1
-        previous_chunk_ids: list[int] = []
+        previous_chunk_ids: list[str] = []
         if latest is not None:
             previous_chunk_ids = list(
-                self._session.scalars(
-                    select(Chunk.id).where(Chunk.extraction_id == latest.id)
-                )
+                self._session.scalars(select(Chunk.id).where(Chunk.extraction_id == latest.id))
             )
         extraction = Extraction(
             material_id=material.id,
@@ -705,13 +692,15 @@ class MaterialsService:
         self._session.flush()
         ocr = self.embedded_ocr_text(material)
         chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
-        for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+        for ordinal, (chunk_text, chunk_tokens) in enumerate(
+            chunk_texts_for_space(self._session, chunk_source)
+        ):
             self._session.add(
                 Chunk(
                     extraction_id=extraction.id,
                     ordinal=ordinal,
                     text=chunk_text,
-                    token_count=max(1, len(chunk_text) // 4),
+                    token_count=chunk_tokens,
                 )
             )
         words = len(markdown.split())
@@ -730,19 +719,11 @@ class MaterialsService:
         return extraction, previous_chunk_ids
 
     def drawing_ocr_text(self, material: Material) -> str:
-        parts = [
-            drawing.ocr_markdown
-            for drawing in material.drawings
-            if drawing.ocr_markdown
-        ]
+        parts = [drawing.ocr_markdown for drawing in material.drawings if drawing.ocr_markdown]
         return "\n".join(parts)
 
     def image_ocr_text(self, material: Material) -> str:
-        parts = [
-            image.ocr_markdown
-            for image in material.images
-            if image.ocr_markdown
-        ]
+        parts = [image.ocr_markdown for image in material.images if image.ocr_markdown]
         return "\n".join(parts)
 
     def embedded_ocr_text(self, material: Material) -> str:
@@ -756,13 +737,12 @@ class MaterialsService:
         ]
         return "\n".join(parts)
 
-
     def blob_bytes(self, material: Material) -> bytes | None:
         if material.blob_sha is None:
             return None
         return self._blobs.get(material.blob_sha)
 
-    def index_card(self, material_id: int) -> MaterialIndexCard | None:
+    def index_card(self, material_id: str) -> MaterialIndexCard | None:
         return self._session.get(MaterialIndexCard, material_id)
 
     def blob_row(self, sha: str) -> Blob | None:
@@ -793,8 +773,8 @@ def _split_top_level(markdown: str) -> list[str]:
     return ["\n".join(segment).strip() for segment in segments]
 
 
-def extraction_to_blocks(markdown: str) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = []
+def extraction_to_blocks(markdown: str) -> list[BlockDict]:
+    blocks: list[BlockDict] = []
     for part in _split_top_level(markdown):
         if not part:
             continue

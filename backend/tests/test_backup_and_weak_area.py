@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -39,10 +40,10 @@ class ScriptedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="scripted",
@@ -56,7 +57,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append((task, messages))
         return self.responses.pop(0)
@@ -70,16 +71,13 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
 
-def make_client(responses: list[str]) -> TestClient:
-    import tempfile
-    from pathlib import Path
-
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p7s2-"))
+def make_client(responses: list[str], data_dir: Path | None = None) -> TestClient:
+    tmp = data_dir or Path(tempfile.mkdtemp(prefix="sa-p7s2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ScriptedGateway(responses),
@@ -89,8 +87,8 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_weak_area_quiz_generation_focuses_topic() -> None:
@@ -121,8 +119,7 @@ def test_weak_area_quiz_generation_focuses_topic() -> None:
         task, messages = gateway.calls[0]
         assert task == "quizgen"
         prompt = " ".join(
-            message.content if isinstance(message.content, str) else ""
-            for message in messages
+            message.content if isinstance(message.content, str) else "" for message in messages
         )
         assert "FOCUS TOPIC" in prompt
         assert "chain rule" in prompt
@@ -130,13 +127,15 @@ def test_weak_area_quiz_generation_focuses_topic() -> None:
         assert "conceptual" in prompt
 
 
-def test_backup_export_restore_round_trip() -> None:
+def test_backup_export_restore_round_trip(tmp_path: Path) -> None:
     import io
     import sqlite3
-    import tempfile
     import zipfile
 
-    source = make_client([])
+    # Both apps own data dirs under pytest's tmp_path (not mkdtemp): the
+    # round trip swaps a database file, so per-test isolation and cleanup
+    # are part of the contract (flake-watch, plan 81 F).
+    source = make_client([], data_dir=tmp_path / "source")
     with source:
         note = source.post(
             "/api/v1/notes",
@@ -158,13 +157,18 @@ def test_backup_export_restore_round_trip() -> None:
             snapshot_path = Path(handle.name)
         connection = sqlite3.connect(snapshot_path)
         try:
-            return [
-                row[0]
-                for row in connection.execute("SELECT title FROM notes").fetchall()
-            ]
+            return [row[0] for row in connection.execute("SELECT title FROM notes").fetchall()]
         finally:
             connection.close()
             snapshot_path.unlink(missing_ok=True)
+
+    def file_titles(db_path: Path) -> list[str]:
+        # Read the live database (includes its WAL), not the bare main file.
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            return [row[0] for row in connection.execute("SELECT title FROM notes").fetchall()]
+        finally:
+            connection.close()
 
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
         names = archive.namelist()
@@ -174,7 +178,7 @@ def test_backup_export_restore_round_trip() -> None:
     assert "database.dump" not in names
     assert "Survivor note" in db_titles(exported_db), "export snapshot lacks the note"
 
-    target_dir = Path(tempfile.mkdtemp(prefix="ca-p7s2-t-"))
+    target_dir = tmp_path / "target"
     target_app = create_app(
         Settings(data_dir=target_dir, log_level="WARNING"),
         gateway=ScriptedGateway([]),
@@ -196,18 +200,78 @@ def test_backup_export_restore_round_trip() -> None:
         from conftest import mint_session
 
         cookie, _csrf, pid = mint_session(target_app)
-        listing = target.get(
-            "/api/v1/notes", headers={"Cookie": cookie, "X-Profile-Id": pid}
-        )
+        listing = target.get("/api/v1/notes", headers={"Cookie": cookie, "X-Profile-Id": pid})
         titles = [entry["title"] for entry in listing.json()["items"]]
         if "Survivor note" not in titles:
             raise AssertionError(
                 "restored target lost the note: "
                 f"api_titles={titles!r} "
-                f"restored_file_titles={db_titles(target_db.read_bytes())!r} "
+                f"restored_file_titles={file_titles(target_db)!r} "
                 f"export_titles={db_titles(exported_db)!r} "
                 f"restore_response={restored.json()!r}"
             )
+
+
+def test_restore_refuses_a_database_from_an_earlier_revision(tmp_path: Path) -> None:
+    """The 0.13 schema is a deliberate break: an archive whose database sits
+    on an older revision is refused before anything is swapped."""
+    import io
+    import zipfile
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import create_engine, text
+
+    from alembic import command
+    from app.local import find_alembic_ini, head_revision
+    from app.services.platform.backup import BACKUP_FORMAT
+
+    ini = find_alembic_ini()
+    config = Config(str(ini))
+    config.set_main_option("script_location", str(ini.parent / "alembic"))
+    script = ScriptDirectory.from_config(config)
+    head = script.get_current_head()
+    assert isinstance(head, str)
+    root = None
+    for revision in script.walk_revisions():
+        if revision.down_revision is None:
+            root = revision
+            break
+    assert root is not None and root.revision != head
+
+    old_db = tmp_path / "old-release.sqlite3"
+    engine = create_engine(f"sqlite:///{old_db}")
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, root.revision)
+    engine.dispose()
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("manifest.json", json.dumps({"format": BACKUP_FORMAT, "schema": head}))
+        archive.writestr(DB_NAME, old_db.read_bytes())
+
+    target_app = create_app(
+        Settings(data_dir=tmp_path / "target", log_level="WARNING"),
+        gateway=ScriptedGateway([]),
+        embedder=NoAI(),  # type: ignore[arg-type]
+        describer=NoAI(),  # type: ignore[arg-type]
+    )
+    with TestClient(target_app) as target:
+        restored = target.post(
+            "/api/v1/backup/restore",
+            files={"file": ("backup.zip", buffer.getvalue(), "application/zip")},
+        )
+        assert restored.status_code == 422, restored.text
+        assert "schema" in restored.json()["detail"]
+
+    restored_engine = create_engine(f"sqlite:///{target_app.state.settings.db_path}")
+    try:
+        with restored_engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).fetchone()
+    finally:
+        restored_engine.dispose()
+    assert version == (head_revision(),), "a refused restore must leave the live DB at head"
 
 
 def test_restore_rejects_garbage() -> None:
@@ -224,7 +288,7 @@ def test_restore_rejects_garbage() -> None:
 
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
-            archive.writestr("manifest.json", json.dumps({"format": "ca-backup/v1"}))
+            archive.writestr("manifest.json", json.dumps({"format": "sa-backup/v1"}))
         incomplete = client.post(
             "/api/v1/backup/restore",
             files={"file": ("backup.zip", buffer.getvalue(), "application/zip")},

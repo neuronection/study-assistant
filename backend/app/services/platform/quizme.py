@@ -2,6 +2,9 @@ import json
 import re
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from ...domain.models import ChatQuizPending, ChatSession
 from ...math.equivalence import equivalent
 
 MAX_CHOICES = 6
@@ -31,9 +34,7 @@ def validate_quiz_args(args: dict[str, Any]) -> dict[str, Any]:
     expected_latex = str(args.get("expected_latex", "") or "").strip()
     expected_text = str(args.get("expected_text", "") or "").strip()
     accept = [
-        str(variant).strip()
-        for variant in (args.get("accept") or [])[:10]
-        if str(variant).strip()
+        str(variant).strip() for variant in (args.get("accept") or [])[:10] if str(variant).strip()
     ]
     if choices is not None:
         if not isinstance(choices, list) or not (2 <= len(choices) <= MAX_CHOICES):
@@ -49,9 +50,7 @@ def validate_quiz_args(args: dict[str, Any]) -> dict[str, Any]:
                 _QUIZ_PENDING_VALIDATE_ERROR + ": expected_index must be an integer"
             ) from error
         if not (0 <= index < len(choices)):
-            raise ValueError(
-                _QUIZ_PENDING_VALIDATE_ERROR + ": expected_index out of range"
-            )
+            raise ValueError(_QUIZ_PENDING_VALIDATE_ERROR + ": expected_index out of range")
         pending["choices"] = [str(choice)[:300] for choice in choices]
         pending["expected_index"] = index
         return pending
@@ -67,6 +66,66 @@ def validate_quiz_args(args: dict[str, Any]) -> dict[str, Any]:
         _QUIZ_PENDING_VALIDATE_ERROR
         + ": provide choices+expected_index, expected_latex, or expected_text"
     )
+
+
+def pending_state(row: ChatQuizPending | None) -> dict[str, Any] | None:
+    """The in-memory view of the one pending quiz card (grading contract)."""
+    if row is None:
+        return None
+    state: dict[str, Any] = {"question": row.question}
+    if row.choices is not None:
+        state["choices"] = list(row.choices)
+    if row.expected_index is not None:
+        state["expected_index"] = row.expected_index
+    if row.expected_latex:
+        state["expected_latex"] = row.expected_latex
+    if row.expected_text:
+        state["expected_text"] = row.expected_text
+    if row.accept is not None:
+        state["accept"] = list(row.accept)
+    state["awaiting_answer"] = bool(row.awaiting_answer)
+    if row.verdict is not None:
+        state["verdict"] = row.verdict
+        state["verdict_detail"] = row.verdict_detail
+        state["student_answer"] = row.student_answer
+    return state
+
+
+def store_pending(
+    session: Session, chat_session: ChatSession, pending: dict[str, Any]
+) -> ChatQuizPending:
+    """Upsert the session's one pending card from the grading document."""
+    row = chat_session.quiz_pending_row
+    if row is None:
+        row = ChatQuizPending(session_id=chat_session.id)
+        chat_session.quiz_pending_row = row
+        session.add(row)
+    row.question = str(pending.get("question") or "")
+    choices = pending.get("choices")
+    row.choices = [str(choice) for choice in choices] if isinstance(choices, list) else None
+    expected_index = pending.get("expected_index")
+    row.expected_index = int(expected_index) if isinstance(expected_index, int) else None
+    row.expected_latex = str(pending["expected_latex"]) if pending.get("expected_latex") else None
+    row.expected_text = str(pending["expected_text"]) if pending.get("expected_text") else None
+    accept = pending.get("accept")
+    row.accept = [str(entry) for entry in accept] if isinstance(accept, list) else None
+    row.awaiting_answer = bool(pending.get("awaiting_answer"))
+    verdict = pending.get("verdict")
+    row.verdict = str(verdict) if verdict is not None else None
+    row.verdict_detail = (
+        str(pending["verdict_detail"]) if pending.get("verdict_detail") is not None else None
+    )
+    student_answer = pending.get("student_answer")
+    row.student_answer = str(student_answer) if student_answer is not None else None
+    session.flush()
+    return row
+
+
+def clear_pending(session: Session, chat_session: ChatSession) -> None:
+    row = chat_session.quiz_pending_row
+    if row is not None:
+        chat_session.quiz_pending_row = None
+        session.flush()
 
 
 def normalize_text(value: str) -> str:
@@ -127,9 +186,7 @@ def quiz_public_state(pending: dict[str, Any] | None) -> dict[str, Any] | None:
         public["verdict"] = pending["verdict"]
         public["verdict_detail"] = pending.get("verdict_detail")
         public["student_answer"] = pending.get("student_answer")
-        expected_display = pending.get("expected_latex") or pending.get(
-            "expected_text"
-        )
+        expected_display = pending.get("expected_latex") or pending.get("expected_text")
         if pending.get("choices") is not None:
             idx = pending.get("expected_index")
             expected_display = (

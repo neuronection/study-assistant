@@ -46,7 +46,7 @@ class FakeConceptsGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -55,7 +55,7 @@ class FakeConceptsGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.extend(messages)
         return self.response
@@ -67,7 +67,7 @@ def concepts_client() -> Iterator[tuple[TestClient, list[Message]]]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-concepts-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-concepts-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"), gateway=gateway)
     with TestClient(app) as client:
         yield client, gateway.calls
@@ -92,9 +92,9 @@ def test_concepts_extract_validate_commit_and_graph(
 
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{upload['material']['id']}").json()[
-            "material"
-        ]["status"]
+        status = client.get(f"/api/v1/materials/{upload['material']['id']}").json()["material"][
+            "status"
+        ]
         if status == "ready":
             break
         time.sleep(0.05)
@@ -112,12 +112,8 @@ def test_concepts_extract_validate_commit_and_graph(
     draft = client.post(f"/api/v1/courses/{course['id']}/concepts/extract").json()
     names = [entry["name"] for entry in draft["concepts"]]
     assert names == ["chain rule", "limits", "bogus concept that will not be linked"]
-    assert draft["links"] == [
-        {"from": "limits", "to": "chain rule", "relation": "prereq-of"}
-    ]
-    assert draft["nodes"] == [
-        {"node_title": "Chain rule", "concepts": ["chain rule", "limits"]}
-    ]
+    assert draft["links"] == [{"from": "limits", "to": "chain rule", "relation": "prereq-of"}]
+    assert draft["nodes"] == [{"node_title": "Chain rule", "concepts": ["chain rule", "limits"]}]
 
     committed = client.post(
         f"/api/v1/courses/{course['id']}/concepts/commit",
@@ -150,9 +146,7 @@ def test_concepts_extract_validate_commit_and_graph(
     assert by_name["chain rule"]["nodes"] == [
         {"node_id": section["id"], "node_title": "Chain rule"}
     ]
-    assert graph["links"] == [
-        {"from": "limits", "to": "chain rule", "relation": "prereq-of"}
-    ]
+    assert graph["links"] == [{"from": "limits", "to": "chain rule", "relation": "prereq-of"}]
 
     missing = client.get("/api/v1/courses/99999/concepts")
     assert missing.status_code == 404

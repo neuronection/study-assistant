@@ -12,14 +12,14 @@ const diffExtractionVersions = vi.fn()
 const getMaterial = vi.fn()
 
 vi.mock('@/lib/api', () => ({
-  listExtractionVersions: (id: number) => listExtractionVersions(id),
-  getExtractionVersion: (id: number, version: number) =>
+  listExtractionVersions: (id: string) => listExtractionVersions(id),
+  getExtractionVersion: (id: string, version: number) =>
     getExtractionVersion(id, version),
-  editExtraction: (id: number, markdown: string) =>
+  editExtraction: (id: string, markdown: string) =>
     editExtraction(id, markdown),
-  diffExtractionVersions: (id: number, from: string, to: string) =>
+  diffExtractionVersions: (id: string, from: string, to: string) =>
     diffExtractionVersions(id, from, to),
-  getMaterial: (id: number) => getMaterial(id),
+  getMaterial: (id: string) => getMaterial(id),
 }))
 
 const VERSIONS = [
@@ -33,7 +33,7 @@ function renderDialog(props: Partial<Parameters<typeof ExtractionHistoryDialog>[
   return render(
     <QueryClientProvider client={client}>
       <ExtractionHistoryDialog
-        materialId={5}
+        materialId="5"
         onClose={vi.fn()}
         {...props}
       />
@@ -45,11 +45,11 @@ describe('ExtractionHistoryDialog', () => {
   beforeEach(() => {
     listExtractionVersions.mockReset().mockResolvedValue(VERSIONS)
     getExtractionVersion.mockReset().mockImplementation(
-      (_id: number, version: number) =>
+      (_id: string, version: number) =>
         Promise.resolve({ version, markdown: `v${version} content` })
     )
     getMaterial.mockReset().mockResolvedValue({
-      material: { id: 5, title: 'notes' },
+      material: { id: '5', title: 'notes' },
       extraction: { version: 3, markdown: 'current body content' },
       index_card: null,
       drawings: [],
@@ -82,7 +82,7 @@ describe('ExtractionHistoryDialog', () => {
     fireEvent.change(targetSelect, { target: { value: 'current' } })
 
     await waitFor(() =>
-      expect(diffExtractionVersions).toHaveBeenCalledWith(5, '1', 'current')
+      expect(diffExtractionVersions).toHaveBeenCalledWith('5', '1', 'current')
     )
     const formatted = await screen.findByText(/v1 content/)
     expect(formatted.closest('[data-as="markdown-diff-view"]')).not.toBeNull()
@@ -93,7 +93,7 @@ describe('ExtractionHistoryDialog', () => {
   })
 
   test('formatted default renders both sides with math kept rendered', async () => {
-    getExtractionVersion.mockImplementation((_id: number, version: number) =>
+    getExtractionVersion.mockImplementation((_id: string, version: number) =>
       Promise.resolve({
         version,
         markdown:
@@ -123,7 +123,7 @@ describe('ExtractionHistoryDialog', () => {
   })
 
   test('oversized documents fall back to the raw diff with an honest note', async () => {
-    getExtractionVersion.mockImplementation((_id: number, version: number) =>
+    getExtractionVersion.mockImplementation((_id: string, version: number) =>
       Promise.resolve({
         version,
         markdown: 'x'.repeat(100_001) + ` v${version}`,
@@ -155,9 +155,9 @@ describe('ExtractionHistoryDialog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Restore this version' }))
 
     await waitFor(() =>
-      expect(getExtractionVersion).toHaveBeenCalledWith(5, 2)
+      expect(getExtractionVersion).toHaveBeenCalledWith('5', 2)
     )
-    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith(5, 'v2 content'))
+    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith('5', 'v2 content'))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 

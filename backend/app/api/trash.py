@@ -15,7 +15,7 @@ router = APIRouter(prefix="/deleted-items", tags=["trash"])
 
 
 class DeletedItemOut(BaseModel):
-    id: int
+    id: str
     entity_type: str
     title: str
     deleted_at: str
@@ -26,13 +26,12 @@ class RestoreDeletedOut(BaseModel):
     status: str
     entity_type: str
     title: str
-    node_id: int | None = None
-    material_id: int | None = None
+    node_id: str | None = None
+    material_id: str | None = None
     detail: dict[str, Any] | None = None
 
 
-
-def _load_item(session: Session, item_id: int, profile_id: str) -> DeletedItem:
+def _load_item(session: Session, item_id: str, profile_id: str) -> DeletedItem:
     item = session.get(DeletedItem, item_id)
     if item is None or item.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="deleted item not found")
@@ -47,7 +46,7 @@ def list_deleted_items(session: Session = Depends(get_session)) -> list[dict[str
 
 @router.post("/{item_id}/restore", response_model=RestoreDeletedOut)
 def restore_deleted_item(
-    item_id: int, request: Request, session: Session = Depends(get_session)
+    item_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     item = _load_item(session, item_id, profile.id)
@@ -95,9 +94,7 @@ def restore_deleted_item(
 
 
 @router.delete("/{item_id}", status_code=204)
-def purge_deleted_item(
-    item_id: int, session: Session = Depends(get_session)
-) -> None:
+def purge_deleted_item(item_id: str, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     item = _load_item(session, item_id, profile.id)
     trash.purge_one(session, item)

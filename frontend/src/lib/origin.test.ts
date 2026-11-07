@@ -25,11 +25,11 @@ describe('parseOrigin', () => {
 
 describe('practiceFallback', () => {
   test('derives the node workspace practice tab', () => {
-    expect(practiceFallback(3, 7)).toBe('/courses/3/n/7?tab=practice')
+    expect(practiceFallback('3', '7')).toBe('/courses/3/n/7?tab=practice')
   })
 
   test('root placement falls back to the course workspace', () => {
-    expect(practiceFallback(3, null)).toBe('/courses/3?tab=practice')
+    expect(practiceFallback('3', null)).toBe('/courses/3?tab=practice')
   })
 
   test('course-less objects fall back to the courses list', () => {

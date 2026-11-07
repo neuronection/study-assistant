@@ -142,9 +142,7 @@ def test_compat_env_persisted_marker_forces_software(
     assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
 
 
-def test_compat_env_software_writes_marker(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_compat_env_software_writes_marker(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: False)
     marker = tmp_path / "webkit_soft_fallback"
     apply_webkit_compat_env({}, marker=marker)

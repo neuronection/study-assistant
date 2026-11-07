@@ -16,10 +16,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -33,7 +33,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -53,7 +53,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tempfile.mkdtemp(prefix="ca-trash-materials-"))
+    data_dir = Path(tempfile.mkdtemp(prefix="sa-trash-materials-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=Scripted(),
@@ -71,29 +71,27 @@ def flatten_tree(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
-def wait_ready(client: TestClient, material_id: int) -> None:
+def wait_ready(client: TestClient, material_id: str) -> None:
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
         if status == "ready":
             return
         time.sleep(0.05)
     raise AssertionError("material never became ready")
 
 
-def upload(client: TestClient, course_id: int, name: str, body: bytes) -> int:
+def upload(client: TestClient, course_id: str, name: str, body: bytes) -> str:
     uploaded = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (name, body, "text/plain")},
     ).json()
-    material_id = int(uploaded["material"]["id"])
+    material_id = str(uploaded["material"]["id"])
     wait_ready(client, material_id)
     return material_id
 
@@ -157,11 +155,7 @@ def test_material_restore_dedupes_when_reuploaded(client: TestClient) -> None:
         material_id = upload(client, course, "dup.txt", b"identical body")
         client.delete(f"/api/v1/materials/{material_id}")
         trash_list = client.get("/api/v1/deleted-items").json()
-        item_id = next(
-            item["id"]
-            for item in trash_list
-            if item["entity_type"] == "material"
-        )
+        item_id = next(item["id"] for item in trash_list if item["entity_type"] == "material")
 
         reuploaded = upload(client, course, "dup.txt", b"identical body")
 
@@ -171,12 +165,8 @@ def test_material_restore_dedupes_when_reuploaded(client: TestClient) -> None:
         assert body["status"] in ("merged", "deduped")
         assert body["material_id"] == reuploaded
 
-        listing = client.get(
-            "/api/v1/materials", params={"course_id": course}
-        ).json()
-        materials = [
-            entry for entry in listing if entry["title"].startswith("dup")
-        ]
+        listing = client.get("/api/v1/materials", params={"course_id": course}).json()
+        materials = [entry for entry in listing if entry["title"].startswith("dup")]
         assert len(materials) == 1
 
 
@@ -305,9 +295,7 @@ def test_node_restore_respects_depth_cap(client: TestClient) -> None:
             result = tree.restore_subtree_from_trash(payload)
             session.commit()
         assert result["skipped_deep"] >= 1
-        tree_after = flatten_tree(
-            client.get(f"/api/v1/courses/{course}/tree").json()
-        )
+        tree_after = flatten_tree(client.get(f"/api/v1/courses/{course}/tree").json())
         titles = [entry["title"] for entry in tree_after]
         assert "A" in titles
         assert titles.count("B") == 0

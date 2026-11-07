@@ -33,7 +33,7 @@ def resolved(provider_type: str, external_id: str = "whisper-1") -> Any:
     from app.ai.gateway import ResolvedModel
 
     return ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type=provider_type,
         base_url="https://provider.test/v1"
         if provider_type == "openai_compatible"
@@ -84,9 +84,7 @@ def test_google_inline_audio_request_shape_and_usage() -> None:
         return httpx.Response(
             200,
             json={
-                "candidates": [
-                    {"content": {"parts": [{"text": "transcribed words"}]}}
-                ],
+                "candidates": [{"content": {"parts": [{"text": "transcribed words"}]}}],
                 "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 5},
             },
         )
@@ -158,9 +156,7 @@ def test_server_error_falls_back_to_fallback_model(tmp_path: object) -> None:
         session.add_all([primary, fallback])
         session.flush()
         session.add(
-            TaskAssignment(
-                task="transcribe", model_id=primary.id, fallback_model_id=fallback.id
-            )
+            TaskAssignment(task="transcribe", model_id=primary.id, fallback_model_id=fallback.id)
         )
         session.commit()
 
@@ -179,9 +175,7 @@ def test_server_error_falls_back_to_fallback_model(tmp_path: object) -> None:
     assert calls == ["primary", "fallback"]
 
     with factory() as session:
-        row = session.scalars(
-            select(AiInteraction).where(AiInteraction.task == "transcribe")
-        ).one()
+        row = session.scalars(select(AiInteraction).where(AiInteraction.task == "transcribe")).one()
         assert row.context_type == "gateway"
         assert row.model == "fallback"
         assert row.input_tokens >= 1
@@ -217,7 +211,7 @@ class TranscribeGateway(ScriptedGateway):
         instruction: str | None = None,
         task: str = "transcribe",
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         if self.error is not None:
             raise self.error
@@ -235,7 +229,7 @@ class UnassignedTranscribeGateway(TranscribeGateway):
         instruction: str | None = None,
         task: str = "transcribe",
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         raise TaskUnassigned(task)
 

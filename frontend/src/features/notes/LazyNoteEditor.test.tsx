@@ -10,12 +10,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getNote: (id: number) => getNote(id),
+    getNote: (id: string) => getNote(id),
   }
 })
 
 const NOTE = () => ({
-  id: 3,
+  id: '3',
   title: 'Lazy loaded note',
   course_id: null,
   node_id: null,
@@ -38,10 +38,10 @@ describe('LazyNoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <LazyNoteEditor noteId={3} />
+        <LazyNoteEditor noteId="3" />
       </QueryClientProvider>
     )
-    const title = await screen.findByRole('textbox', { name: 'Note title' }, { timeout: 10_000 })
+    const title = await screen.findByRole('textbox', { name: 'Note title' })
     expect(title).toHaveValue('Lazy loaded note')
   })
 
@@ -50,7 +50,7 @@ describe('LazyNoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <LazyNoteEditor noteId={3} onClose={onClose} />
+        <LazyNoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     const close = await screen.findByRole('button', { name: 'Close' })

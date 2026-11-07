@@ -35,17 +35,17 @@ describe('buildDragPayload', () => {
     const dt = makeDataTransfer()
     const result = buildDragPayload(dragEvent(dt), {
       key: 'm3',
-      id: 3,
+      id: '3',
       kind: 'material',
       selected: new Set(['m3', 'm5', 'f7']),
-      selectedPayload: { folderIds: [7], materialIds: [3, 5], noteIds: [] },
+      selectedPayload: { folderIds: ['7'], materialIds: ['3', '5'], noteIds: [] },
       setSelection: vi.fn(),
     })
-    expect(result.payload).toEqual({ folderIds: [7], materialIds: [3, 5], noteIds: [] })
+    expect(result.payload).toEqual({ folderIds: ['7'], materialIds: ['3', '5'], noteIds: [] })
     expect(result.count).toBe(3)
     expect(dt.setData).toHaveBeenCalledWith(
       ITEM_MIME,
-      JSON.stringify({ folderIds: [7], materialIds: [3, 5], noteIds: [] })
+      JSON.stringify({ folderIds: ['7'], materialIds: ['3', '5'], noteIds: [] })
     )
     expect(dt.setData).toHaveBeenCalledWith(MATERIAL_MIME, '3')
     expect(dt.effectAllowed).toBe('move')
@@ -56,13 +56,13 @@ describe('buildDragPayload', () => {
     const setSelection = vi.fn()
     const result = buildDragPayload(dragEvent(dt), {
       key: 'n9',
-      id: 9,
+      id: '9',
       kind: 'note',
       selected: new Set(['n1']),
-      selectedPayload: { folderIds: [], materialIds: [], noteIds: [1] },
+      selectedPayload: { folderIds: [], materialIds: [], noteIds: ['1'] },
       setSelection,
     })
-    expect(result.payload).toEqual({ folderIds: [], materialIds: [], noteIds: [9] })
+    expect(result.payload).toEqual({ folderIds: [], materialIds: [], noteIds: ['9'] })
     expect(result.count).toBe(1)
     expect(setSelection).toHaveBeenCalledWith(['n9'])
     expect(dt.setData).not.toHaveBeenCalledWith(MATERIAL_MIME, expect.any(String))
@@ -73,7 +73,7 @@ describe('buildDragPayload', () => {
     const countLabel = vi.fn()
     buildDragPayload(dragEvent(dt), {
       key: 'm1',
-      id: 1,
+      id: '1',
       kind: 'material',
       selected: new Set(),
       selectedPayload: emptyPayload,
@@ -87,20 +87,20 @@ describe('buildDragPayload', () => {
 describe('parseDragPayload', () => {
   test('parses a valid multi-kind payload', () => {
     const dt = makeDataTransfer()
-    dt.setData(ITEM_MIME, JSON.stringify({ folderIds: [7], materialIds: [3], noteIds: [9] }))
+    dt.setData(ITEM_MIME, JSON.stringify({ folderIds: ['7'], materialIds: ['3'], noteIds: ['9'] }))
     expect(parseDragPayload(dragEvent(dt))).toEqual({
-      folderIds: [7],
-      materialIds: [3],
-      noteIds: [9],
+      folderIds: ['7'],
+      materialIds: ['3'],
+      noteIds: ['9'],
     })
   })
 
   test('missing noteIds parses as empty notes', () => {
     const dt = makeDataTransfer()
-    dt.setData(ITEM_MIME, JSON.stringify({ folderIds: [], materialIds: [3] }))
+    dt.setData(ITEM_MIME, JSON.stringify({ folderIds: [], materialIds: ['3'] }))
     expect(parseDragPayload(dragEvent(dt))).toEqual({
       folderIds: [],
-      materialIds: [3],
+      materialIds: ['3'],
       noteIds: [],
     })
   })

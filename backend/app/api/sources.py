@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core.vocab import MaterialKind, MaterialStatus
-from ..domain.models import Material, MaterialSource
+from ..core.vocab import MaterialKind, MaterialStatus, SourcePreset
+from ..domain.models import Material, MaterialSource, Note
 from ..jobs.runner import JobRunner
 from ..services.content.materials import UnsupportedMaterialError, accepted_suffixes
 from ..services.content.sources import SourcesError, SourcesService
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 
 
 class SourceBrowseOut(BaseModel):
-    source_id: int
+    source_id: str
     label: str
     path: str
     subdir: str
@@ -37,7 +37,7 @@ class SourceSubdirOut(BaseModel):
 
 
 class SourceMaterialOut(BaseModel):
-    id: int
+    id: str
     title: str
     kind: MaterialKind
     status: MaterialStatus
@@ -60,9 +60,10 @@ class SourceIn(BaseModel):
     path: str = Field(min_length=1, max_length=1000)
     recursive: bool = True
     include_globs: list[str] | None = None
-    course_id: int
+    course_id: str
     scan_interval_sec: int | None = Field(default=None, ge=15)
     mirror_subdirs: bool = False
+    preset: SourcePreset = SourcePreset.FOLDER
 
 
 class SetMirrorIn(BaseModel):
@@ -70,21 +71,25 @@ class SetMirrorIn(BaseModel):
 
 
 class SourceOut(BaseModel):
-    id: int
+    id: str
     label: str
     path: str
     recursive: bool
     include_globs: list[str] | None
-    course_id: int
+    course_id: str
     enabled: bool
     mirror_subdirs: bool = False
+    preset: SourcePreset = SourcePreset.FOLDER
     scan_interval_sec: int | None = None
     last_scan_error: str | None = None
     material_count: int
+    note_count: int = 0
     last_scanned_at: str | None
 
 
-def _source_out(session: Session, source: MaterialSource, material_count: int = 0) -> SourceOut:
+def _source_out(
+    session: Session, source: MaterialSource, material_count: int = 0, note_count: int = 0
+) -> SourceOut:
     return SourceOut(
         id=source.id,
         label=source.label,
@@ -94,12 +99,12 @@ def _source_out(session: Session, source: MaterialSource, material_count: int = 
         course_id=source.course_id,
         enabled=source.enabled,
         mirror_subdirs=getattr(source, "mirror_subdirs", False) or False,
+        preset=SourcePreset(source.preset),
         scan_interval_sec=source.scan_interval_sec,
         last_scan_error=source.last_scan_error,
         material_count=material_count,
-        last_scanned_at=(
-            source.last_scanned_at.isoformat() if source.last_scanned_at else None
-        ),
+        note_count=note_count,
+        last_scanned_at=(source.last_scanned_at.isoformat() if source.last_scanned_at else None),
     )
 
 
@@ -111,19 +116,16 @@ class ScanResult(BaseModel):
 
 
 @router.get("", response_model=list[SourceOut])
-def list_sources(
-    request: Request, session: Session = Depends(get_session)
-) -> list[SourceOut]:
+def list_sources(request: Request, session: Session = Depends(get_session)) -> list[SourceOut]:
     profile = ensure_default_profile(session)
     service = SourcesService(session, request.app.state.settings.blobs_dir)
     result: list[SourceOut] = []
     for source in service.list_sources(profile.id):
         count = len(
-            session.scalars(
-                select(Material.id).where(Material.source_id == source.id)
-            ).all()
+            session.scalars(select(Material.id).where(Material.source_id == source.id)).all()
         )
-        result.append(_source_out(session, source, count))
+        note_count = len(session.scalars(select(Note.id).where(Note.source_id == source.id)).all())
+        result.append(_source_out(session, source, count, note_count))
     return result
 
 
@@ -145,6 +147,7 @@ def add_source(
             course_id=body.course_id,
             scan_interval_sec=body.scan_interval_sec,
             mirror_subdirs=body.mirror_subdirs,
+            preset=body.preset.value,
         )
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -154,7 +157,7 @@ def add_source(
 
 @router.delete("/{source_id}", status_code=204)
 def delete_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> None:
@@ -167,7 +170,7 @@ def delete_source(
 
 @router.get("/{source_id}/browse", response_model=SourceBrowseOut)
 def browse_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     subdir: str = "",
     session: Session = Depends(get_session),
@@ -185,14 +188,14 @@ class IngestFileIn(BaseModel):
 
 
 class IngestFileOut(BaseModel):
-    material_id: int
-    job_id: int | None
+    material_id: str
+    job_id: str | None
     deduped: bool
 
 
 @router.post("/{source_id}/ingest", status_code=201, response_model=IngestFileOut)
 def ingest_source_file(
-    source_id: int,
+    source_id: str,
     body: IngestFileIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -212,7 +215,7 @@ def ingest_source_file(
         ) from error
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job = JobRunner.enqueue(session, "ingest", {"material_id": material.id})
         job_id = job.id
@@ -227,7 +230,7 @@ class RelinkIn(BaseModel):
 
 @router.patch("/{source_id}", response_model=SourceOut)
 def relink_source(
-    source_id: int,
+    source_id: str,
     body: RelinkIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -244,7 +247,7 @@ def relink_source(
 
 @router.patch("/{source_id}/mirror", response_model=SourceOut)
 def set_source_mirror(
-    source_id: int,
+    source_id: str,
     body: SetMirrorIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -259,7 +262,7 @@ def set_source_mirror(
 
 @router.post("/{source_id}/mirror-backfill", response_model=ScanResult)
 def mirror_backfill_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ScanResult:
@@ -282,7 +285,7 @@ def mirror_backfill_source(
 
 @router.post("/{source_id}/reveal", status_code=204)
 def reveal_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> None:
@@ -294,11 +297,9 @@ def reveal_source(
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-def _enqueue_ingests(session: Session, source_id: int) -> int:
+def _enqueue_ingests(session: Session, source_id: str) -> int:
     pending = session.scalars(
-        select(Material).where(
-            Material.source_id == source_id, Material.status == "pending"
-        )
+        select(Material).where(Material.source_id == source_id, Material.status == "pending")
     ).all()
     for material in pending:
         JobRunner.enqueue(session, "ingest", {"material_id": material.id})
@@ -325,7 +326,7 @@ def scan_all_sources(
 
 @router.post("/{source_id}/scan", response_model=ScanResult)
 def scan_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ScanResult:

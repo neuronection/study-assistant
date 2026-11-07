@@ -15,7 +15,7 @@ export function MindmapHistoryDialog({
   materialId,
   onClose,
 }: {
-  materialId: number
+  materialId: string
   onClose: () => void
 }) {
   useCloseFloatings()

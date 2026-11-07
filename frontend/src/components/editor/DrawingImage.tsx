@@ -6,35 +6,35 @@ import { useEffect, useReducer } from 'react'
 import { DrawingBlock } from '@/components/editor/DrawingBlock'
 
 export interface DrawingMeta {
-  id: number
+  id: string
   png_sha: string | null
   ocr_markdown: string | null
   strokes?: unknown[]
   view?: { x: number; y: number; width: number; height: number } | null
   ocr_version?: number
-  ocr_job_id?: number | null
+  ocr_job_id?: string | null
 }
 
 export type DrawingAction = 'edit' | 'reocr' | 'copy' | 'delete'
 
-export type DrawingActionHandler = (id: number, action: DrawingAction) => void
+export type DrawingActionHandler = (id: string, action: DrawingAction) => void
 
-export const DRAWING_SRC_PREFIX = 'ca-drawing://'
+export const DRAWING_SRC_PREFIX = 'sa-drawing://'
 
-export function drawingSrc(id: number): string {
+export function drawingSrc(id: string): string {
   return `${DRAWING_SRC_PREFIX}${id}`
 }
 
-export function parseDrawingSrc(src: string): number | null {
+export function parseDrawingSrc(src: string): string | null {
   if (!src.startsWith(DRAWING_SRC_PREFIX)) {
     return null
   }
-  const id = Number(src.slice(DRAWING_SRC_PREFIX.length))
-  return Number.isInteger(id) && id !== 0 ? id : null
+  const id = src.slice(DRAWING_SRC_PREFIX.length)
+  return id.length > 0 ? id : null
 }
 
 export function createDrawingImage(
-  resolve: (id: number) => DrawingMeta | undefined,
+  resolve: (id: string) => DrawingMeta | undefined,
   onAction: DrawingActionHandler
 ) {
   const listeners = new Set<() => void>()

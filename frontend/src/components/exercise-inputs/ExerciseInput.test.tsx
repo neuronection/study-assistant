@@ -51,9 +51,9 @@ describe('ExerciseInput dispatch', () => {
     const input: ExerciseStepInput = {
       widget: 'ordering',
       items: [
-        { id: 2, label: 'C' },
-        { id: 0, label: 'A' },
-        { id: 1, label: 'B' },
+        { id: '2', label: 'C' },
+        { id: '0', label: 'A' },
+        { id: '1', label: 'B' },
       ],
     }
     const onChange = vi.fn()

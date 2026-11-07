@@ -38,12 +38,10 @@ EDITOR_PRESETS: dict[str, str] = {
         "keeping its intent."
     ),
     "rewrite": (
-        "Rewrite the selected text to be clearer and more polished, preserving its "
-        "meaning exactly."
+        "Rewrite the selected text to be clearer and more polished, preserving its meaning exactly."
     ),
     "simplify": (
-        "Rewrite the selected text in simpler, plainer language while preserving its "
-        "meaning."
+        "Rewrite the selected text in simpler, plainer language while preserving its meaning."
     ),
     "grammar": (
         "Fix grammar, spelling, punctuation, and phrasing errors in the selected text. "
@@ -54,8 +52,7 @@ EDITOR_PRESETS: dict[str, str] = {
         "Keep all the content."
     ),
     "bullets": (
-        "Convert the selected text into a clean bulleted or numbered list. Keep the "
-        "content."
+        "Convert the selected text into a clean bulleted or numbered list. Keep the content."
     ),
     "markdown": (
         "Format the selected text as well-structured GitHub-flavored markdown: headings, "
@@ -116,9 +113,7 @@ def validate_output(text: str, input_text: str, preset: str | None) -> list[str]
     if not stripped:
         return ["empty output"]
     if len(stripped) > MAX_OUTPUT_CHARS:
-        problems.append(
-            f"output too long ({len(stripped)} chars, limit {MAX_OUTPUT_CHARS})"
-        )
+        problems.append(f"output too long ({len(stripped)} chars, limit {MAX_OUTPUT_CHARS})")
     if _has_preamble(stripped):
         problems.append(
             "output starts with a chatty preamble (e.g. 'Sure', 'Here is') — "
@@ -154,9 +149,7 @@ def build_prompt(
     if instruction and instruction.strip():
         lines.append(f"Instruction: {instruction.strip()}")
     if diagnostic and diagnostic.strip():
-        lines.append(
-            "Renderer diagnostic (the error to fix):\n" + diagnostic.strip()
-        )
+        lines.append("Renderer diagnostic (the error to fix):\n" + diagnostic.strip())
     if context_document and context_document.strip():
         lines.append(
             "Surrounding document context (reference only — use it to inform the "
@@ -195,7 +188,7 @@ class EditorTransformResult:
 
 @dataclass
 class EditorTransformJob:
-    id: int
+    id: str
     user_id: str | None = None
     status: str = JobStatus.QUEUED.value
     result_md: str = ""
@@ -214,11 +207,11 @@ class EditorTransformService:
     ) -> None:
         self._session_factory = session_factory
         self._gateway = gateway
-        self._jobs: dict[int, EditorTransformJob] = {}
+        self._jobs: dict[str, EditorTransformJob] = {}
         self._jobs_lock = threading.Lock()
         self._next_job_id = 1
 
-    def _publish(self, bus: EventBus | None, job_id: int, payload: dict[str, Any]) -> None:
+    def _publish(self, bus: EventBus | None, job_id: str, payload: dict[str, Any]) -> None:
         if bus is not None:
             bus.publish_threadsafe(JOB_TOPIC.format(job_id), payload)
 
@@ -231,7 +224,7 @@ class EditorTransformService:
         mode: str,
         context_document: str | None = None,
         context_material: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         diagnostic: str | None = None,
     ) -> EditorTransformResult:
         prompt = build_prompt(
@@ -272,13 +265,13 @@ class EditorTransformService:
         mode: str,
         context_document: str | None = None,
         context_material: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         bus: EventBus | None = None,
         diagnostic: str | None = None,
         user_id: str | None = None,
     ) -> EditorTransformJob:
         with self._jobs_lock:
-            job = EditorTransformJob(id=self._next_job_id, user_id=user_id)
+            job = EditorTransformJob(id=str(self._next_job_id), user_id=user_id)
             self._next_job_id += 1
             self._jobs[job.id] = job
         thread = threading.Thread(
@@ -310,7 +303,7 @@ class EditorTransformService:
         mode: str,
         context_document: str | None,
         context_material: str | None,
-        course_id: int | None,
+        course_id: str | None,
         bus: EventBus | None,
         diagnostic: str | None = None,
     ) -> None:
@@ -404,11 +397,11 @@ class EditorTransformService:
                 bus, job.id, {"type": "editor_done", "job_id": job.id, "result_md": job.result_md}
             )
 
-    def get_job(self, job_id: int) -> EditorTransformJob | None:
+    def get_job(self, job_id: str) -> EditorTransformJob | None:
         with self._jobs_lock:
             return self._jobs.get(job_id)
 
-    def cancel_job(self, job_id: int) -> bool:
+    def cancel_job(self, job_id: str) -> bool:
         with self._jobs_lock:
             job = self._jobs.get(job_id)
             if job is None:

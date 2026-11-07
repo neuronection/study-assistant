@@ -27,8 +27,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    mindmapEdit: (id: number, body: unknown) => mindmapEdit(id, body),
-    editExtraction: (id: number, md: string) => editExtraction(id, md),
+    mindmapEdit: (id: string, body: unknown) => mindmapEdit(id, body),
+    editExtraction: (id: string, md: string) => editExtraction(id, md),
   }
 })
 
@@ -37,7 +37,7 @@ function renderDialog(props: { focusNode?: string; onApplied?: () => void } = {}
   return render(
     <QueryClientProvider client={client}>
       <MindmapEditDialog
-        materialId={7}
+        materialId="7"
         focusNode={props.focusNode}
         onClose={() => undefined}
         onApplied={props.onApplied ?? (() => undefined)}
@@ -50,8 +50,8 @@ describe('MindmapEditDialog', () => {
   beforeEach(() => {
     mindmapEdit.mockReset().mockResolvedValue({ markdown: '# Limits\n\n- New\n' })
     editExtraction.mockReset().mockResolvedValue({
-      id: 1,
-      material_id: 7,
+      id: '1',
+      material_id: '7',
       version: 2,
       extractor: 'x',
       markdown: '# Limits\n\n- New\n',
@@ -71,7 +71,7 @@ describe('MindmapEditDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }))
 
     await waitFor(() =>
-      expect(mindmapEdit).toHaveBeenCalledWith(7, {
+      expect(mindmapEdit).toHaveBeenCalledWith('7', {
         mode: 'simplify',
         instruction: 'merge duplicates',
         focus_node: 'Definition',
@@ -81,7 +81,7 @@ describe('MindmapEditDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
     await waitFor(() =>
-      expect(editExtraction).toHaveBeenCalledWith(7, '# Limits\n\n- New\n')
+      expect(editExtraction).toHaveBeenCalledWith('7', '# Limits\n\n- New\n')
     )
     await waitFor(() => expect(onApplied).toHaveBeenCalled())
   })

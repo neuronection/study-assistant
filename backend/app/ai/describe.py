@@ -7,8 +7,8 @@ DESCRIPTION_TASK = "description"
 
 DESCRIBE_SYSTEM_PROMPT = (
     "You summarize study material. Given a material title and its extracted text, respond "
-    "with ONLY a JSON object: {\"summary\": str (2-3 sentences), \"topics\": [str] (3-8), "
-    "\"key_terms\": [str] (3-10), \"difficulty\": int (1-5)}. No markdown fences, no commentary."
+    'with ONLY a JSON object: {"summary": str (2-3 sentences), "topics": [str] (3-8), '
+    '"key_terms": [str] (3-10), "difficulty": int (1-5)}. No markdown fences, no commentary.'
 )
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -19,7 +19,7 @@ class GatewayDescriber:
         self._gateway = gateway
 
     def describe(
-        self, title: str, markdown: str, course_id: int | None = None
+        self, title: str, markdown: str, course_id: str | None = None
     ) -> dict[str, Any] | None:
         try:
             resolved = self._gateway.resolve(DESCRIPTION_TASK, course_id)

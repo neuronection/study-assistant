@@ -42,9 +42,9 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   / `skipped: no extraction`), sources without an extraction never block the
   batch; listings carry `has_extraction` so the menu item gates precisely.**
   **Drawings come along (plan 29, ADR-064): the derived material copies the
-  source's drawings and remaps `ca-drawing://` ids so it is self-contained.**
+  source's drawings and remaps `sa-drawing://` ids so it is self-contained.**
 - ✅ **Material drawings (plan 29, ADR-064)**: text/markdown materials own
-  drawings exactly like notes — `material_drawings` + `ca-drawing://` refs in
+  drawings exactly like notes — `material_drawings` + `sa-drawing://` refs in
   the extraction markdown. The extraction QA editor gets the **pen button**
   (shared `DrawingAdapter`), drawings render inline in the reading view, OCR
   joins search + AI context, and **Export .md** downloads the material with
@@ -122,7 +122,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   library; **single click selects, double-click (or Enter) opens** everywhere
   the grammar applies (library pane, workspace tabs);
   cut/copy/paste + Ctrl+X/C/V/Delete/Esc; drag-to-folder **move** with a
-  multi-id payload (`application/x-ca-item`); **duplicate material** (copy
+  multi-id payload (`application/x-sa-item`); **duplicate material** (copy
   shares the blob, deep-copies the latest extraction + chunks + FTS + index
   card, re-queues embeddings, fresh study state, no node links, "… (copy)"
   title); **assign-to-node** dialog for material selections; the workspace tabs
@@ -246,9 +246,16 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Per-extension documentation (plan 34 wave 8, 2026-10-19)**: every
+  bundled connector now explains itself in-app. The **Web sources**,
+  **Discovery** and **Connectors** cards carry a **Docs** action opening a
+  documentation dialog with a sidebar (Overview / Setup / Usage /
+  Troubleshooting — and Security for MCP servers, including the
+  external-process disclosure verbatim), so the connectors' behavior,
+  limits and sharp edges are readable where you configure them
 - ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
   own source. Register an external MCP server (stdio, Streamable HTTP or
-  SSE — auth tokens in the OS keyring) in **Settings → AI →
+  SSE — auth tokens in the OS keyring) in **Settings → Tools →
   Integrations**, refresh to list its tools, and assign each tool a
   contract: **Discovery** tools appear as providers in the Discover dialog
   and behind chat DISCOVER; **Parser** tools (keyed by a URL pattern like
@@ -270,6 +277,22 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   propose **attach_link** {url, title, node}: approving creates a real link
   reference at the chosen topic (deduped on the normalized URL), previewed on
   the proposal card — approval is the only path from chat to material
+- ✅ **Connected sources: one adapter family (plan 86, ADR-214/215/216,
+  2026-10-22)**: every source provider rides one reconciliation seam. Beside
+  RSS/Atom, YouTube and site searches, the Web sources card now connects
+  **WebDAV/Nextcloud** (app password, PROPFIND/ETag change detection, and a
+  backup destination with upload/restore), **Google Drive** (OAuth2 with a
+  loopback/PKCE browser flow, changes-API cursor, Google Docs/Slides/Sheets
+  exported through the existing converter pipeline), **Dropbox** and
+  **OneDrive** (same OAuth seam), a local **Zotero** collection (citation-
+  complete link suggestions plus attachments) and local **Anki** decks
+  (union-merged review logs recomputed deterministically into FSRS due
+  states). Providers are catalog data: adding one is a catalog row plus an
+  adapter class, never a migration. Sources report the family status
+  vocabulary (`ok | degraded | failing | stale`, with needs-setup/reconnect
+  conditions), and every item still lands as a suggestion — never an
+  automatic import. RSS media enclosures become audio/video suggestions that
+  accept through the existing transcribe path.
 - ✅ **External web sources (plan 73-E, ADR-167/170, 2026-09-16)**: standing
   web sources that surface new material on their own — **RSS/Atom feeds**
   (feedparser over httpx with etag/last-modified resume), **YouTube channels
@@ -282,10 +305,10 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   toggle, manual **Scan now**, honest error badges (a dead feed shows its
   last error), overlap guard so slow scans never stack, and untrusted
   feed/yt-dlp metadata is HTML-stripped and http(s)-validated before
-  storage. Settings → AI → Integrations (the former MCP tab) hosts the
-  **Web sources** card with add/edit dialog (kind, URL, label, course,
-  interval, per-kind options); sources are course-owned config that rides
-  `ca-course/v2` bundles with fresh cursors on import
+  storage. Settings → Tools → Web sources hosts the
+  **Web sources** card with add/edit dialog (provider, URL, label, course,
+  interval, per-provider options); sources are course-owned config that rides
+  `sa-course/v2` bundles with fresh cursors on import
 - ✅ **Suggestions: keep track + Discover UI (plan 73-D, 2026-09-16)**: found
   material no longer vanishes. Every discovery result row is annotated with its
   tracking state ("Saved" / "Dismissed"), and the new **Discover dialog** (in
@@ -341,9 +364,10 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   instead of extraction views. Per-course dedupe is database-enforced on a
   normalized URL (`youtu.be/x` ≡ `youtube.com/watch?v=x`, tracking params
   stripped) — re-attaching the same link surfaces the existing material
-- ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
-  provider (Settings → AI → Providers → Web search; Tavily-compatible or SearXNG,
-  API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**
+- ✅ **Web research tools (plan 52-D, ADR-136)**: configurable web search
+  providers (Settings → Tools → Web search — an ordered list of Tavily,
+  SearXNG, Brave, Exa, Serper or Google PSE rows, API keys in the keyring,
+  the first enabled provider that answers wins) unlock the tutor's **SEARCH** (2/turn) and **FETCH**
   (1/turn) tools — results render as source-domain chips, retrieved content is
   never stored, and an advisory contract nudges citation when search was used.
   Genesis gains a **Ground the outline in web sources** toggle; grounded
@@ -500,14 +524,14 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   point tolerance, interval containment, boundary-kind strictness, Dice-style
   partial credit for partial shading (see math-verification.md). Generators may
   propose numberline questions (validators enforce the payload schema + domain
-  bounds; repair loop); `caq/v1` round-trips them
+  bounds; repair loop); `saq/v1` round-trips them
 - ✅ **Table / matrix completion (C19, plan 51-F)**: the `table_fill` question
   type answers a grid cell by cell — headers + row labels, pre-filled `"locked"`
   cells shown read-only, fillable cells typed per their declared kind
   (text = normalized match + accept list, numeric = tolerance, equation =
   SymPy equivalence). Grading is per-cell deterministic with partial credit =
   fraction of correct cells; generators propose tables (validators: alignment,
-  kinds, parseable values, ≥1 fillable cell; repair loop) and `caq/v1`
+  kinds, parseable values, ≥1 fillable cell; repair loop) and `saq/v1`
   round-trips them; the filled grid replays in the attempt report
 - ✅ **Composite questions with follow-through credit (C16, plan 51-E)**: the
   `composite` type is one multi-part problem (2–4 ordered parts, each
@@ -518,7 +542,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   earlier part was wrong. Validators prove at generation time that the relation
   is parseable, only references prior parts, reproduces the declared value from
   the declared answers, and still evaluates from a perturbed answer (repair
-  loop); `caq/v1` round-trips the parts; the per-part feedback
+  loop); `saq/v1` round-trips the parts; the per-part feedback
   ("(a): incorrect, (b): correct (follow-through)") renders in the runner and
   the response rides the attempt report
 - ✅ **Graph-reading answers (C5, plan 51-G)**: the `graph_read` type renders a
@@ -559,11 +583,11 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   refused help server-side; "ask about this question" opens a chat session bound to
   the attempt that runs under the no-answer-reveal wrapper until the question is
   answered; help events land on the answer transcript — C9b
-- ✅ `caq/v1` export/import with dry-run validation preview — C22/C23 (single-file
+- ✅ `saq/v1` export/import with dry-run validation preview — C22/C23 (single-file
   tier)
 - ✅ `qpkg` package export/import: zip with sha256 manifest, integrity-checked,
   same validators — C22/C23 tier 2 (assets/ split form pending)
-- ✅ **Course bundles (`ca-course/v1`, plan 22 F, ADR-050)**: `GET /courses/{id}/export`
+- ✅ **Course bundles (`sa-course/v1`, plan 22 F, ADR-050)**: `GET /courses/{id}/export`
   → zip (manifest + course.json + tree + concepts/links/coverage + materials w/
   latest extraction + index cards + node links + notes w/ drawings + quizzes +
   exercises incl. `card_*` kinds + course-scope skill overrides + content-addressed
@@ -577,7 +601,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   each course card also shows its **description** when one is set
 - ✅ Single-artifact export (plan 22 F2): note **Print** (standalone page w/
   `?print=1` auto-print; global print CSS hides chrome) and **Export .md**
-  (self-contained download — `ca-drawing://N` refs inlined as base64 data URIs)
+  (self-contained download — `sa-drawing://N` refs inlined as base64 data URIs)
 - ✅ **Split-view study mode (plan 22 G; per-pane close plan 62-A; shared
   header plan 62-B)**: `SplitStudyPane` overlay — material (MaterialDetailBody
   tabs) left, `NoteEditor` right (rides autosave), both panes headed by one
@@ -607,7 +631,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   `/library/<id>`, note → `/note/<id>`, carrying `from=` so back returns to
   the workspace);
   **selection → Quote-into-note bridge** (floating affordance on text
-  selection in the reader → blockquote + `ca-material://` source link inserted
+  selection in the reader → blockquote + `sa-material://` source link inserted
   at the tiptap cursor via `insertQuote` API)
 - ✅ **Docked right-rail panels (ADR-191, 2026-09-17)**: opening a material or
   note in the workspace (`?material=` / `?note=`) renders a **docked,
@@ -801,7 +825,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Browse your data in chat (plan 36)**: the tutor can list your courses and browse a
   node's quizzes, exercises and notes (`COURSES` / `NODE_OVERVIEW` / `NODE_QUIZZES` /
   `NODE_EXERCISES` / `NODE_NOTES`), read-only — the same tools external agents get via the
-  MCP server (documented under Settings → AI → Integrations)
+  MCP server (documented under Settings → Tools → Integrations; see
+  [Add an MCP connector](add-an-mcp-connector.md))
 - ✅ **Attach menu (+)**: reference courses, materials, notes, quizzes,
   exercises, **course-tree nodes** (plan 72-F — flattened tree with
   summary/breadcrumb meta; picks send `kind:'node'` attachments the tutor can
@@ -901,7 +926,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   presets incl. Ollama, and per-capability **default models** with per-task override
   (inherit-or-custom) — I3/I7 (wizard polish pending); **per-course task-model
   overrides** via the workspace root's Settings tab → Tasks subtab (course title +
-  description in the General subtab) — ADR-091
+  description in the General subtab) — ADR-091; **decision models** (plan 26):
+  a *Decision models* group with four `decision:*` slots (primary + fallback)
+  in the same Tasks subtab, decision-capable models marked in Providers, and
+  one-click setup that can fill the decision slots alongside chat/vision/stt
+  (a privacy notice shows at the Decision group — decision models run in the
+  cloud)
 - ✅ **Settings in a two-pane shell** (family-uniform, 2026-09-20): the assistant-ui
   `SettingsShell` renders a sticky rail (icon + label + description per entry,
   collapsing to a chip row on narrow windows) over five sections — General ·
@@ -975,7 +1005,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   active skill version once per ingest job and threads it as the system
   prompt (byte-identical to the previous hardcoded constant; falling back to
   that constant when the skill row is missing). Editing the skill in
-  Settings → AI → Skills immediately changes page OCR (it is a normal versioned
+  Settings → Tools → Skills immediately changes page OCR (it is a normal versioned
   skill now — the duplicate constant in `gateway_ocr.py` is gone, one source).
   The document title rides along as page context
   (`Transcribe this page. Document: {title}`) so short pages (captions,
@@ -1056,6 +1086,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   zero) and opt-in browser notifications (Settings → General; ≤1 summary per
   30 min while the app is open; feature-detected with honest fallbacks) —
   plan 68-C
+- ✅ Cloud calendars (ADR-0052 / plan 52): bind a course to Google, Microsoft
+  365, Nextcloud, iCloud, Fastmail, generic CalDAV or a read-only ICS feed;
+  the bind form renders from catalog setup fields (no provider hardcoding) and
+  lists the account's calendars to pick one; exam/deadline/milestone plan
+  items project as all-day events; optional two-way sync accepts only
+  study-event categories; credentials live in the OS keyring, never the
+  database — Settings → Tools → Connectors → Cloud calendars
 - ✅ Planner week view + ICS: List⇄Week toggle (Mon–Sun grid, today highlight,
   drag-between-days, overdue/done styling) and a server-rendered
   `GET /courses/{id}/plan.ics` calendar export with stable UIDs (re-import
@@ -1162,7 +1199,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Canvas v2 + **inline drawing blocks** (plan 22 E, ADR-049): DrawCanvas with
   pen/eraser (stroke-hit erase), 4 inks, 3 widths, undo/redo, guarded clear,
   pressure-sensitive widths, variable height (grows with content, DPR-aware);
-  drawings embed **inside the note body** as `![drawing](ca-drawing://N)` —
+  drawings embed **inside the note body** as `![drawing](sa-drawing://N)` —
   a tiptap image NodeView renders the PNG + collapsible OCR text with a
   per-drawing ⋯ menu (edit / run OCR again / copy OCR text); the canvas footer
   is [OCR toggle · default on] + Save-drawing, which inserts at the cursor;
@@ -1188,7 +1225,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   engine (extracted from the chat composer) — pick a window/screen, drag a
   rectangle, review the capture in a preview popover (Insert/Cancel), and
   Insert stores it as a strokeless snapshot drawing (OCR honestly skipped) and
-  drops the `ca-drawing://N` ref at the cursor with an Undo toast; with no
+  drops the `sa-drawing://N` ref at the cursor with an Undo toast; with no
   note editor open the shot lands in a new note in the current course, else
   the scratchpad
 - ✅ Flashcards: basic/cloze/reverse; AI generation from notes / material /

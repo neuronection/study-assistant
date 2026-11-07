@@ -11,7 +11,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getMaterial: (id: number) => getMaterialMock(id),
+    getMaterial: (id: string) => getMaterialMock(id),
   }
 })
 
@@ -19,7 +19,7 @@ function renderCard(openDelay = 0) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MaterialHoverCard materialId={9} openDelay={openDelay}>
+      <MaterialHoverCard materialId="9" openDelay={openDelay}>
         <button type="button">chain-rule.pdf</button>
       </MaterialHoverCard>
     </QueryClientProvider>,
@@ -28,7 +28,7 @@ function renderCard(openDelay = 0) {
 
 function detailWith(indexCard: Record<string, unknown> | null) {
   return {
-    material: { id: 9, title: 'chain-rule.pdf' },
+    material: { id: '9', title: 'chain-rule.pdf' },
     extraction: null,
     index_card: indexCard,
     drawings: [],
@@ -58,7 +58,7 @@ describe('MaterialHoverCard', () => {
     expect(await screen.findByText('Worked summary of the chain rule.')).toBeInTheDocument()
     expect(screen.getByText('derivatives')).toBeInTheDocument()
     expect(screen.getByText('4 min read · difficulty 2')).toBeInTheDocument()
-    expect(getMaterialMock).toHaveBeenCalledWith(9)
+    expect(getMaterialMock).toHaveBeenCalledWith('9')
   })
 
   test('shows an honest empty state when no index card exists', async () => {

@@ -74,10 +74,10 @@ class StructuredFake(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake",
@@ -91,7 +91,7 @@ class StructuredFake(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.generate_calls += 1
         return self.text.pop(0) if self.text else '{"questions": []}'
@@ -101,7 +101,7 @@ class StructuredFake(LLMGateway):
         task: str,
         messages: list[Message],
         schema: type[Any],
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         self.structured_calls += 1
         if "tools" not in self.caps:
@@ -173,7 +173,7 @@ def test_gateway_structured_cap_gate_makes_no_request() -> None:
         transport=httpx.MockTransport(lambda request: httpx.Response(500, text="boom")),
     )
     ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -181,9 +181,7 @@ def test_gateway_structured_cap_gate_makes_no_request() -> None:
         caps=["text"],
         api_key="k",
     )
-    result = gateway.generate_structured(
-        "chat", [Message(role="user", content="hi")], QuizgenOut
-    )
+    result = gateway.generate_structured("chat", [Message(role="user", content="hi")], QuizgenOut)
     assert result is None
 
 

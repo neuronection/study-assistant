@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 from sqlalchemy import select
@@ -11,6 +11,8 @@ from ...ai.proposals import PROPOSAL_ACTIONS
 from ...core.vocab import ChatProposalStatus
 from ...domain.models import (
     Activity,
+    ChatProposal,
+    ChatProposalAnchor,
     Concept,
     Course,
     Exercise,
@@ -24,6 +26,8 @@ from ...domain.models import (
     TreeNode,
     utcnow,
 )
+from ...domain.payloads import ProposalPayload
+from ...domain.proposal_contract import normalize_anchors
 from ...jobs.runner import JobRunner
 from ...storage.blobs import BlobStore
 from ..content.drawings import blocks_md
@@ -45,23 +49,20 @@ class ProposalContext:
     profile_id: str | None = None
 
 
-Executor = Callable[
-    [Session, dict[str, Any], int, ProposalContext], tuple[str, dict[str, Any]]
-]
+Executor = Callable[[Session, dict[str, Any], str, ProposalContext], tuple[str, dict[str, Any]]]
 
 
-def _node_in_course(session: Session, node_id: int, course_id: int) -> TreeNode:
+def _node_in_course(session: Session, node_id: str, course_id: str) -> TreeNode:
     node = session.get(TreeNode, node_id)
     if node is None or node.course_id != course_id:
-        raise ProposalActionError(
-            f"target node {node_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"target node {node_id} no longer exists in this course")
     return node
 
 
 def capture_proposal_snapshot(
-    session: Session, *, action: str, payload: dict[str, Any], course_id: int
-) -> dict[str, Any] | None:
+    session: Session, *, action: str, payload: dict[str, Any], course_id: str
+) -> str | None:
+    """The target's current markdown, captured server-side at proposal creation."""
     spec = PROPOSAL_ACTIONS.get(action)
     if spec is None or spec.snapshot is None:
         return None
@@ -69,15 +70,15 @@ def capture_proposal_snapshot(
         note_id = payload.get("note_id")
         if note_id is None:
             return None
-        note = session.get(Note, int(note_id))
+        note = session.get(Note, str(note_id))
         if note is None or note.course_id != course_id:
             return None
-        return {"original_md": blocks_md(note.body or [])}
+        return blocks_md(note.body or [])
     if spec.snapshot == "extraction_md":
         material_id = payload.get("material_id")
         if material_id is None:
             return None
-        material = session.get(Material, int(material_id))
+        material = session.get(Material, str(material_id))
         if material is None or material.course_id != course_id:
             return None
         latest = session.scalars(
@@ -88,8 +89,77 @@ def capture_proposal_snapshot(
         ).first()
         if latest is None:
             return None
-        return {"original_md": latest.markdown}
+        return latest.markdown
     return None
+
+
+def proposal_full_payload(proposal: ChatProposal) -> dict[str, Any]:
+    """Recompose the card document from typed columns + the action document.
+
+    The API/wire shape is unchanged (plan 81 D is a storage change): the
+    target snapshot, the ordered anchors and the resolved target metadata are
+    columns now, but every reader still sees one `payload` object.
+    """
+    payload = dict(proposal.payload or {})
+    if proposal.original_md is not None:
+        payload["original_md"] = proposal.original_md
+    if proposal.anchors:
+        payload["text_edits"] = [
+            {"op": anchor.op, "find": anchor.find_text, "text": anchor.text}
+            for anchor in proposal.anchors
+        ]
+    if proposal.target_kind is not None:
+        payload["target_kind"] = proposal.target_kind
+    if proposal.target_name is not None:
+        payload["target_name"] = proposal.target_name
+    if proposal.target_node_id is not None:
+        payload["target_node_id"] = proposal.target_node_id
+    if proposal.target_node_path is not None:
+        payload["target_node_path"] = list(proposal.target_node_path)
+    return payload
+
+
+def proposal_payload_anchors(payload: dict[str, Any]) -> list[ChatProposalAnchor]:
+    anchors: list[ChatProposalAnchor] = []
+    for position, anchor in enumerate(normalize_anchors(payload.get("text_edits"))):
+        anchors.append(
+            ChatProposalAnchor(
+                position=position,
+                op=anchor["op"],
+                find_text=anchor["find"],
+                text=anchor["text"],
+            )
+        )
+    return anchors
+
+
+def store_proposal_state(
+    proposal: ChatProposal,
+    *,
+    payload: dict[str, Any],
+    original_md: str | None,
+    target: dict[str, Any] | None,
+) -> None:
+    """Write the typed state out of a proposal document (ADR-200)."""
+    document = dict(payload)
+    anchors = proposal_payload_anchors(document)
+    for key in (
+        "text_edits",
+        "original_md",
+        "target_kind",
+        "target_name",
+        "target_node_id",
+        "target_node_path",
+    ):
+        document.pop(key, None)
+    proposal.payload = cast(ProposalPayload, document)
+    proposal.original_md = original_md
+    proposal.anchors = anchors
+    if target:
+        proposal.target_kind = target.get("target_kind")
+        proposal.target_name = target.get("target_name")
+        proposal.target_node_id = target.get("target_node_id")
+        proposal.target_node_path = target.get("target_node_path")
 
 
 _TARGET_KINDS = {
@@ -104,17 +174,13 @@ _TARGET_KINDS = {
 }
 
 
-def _node_title_path(
-    session: Session, node: TreeNode, course_id: int
-) -> list[str]:
+def _node_title_path(session: Session, node: TreeNode, course_id: str) -> list[str]:
     path: list[str] = []
     current: TreeNode | None = node
     while current is not None:
         path.append(current.title)
         current = (
-            session.get(TreeNode, current.parent_id)
-            if current.parent_id is not None
-            else None
+            session.get(TreeNode, current.parent_id) if current.parent_id is not None else None
         )
     path.reverse()
     course = session.get(Course, course_id)
@@ -124,7 +190,7 @@ def _node_title_path(
 
 
 def resolve_proposal_target(
-    session: Session, *, action: str, payload: dict[str, Any], course_id: int
+    session: Session, *, action: str, payload: dict[str, Any], course_id: str
 ) -> dict[str, Any] | None:
     target = _TARGET_KINDS.get(action)
     if target is None:
@@ -135,7 +201,7 @@ def resolve_proposal_target(
         note_id = payload.get("note_id")
         if note_id is None:
             return None
-        note = session.get(Note, int(note_id))
+        note = session.get(Note, str(note_id))
         if note is None or note.course_id != course_id:
             return None
         info["target_name"] = note.title
@@ -143,7 +209,7 @@ def resolve_proposal_target(
         material_id = payload.get("material_id")
         if material_id is None:
             return None
-        material = session.get(Material, int(material_id))
+        material = session.get(Material, str(material_id))
         if material is None or material.course_id != course_id:
             return None
         info["target_name"] = material.title
@@ -161,7 +227,7 @@ def resolve_proposal_target(
         info["target_name"] = str(title).strip()
     node_id = payload.get("node_id")
     if node_id is not None:
-        node = session.get(TreeNode, int(node_id))
+        node = session.get(TreeNode, str(node_id))
         if node is not None and node.course_id == course_id:
             info["target_node_id"] = node.id
             info["target_node_path"] = _node_title_path(session, node, course_id)
@@ -171,11 +237,11 @@ def resolve_proposal_target(
 def _execute_assign_material(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
-    node = _node_in_course(session, int(payload["node_id"]), course_id)
-    material = session.get(Material, int(payload["material_id"]))
+    node = _node_in_course(session, str(payload["node_id"]), course_id)
+    material = session.get(Material, str(payload["material_id"]))
     if material is None or material.course_id != course_id:
         raise ProposalActionError(
             f"material {payload['material_id']} no longer exists in this course"
@@ -221,11 +287,11 @@ def _execute_assign_material(
 def _execute_cover_concept(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
-    node = _node_in_course(session, int(payload["node_id"]), course_id)
-    concept = session.get(Concept, int(payload["concept_id"]))
+    node = _node_in_course(session, str(payload["node_id"]), course_id)
+    concept = session.get(Concept, str(payload["concept_id"]))
     if concept is None or concept.course_id != course_id:
         raise ProposalActionError(
             f"concept {payload['concept_id']} no longer exists in this course"
@@ -250,10 +316,10 @@ def _execute_cover_concept(
 def _execute_set_node_ai_hint(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
-    node = _node_in_course(session, int(payload["node_id"]), course_id)
+    node = _node_in_course(session, str(payload["node_id"]), course_id)
     hint = str(payload["hint"]).strip()
     if not hint:
         raise ProposalActionError("hint must not be empty")
@@ -262,7 +328,7 @@ def _execute_set_node_ai_hint(
     return "executed", {"node_id": node.id}
 
 
-def _load_note(session: Session, note_id: int, course_id: int) -> Note:
+def _load_note(session: Session, note_id: str, course_id: str) -> Note:
     note = session.get(Note, note_id)
     if note is None or note.course_id != course_id:
         raise ProposalActionError(f"note {note_id} no longer exists in this course")
@@ -278,15 +344,13 @@ def _ensure_unmodified(note: Note, payload: dict[str, Any]) -> None:
 def _execute_edit_note(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
-    note = _load_note(session, int(payload["note_id"]), course_id)
+    note = _load_note(session, str(payload["note_id"]), course_id)
     _ensure_unmodified(note, payload)
     try:
-        save_note_body(
-            session, note, str(payload["new_body_md"]), cause="ai-edit", force=True
-        )
+        save_note_body(session, note, str(payload["new_body_md"]), cause="ai-edit", force=True)
     except NoteBodyError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {"note_id": note.id}
@@ -295,10 +359,10 @@ def _execute_edit_note(
 def _execute_append_note(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
-    note = _load_note(session, int(payload["note_id"]), course_id)
+    note = _load_note(session, str(payload["note_id"]), course_id)
     _ensure_unmodified(note, payload)
     current = blocks_md(note.body or [])
     addition = str(payload["markdown"])
@@ -315,23 +379,19 @@ def _execute_append_note(
 
 def _load_material_with_extraction(
     session: Session,
-    material_id: int,
-    course_id: int,
+    material_id: str,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[Material, MaterialsService, Extraction]:
     if context.blobs is None:
         raise ProposalActionError("proposal execution context is missing blobs")
     material = session.get(Material, material_id)
     if material is None or material.course_id != course_id:
-        raise ProposalActionError(
-            f"material {material_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"material {material_id} no longer exists in this course")
     service = MaterialsService(session, context.blobs)
     latest = service.latest_extraction(material.id)
     if latest is None:
-        raise ProposalActionError(
-            f"material {material_id} has no extraction to edit"
-        )
+        raise ProposalActionError(f"material {material_id} has no extraction to edit")
     return material, service, latest
 
 
@@ -344,15 +404,15 @@ def _ensure_extraction_unmodified(latest: Extraction, payload: dict[str, Any]) -
 def _execute_edit_material(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     material, service, latest = _load_material_with_extraction(
-        session, int(payload["material_id"]), course_id, context
+        session, str(payload["material_id"]), course_id, context
     )
     _ensure_extraction_unmodified(latest, payload)
     try:
-        extraction, old_chunk_ids = service.edit_extraction(
+        extraction, replaced_chunk_ids = service.edit_extraction(
             material, str(payload["new_markdown"])
         )
     except ValueError as error:
@@ -360,18 +420,18 @@ def _execute_edit_material(
     return "executed", {
         "material_id": material.id,
         "extraction_id": extraction.id,
-        "old_chunk_ids": old_chunk_ids,
+        "replaced_chunk_ids": replaced_chunk_ids,
     }
 
 
 def _execute_append_material(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     material, service, latest = _load_material_with_extraction(
-        session, int(payload["material_id"]), course_id, context
+        session, str(payload["material_id"]), course_id, context
     )
     _ensure_extraction_unmodified(latest, payload)
     addition = str(payload["markdown"]).strip()
@@ -380,20 +440,20 @@ def _execute_append_material(
         addition = f"## {heading}\n\n{addition}"
     merged = f"{latest.markdown.rstrip()}\n\n{addition}"
     try:
-        extraction, old_chunk_ids = service.edit_extraction(material, merged)
+        extraction, replaced_chunk_ids = service.edit_extraction(material, merged)
     except ValueError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {
         "material_id": material.id,
         "extraction_id": extraction.id,
-        "old_chunk_ids": old_chunk_ids,
+        "replaced_chunk_ids": replaced_chunk_ids,
     }
 
 
 def _execute_create_material(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     if context.blobs is None or context.profile_id is None:
@@ -412,7 +472,7 @@ def _execute_create_material(
         raise ProposalActionError(str(error)) from None
     node_id = payload.get("node_id")
     if node_id is not None:
-        node = _node_in_course(session, int(node_id), course_id)
+        node = _node_in_course(session, str(node_id), course_id)
         session.add(
             MaterialLink(
                 course_id=course_id,
@@ -433,7 +493,7 @@ def _execute_create_material(
 def _execute_attach_link(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     if context.blobs is None or context.profile_id is None:
@@ -445,9 +505,9 @@ def _execute_attach_link(
     service = MaterialsService(session, context.blobs)
     title = str(payload.get("title") or "").strip() or None
     node_id = payload.get("node_id")
-    placement: int | None = None
+    placement: str | None = None
     if node_id is not None:
-        placement = _node_in_course(session, int(node_id), course_id).id
+        placement = _node_in_course(session, str(node_id), course_id).id
     try:
         material, deduped = service.create_link(
             profile_id=context.profile_id,
@@ -467,7 +527,7 @@ def _execute_attach_link(
 def _execute_create_concept(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     del context
@@ -483,17 +543,15 @@ def _execute_create_concept(
         concept = Concept(
             course_id=course_id,
             name=name[:200],
-            description=str(description).strip()[:2000]
-            if description
-            else None,
+            description=str(description).strip()[:2000] if description else None,
         )
         session.add(concept)
         session.flush()
         created = True
     node_id = payload.get("node_id")
-    linked_node_id: int | None = None
+    linked_node_id: str | None = None
     if node_id is not None:
-        node = _node_in_course(session, int(node_id), course_id)
+        node = _node_in_course(session, str(node_id), course_id)
         existing = session.scalars(
             select(NodeConcept).where(
                 NodeConcept.node_id == node.id,
@@ -514,13 +572,13 @@ def _execute_create_concept(
 def _execute_move_to_node(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     del context
     kind = str(payload["kind"])
-    target_id = int(payload["id"])
-    node = _node_in_course(session, int(payload["node_id"]), course_id)
+    target_id = str(payload["id"])
+    node = _node_in_course(session, str(payload["node_id"]), course_id)
     try:
         placement = TreeService(session).placement_node(course_id, node.id)
     except TreeError as error:
@@ -540,9 +598,7 @@ def _execute_move_to_node(
     else:
         scoped = session.get(Exercise, target_id)
     if scoped is None or scoped.course_id != course_id:
-        raise ProposalActionError(
-            f"{kind} {target_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"{kind} {target_id} no longer exists in this course")
     scoped.node_id = placement
     session.flush()
     return "executed", {"kind": kind, "id": target_id, "node_id": placement}
@@ -551,11 +607,11 @@ def _execute_move_to_node(
 def _execute_tag_note(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     del context
-    note = _load_note(session, int(payload["note_id"]), course_id)
+    note = _load_note(session, str(payload["note_id"]), course_id)
     addition = [str(tag) for tag in payload.get("add") or []]
     note.tags = normalize_tags(list(note.tags or []) + addition)
     session.flush()
@@ -565,7 +621,7 @@ def _execute_tag_note(
 def _execute_set_exam_date(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     del context
@@ -584,7 +640,7 @@ def _execute_set_exam_date(
 def _execute_generate_plan(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     del payload
@@ -603,7 +659,7 @@ def _execute_generate_plan(
 def _execute_add_plan_items(
     session: Session,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext,
 ) -> tuple[str, dict[str, Any]]:
     if context.profile_id is None:
@@ -658,7 +714,7 @@ def execute_proposal(
     *,
     action: str,
     payload: dict[str, Any],
-    course_id: int,
+    course_id: str,
     context: ProposalContext | None = None,
 ) -> tuple[str, dict[str, Any]]:
     executor = EXECUTORS.get(action)

@@ -1,3 +1,57 @@
+from ...core.vocab import (
+    AttemptMode as AttemptMode,
+)
+from ...core.vocab import (
+    CalendarDirection as CalendarDirection,
+)
+from ...core.vocab import (
+    CalendarStatus as CalendarStatus,
+)
+from ...core.vocab import (
+    ExerciseKind as ExerciseKind,
+)
+from ...core.vocab import (
+    ItemFlag as ItemFlag,
+)
+from ...core.vocab import (
+    PlanItemKind as PlanItemKind,
+)
+from ...core.vocab import (
+    PlanItemOrigin as PlanItemOrigin,
+)
+from ...core.vocab import (
+    QuestionType as QuestionType,
+)
+from ...core.vocab import (
+    StudySessionKind as StudySessionKind,
+)
+from ...core.vocab import (
+    StudySessionSource as StudySessionSource,
+)
+from ..payloads import (
+    ActivityConfig,
+    ActivityGeneratedFrom,
+    AnswerResponse,
+    AttemptMeta,
+    BlockList,
+    CalendarLinkOptions,
+    DetectionSpec,
+    DistractorMisconceptions,
+    ExerciseContextList,
+    ExerciseCreatedFrom,
+    ExpectedAnswer,
+    FeedbackList,
+    HelpEventList,
+    QuestionAnswer,
+    QuestionProvenance,
+    QuestionStats,
+    RubricDocument,
+    StepResponse,
+    StepState,
+    StringList,
+    SympyCheck,
+)
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -50,10 +104,22 @@ from .core import (
     datetime as datetime,
 )
 from .core import (
+    false as false,
+)
+from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
+    new_uuid as new_uuid,
+)
+from .core import (
     relationship as relationship,
+)
+from .core import (
+    text as text,
+)
+from .core import (
+    true as true,
 )
 from .core import (
     utcnow as utcnow,
@@ -64,22 +130,25 @@ class Activity(Base):
     __tablename__ = "activities"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     type: Mapped[str] = mapped_column(String(20), default="quiz")
     title: Mapped[str] = mapped_column(String(300))
     time_limit_sec: Mapped[int | None] = mapped_column(Integer)
-    config: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    generated_from: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    config: Mapped[ActivityConfig | None] = mapped_column(JSON)
+    generated_from: Mapped[ActivityGeneratedFrom | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     questions: Mapped[list["Question"]] = relationship(
@@ -89,116 +158,133 @@ class Activity(Base):
         back_populates="activity", cascade="all, delete-orphan"
     )
 
+
 class Question(Base):
     __tablename__ = "questions"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    activity_id: Mapped[int] = mapped_column(
-        ForeignKey("activities.id", ondelete="CASCADE"), index=True
+    __table_args__ = (
+        vocab_check("flag", ItemFlag),
+        vocab_check("type", QuestionType),
     )
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    activity_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("activities.id", ondelete="CASCADE"), index=True
+    )
+    parent_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("questions.id", ondelete="CASCADE")
+    )
     type: Mapped[str] = mapped_column(String(20))
-    stem: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    options: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    answer: Mapped[dict[str, Any]] = mapped_column(JSON)
-    explanation: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    stem: Mapped[BlockList] = mapped_column(JSON)
+    options: Mapped[BlockList | None] = mapped_column(JSON)
+    answer: Mapped[QuestionAnswer] = mapped_column(JSON)
+    explanation: Mapped[BlockList | None] = mapped_column(JSON)
     difficulty: Mapped[float | None] = mapped_column(Float)
     bloom: Mapped[str | None] = mapped_column(String(20))
     skill: Mapped[str | None] = mapped_column(String(20))
-    concept_ids: Mapped[list[int] | None] = mapped_column(JSON)
+    concept_ids: Mapped[StringList | None] = mapped_column(JSON)
     expected_time_sec: Mapped[int | None] = mapped_column(Integer)
     curriculum_code: Mapped[str | None] = mapped_column(String(120))
-    source_refs: Mapped[list[int] | None] = mapped_column(JSON)
-    distractor_misconceptions: Mapped[dict[str, str] | None] = mapped_column(JSON)
-    sympy_check: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    input_modes: Mapped[list[str] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
-    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    source_refs: Mapped[StringList | None] = mapped_column(JSON)
+    distractor_misconceptions: Mapped[DistractorMisconceptions | None] = mapped_column(JSON)
+    sympy_check: Mapped[SympyCheck | None] = mapped_column(JSON)
+    input_modes: Mapped[StringList | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
+    provenance: Mapped[QuestionProvenance | None] = mapped_column(JSON)
     flag: Mapped[str] = mapped_column(String(10), default="ok")
-    stats: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    stats: Mapped[QuestionStats | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     activity: Mapped[Activity] = relationship(back_populates="questions")
 
+
 class Attempt(Base):
     __tablename__ = "attempts"
+    __table_args__ = (vocab_check("mode", AttemptMode),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    activity_id: Mapped[int] = mapped_column(
-        ForeignKey("activities.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    activity_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("activities.id", ondelete="CASCADE"), index=True
     )
     mode: Mapped[str] = mapped_column(String(10), default="practice")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     score: Mapped[float | None] = mapped_column(Float)
-    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    meta: Mapped[AttemptMeta | None] = mapped_column(JSON)
 
     activity: Mapped[Activity] = relationship(back_populates="attempts")
     answers: Mapped[list["Answer"]] = relationship(
         back_populates="attempt", cascade="all, delete-orphan"
     )
 
+
 class Answer(Base):
     __tablename__ = "answers"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    attempt_id: Mapped[int] = mapped_column(
-        ForeignKey("attempts.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    attempt_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("attempts.id", ondelete="CASCADE"), index=True
     )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("questions.id", ondelete="CASCADE"), index=True
+    question_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("questions.id", ondelete="CASCADE"), index=True
     )
-    response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    response: Mapped[AnswerResponse | None] = mapped_column(JSON)
     input_mode: Mapped[str | None] = mapped_column(String(10))
     correct: Mapped[bool | None] = mapped_column(Boolean)
     partial_credit: Mapped[float | None] = mapped_column(Float)
-    feedback: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    feedback: Mapped[FeedbackList | None] = mapped_column(JSON)
     graded_by: Mapped[str | None] = mapped_column(String(10))
     time_ms: Mapped[int | None] = mapped_column(Integer)
     retries: Mapped[int] = mapped_column(Integer, default=0)
-    error_tags: Mapped[list[str] | None] = mapped_column(JSON)
-    help_events: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    error_tags: Mapped[StringList | None] = mapped_column(JSON)
+    help_events: Mapped[HelpEventList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     attempt: Mapped[Attempt] = relationship(back_populates="answers")
 
+
 class Mistake(Base):
     __tablename__ = "mistakes"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("questions.id", ondelete="CASCADE"), index=True
+    question_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("questions.id", ondelete="CASCADE"), index=True
     )
-    concept_ids: Mapped[list[int] | None] = mapped_column(JSON)
-    error_tags: Mapped[list[str] | None] = mapped_column(JSON)
+    concept_ids: Mapped[StringList | None] = mapped_column(JSON)
+    error_tags: Mapped[StringList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class Exercise(Base):
     __tablename__ = "exercises"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
+        vocab_check("kind", ExerciseKind),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="multi_step")
     deck_ref: Mapped[str | None] = mapped_column(String(200))
-    context: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    external_uid: Mapped[str | None] = mapped_column(String(200), index=True)
+    context: Mapped[ExerciseContextList | None] = mapped_column(JSON)
     difficulty: Mapped[float | None] = mapped_column(Float)
-    created_from: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_from: Mapped[ExerciseCreatedFrom | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     steps: Mapped[list["ExerciseStep"]] = relationship(
@@ -214,27 +300,29 @@ class Exercise(Base):
         uselist=False,
     )
 
+
 class ExerciseStep(Base):
     __tablename__ = "exercise_steps"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    exercise_id: Mapped[int] = mapped_column(
-        ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    exercise_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("exercises.id", ondelete="CASCADE"), index=True
     )
     order_idx: Mapped[int] = mapped_column(Integer)
-    prompt: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    expected: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    hints_pregenerated: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    rubric: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    prompt: Mapped[BlockList] = mapped_column(JSON)
+    expected: Mapped[ExpectedAnswer | None] = mapped_column(JSON)
+    hints_pregenerated: Mapped[BlockList | None] = mapped_column(JSON)
+    rubric: Mapped[RubricDocument | None] = mapped_column(JSON)
 
     exercise: Mapped[Exercise] = relationship(back_populates="steps")
+
 
 class ExerciseSession(Base):
     __tablename__ = "exercise_sessions"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    exercise_id: Mapped[int] = mapped_column(
-        ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    exercise_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("exercises.id", ondelete="CASCADE"), index=True
     )
     current_step_idx: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="active")
@@ -248,44 +336,45 @@ class ExerciseSession(Base):
         back_populates="session", cascade="all, delete-orphan"
     )
 
+
 class StepAttempt(Base):
     __tablename__ = "step_attempts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("exercise_sessions.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    session_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("exercise_sessions.id", ondelete="CASCADE"), index=True
     )
     step_idx: Mapped[int] = mapped_column(Integer)
-    response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    response: Mapped[StepResponse | None] = mapped_column(JSON)
     correct: Mapped[bool | None] = mapped_column(Boolean)
     hint_level_used: Mapped[int | None] = mapped_column(Integer)
     error_class: Mapped[str | None] = mapped_column(String(30))
-    feedback: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    state: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    feedback: Mapped[FeedbackList | None] = mapped_column(JSON)
+    state: Mapped[StepState | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped[ExerciseSession] = relationship(back_populates="attempts")
 
+
 class QuizHelpEvent(Base):
     __tablename__ = "quiz_help_events"
-    __table_args__ = (
-        Index("ix_quiz_help_events_attempt_question", "attempt_id", "question_id"),
-    )
+    __table_args__ = (Index("ix_quiz_help_events_attempt_question", "attempt_id", "question_id"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id", ondelete="CASCADE"))
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    attempt_id: Mapped[str] = mapped_column(_UUID, ForeignKey("attempts.id", ondelete="CASCADE"))
+    question_id: Mapped[str] = mapped_column(_UUID, ForeignKey("questions.id", ondelete="CASCADE"))
     level: Mapped[int] = mapped_column(Integer)
     markdown: Mapped[str] = mapped_column(Text)
     violations: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class FsrsState(Base):
     __tablename__ = "fsrs_states"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    card_id: Mapped[int] = mapped_column(
-        ForeignKey("exercises.id", ondelete="CASCADE"), index=True, unique=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    card_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("exercises.id", ondelete="CASCADE"), index=True, unique=True
     )
     state: Mapped[str] = mapped_column(String(20), default="new")
     stability: Mapped[float | None] = mapped_column(Float)
@@ -295,19 +384,21 @@ class FsrsState(Base):
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    card: Mapped["Exercise"] = relationship(
-        foreign_keys=[card_id], back_populates="fsrs_state"
-    )
+    card: Mapped["Exercise"] = relationship(foreign_keys=[card_id], back_populates="fsrs_state")
+
 
 class ReviewLog(Base):
     __tablename__ = "review_log"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    card_id: Mapped[int] = mapped_column(ForeignKey("exercises.id", ondelete="CASCADE"), index=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    card_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    )
     rating: Mapped[int] = mapped_column(Integer)
     interval_days: Mapped[float] = mapped_column(Float)
     elapsed_days: Mapped[float] = mapped_column(Float)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class ErrorPattern(Base):
     __tablename__ = "error_patterns"
@@ -316,32 +407,37 @@ class ErrorPattern(Base):
         Index("ix_error_patterns_course_type", "course_type_id"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     key: Mapped[str] = mapped_column(String(80))
-    course_type_id: Mapped[int | None] = mapped_column(ForeignKey("course_types.id"))
+    course_type_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("course_types.id", ondelete="SET NULL")
+    )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     example: Mapped[str | None] = mapped_column(Text)
-    detection: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    detection: Mapped[DetectionSpec | None] = mapped_column(JSON)
     is_system: Mapped[bool] = mapped_column(Boolean, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class StudySession(Base):
     __tablename__ = "study_sessions"
     __table_args__ = (
         Index("ix_study_sessions_profile_started", "profile_id", "started_at"),
+        vocab_check("kind", StudySessionKind),
+        vocab_check("source", StudySessionSource),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int | None] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     kind: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(10))
     entity_ref: Mapped[str | None] = mapped_column(String(120))
@@ -355,28 +451,128 @@ class PlanItem(Base):
     __tablename__ = "plan_items"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
         Index("ix_plan_items_course_due", "course_id", "due_date"),
         Index("ix_plan_items_profile_due", "profile_id", "due_date"),
+        Index(
+            "uq_plan_items_course_external_uid",
+            "course_id",
+            "external_uid",
+            unique=True,
+            sqlite_where=text("external_uid IS NOT NULL"),
+            postgresql_where=text("external_uid IS NOT NULL"),
+        ),
+        vocab_check("kind", PlanItemKind),
+        vocab_check("origin", PlanItemOrigin),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     detail: Mapped[str | None] = mapped_column(String(500))
-    kind: Mapped[str] = mapped_column(
-        String(20), default="study", server_default="study"
-    )
+    kind: Mapped[str] = mapped_column(String(20), default="study", server_default="study")
     due_date: Mapped[date] = mapped_column(Date)
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    origin: Mapped[str] = mapped_column(
-        String(20), default="manual", server_default="manual"
-    )
+    origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     sort_key: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    external_uid: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CalendarLink(Base):
+    """One bound cloud-calendar account for a course (ADR-0052).
+
+    A link is a *credential binding*, not an identity: tokens live only in
+    the OS keyring under ``calendar:<id>:<slot>`` and ``secret_ref`` is a
+    pointer. The row carries the calendar's location, direction and visible
+    sync health; plan-item joins use ``plan_items.external_uid`` (the remote
+    event UID), never a token or an email.
+    """
+
+    __tablename__ = "calendar_links"
+    __table_args__ = (
+        Index("ix_calendar_links_profile", "profile_id"),
+        Index(
+            "uq_calendar_links_course_calendar",
+            "course_id",
+            "provider",
+            "calendar_id",
+            unique=True,
+        ),
+        vocab_check("direction", CalendarDirection),
+        vocab_check("status", CalendarStatus),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32))
+    auth_kind: Mapped[str] = mapped_column(String(20), default="none")
+    label: Mapped[str] = mapped_column(String(200))
+    account_label: Mapped[str | None] = mapped_column(String(200))
+    calendar_id: Mapped[str | None] = mapped_column(String(512))
+    calendar_url: Mapped[str | None] = mapped_column(String(2048))
+    base_url: Mapped[str | None] = mapped_column(String(2048))
+    scopes: Mapped[StringList | None] = mapped_column(JSON)
+    secret_ref: Mapped[str | None] = mapped_column(String(200))
+    direction: Mapped[str] = mapped_column(String(20), default="push", server_default="push")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    status: Mapped[str] = mapped_column(
+        String(20), default="needs-auth", server_default="needs-auth"
+    )
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    sync_cursor: Mapped[str | None] = mapped_column(String(1024))
+    options: Mapped[CalendarLinkOptions | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CalendarEventLink(Base):
+    """Remote identity for one local plan item on one calendar link.
+
+    The link row is the join key between a plan item and the provider's event
+    (stable UID, remote id, etag) plus a change pin per side: `local_hash`
+    and `remote_hash` are the hash of the LOCAL and REMOTE content as last
+    reconciled. A single shared hash cannot work — providers normalize on
+    write, so one hash reads back as "changed" on every run. It is kept when a
+    plan item disappears — that is how the next sync learns the local side was
+    deleted instead of re-creating it.
+    """
+
+    __tablename__ = "calendar_event_links"
+    __table_args__ = (
+        Index("uq_calendar_event_links_link_uid", "link_id", "uid", unique=True),
+        Index("ix_calendar_event_links_local", "link_id", "local_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    link_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("calendar_links.id", ondelete="CASCADE"), index=True
+    )
+    local_id: Mapped[str] = mapped_column(String(64))
+    uid: Mapped[str] = mapped_column(String(200))
+    remote_id: Mapped[str | None] = mapped_column(String(2048))
+    etag: Mapped[str | None] = mapped_column(String(256))
+    local_hash: Mapped[str | None] = mapped_column(String(64))
+    remote_hash: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -43,11 +43,11 @@ export function StudyLauncherDialog({
   onClose,
   onNoteCreated,
 }: {
-  courseId: number
-  nodeId: number
-  rootNodeId: number
+  courseId: string
+  nodeId: string
+  rootNodeId: string
   onClose: () => void
-  onNoteCreated: (noteId: number) => void
+  onNoteCreated: (noteId: string) => void
 }) {
   useCloseFloatings()
   const { t } = useTranslation()

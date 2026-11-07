@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Any
 from uuid import uuid4
 
@@ -28,6 +28,8 @@ from .speech import (
     speak_with,
 )
 from .structured import dump_structured
+from .tokenizers.accounting import accounting_for, default_accounting
+from .tokenizers.accounting import token_count as _token_count
 from .transcribe import (
     TranscriptionResult,
     TranscriptionUnsupported,
@@ -56,7 +58,7 @@ logger = structlog.get_logger(__name__)
 class TaskUnassigned(RuntimeError):
     def __init__(self, task: str) -> None:
         # Family-uniform wording (matches career's gateway) — surfaced
-        # verbatim in the chat turn_error card with code `ai_not_configured`.
+        # verbatim in the chat failure card with code `ai_not_configured`.
         super().__init__(
             "AI is not configured yet. An admin can add a provider and assign "
             "models in Settings → AI Configuration."
@@ -72,8 +74,7 @@ class ProviderError(RuntimeError):
             else ""
         )
         super().__init__(
-            f"provider request for model '{resolved.label}' failed: {reason}"
-            f"{auth_hint}"
+            f"provider request for model '{resolved.label}' failed: {reason}{auth_hint}"
         )
         self.model_label = resolved.label
 
@@ -134,11 +135,7 @@ _CACHED_TASK_NAMES = frozenset({"chat"})
 CACHE_READ_RATE = 0.1
 
 
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
-
-
-def _resolve_model(session: Session, model_id: int) -> tuple[AiModel, Provider]:
+def _resolve_model(session: Session, model_id: str) -> tuple[AiModel, Provider]:
     model = session.get(AiModel, model_id)
     if model is None:
         raise TaskUnassigned("model-missing")
@@ -203,38 +200,49 @@ class LLMGateway:
         output: str,
         latency_ms: int,
         usage: Usage | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
         if self._session_factory is None:
             return
         from ..domain.models import AiInteraction
 
-        tokens_in = usage.tokens_in if usage is not None else _estimate_tokens(prompt)
-        tokens_out = usage.tokens_out if usage is not None else _estimate_tokens(output)
-        cached_in = usage.cache_read if usage is not None else 0
+        if usage is not None:
+            tokens_in = usage.tokens_in
+            tokens_out = usage.tokens_out
+            cached_in = usage.cache_read
+        else:
+            accounting = (
+                accounting_for(resolved.provider_type, resolved.external_id)
+                if resolved is not None
+                else default_accounting()
+            )
+            tokens_in = _token_count(prompt, accounting)
+            tokens_out = _token_count(output, accounting)
+            cached_in = 0
         cost: float | None = None
         if resolved is not None and resolved.cost_in is not None:
             rate_out = resolved.cost_out if resolved.cost_out is not None else 0.0
             billed_in = max(0, tokens_in - cached_in) * resolved.cost_in
             billed_cache = cached_in * resolved.cost_in * CACHE_READ_RATE
             cost = round(
-                (billed_in + billed_cache) / 1_000_000
-                + tokens_out / 1_000_000 * rate_out,
+                (billed_in + billed_cache) / 1_000_000 + tokens_out / 1_000_000 * rate_out,
                 6,
             )
         try:
             with self._session_factory() as session:
-                session.add(
-                    AiInteraction(
-                        context_type="gateway",
-                        task=task,
-                        model=resolved.label if resolved else None,
-                        input_tokens=tokens_in,
-                        output_tokens=tokens_out,
-                        cached_input_tokens=cached_in or None,
-                        cost_usd=cost,
-                        latency_ms=latency_ms,
-                    )
+                row = AiInteraction(
+                    context_type="gateway",
+                    task=task,
+                    model=resolved.label if resolved else None,
+                    input_tokens=tokens_in,
+                    output_tokens=tokens_out,
+                    cached_input_tokens=cached_in or None,
+                    cost_usd=cost,
+                    latency_ms=latency_ms,
                 )
+                if metadata:
+                    row.metadata_json = dict(metadata)
+                session.add(row)
                 session.commit()
         except Exception as error:
             logger.warning(
@@ -244,7 +252,7 @@ class LLMGateway:
             )
 
     def _resolve_chain(
-        self, task: str, model: ResolvedModel | None, course_id: int | None = None
+        self, task: str, model: ResolvedModel | None, course_id: str | None = None
     ) -> list[ResolvedModel]:
         if model is not None:
             return [model]
@@ -265,10 +273,11 @@ class LLMGateway:
             if task_def is not None:
                 default = session.get(DefaultTaskAssignment, task_def.requires)
 
+            # ADR-0037: capability defaults are single-slot — the overlay's
+            # default and course-default layers contribute a primary only;
+            # the fallback position belongs to specialist assignments.
             global_model_id = default.model_id if default is not None else None
-            global_fallback_id = (
-                default.fallback_model_id if default is not None else None
-            )
+            global_fallback_id: str | None = None
             if assignment is not None:
                 if assignment.model_id is not None:
                     global_model_id = assignment.model_id
@@ -281,11 +290,9 @@ class LLMGateway:
                     CourseDefaultTaskAssignment,
                     (course_id, task_def.requires),
                 )
-                if course_default is not None:
-                    if course_default.model_id is not None:
-                        global_model_id = course_default.model_id
-                    if course_default.fallback_model_id is not None:
-                        global_fallback_id = course_default.fallback_model_id
+                # ADR-0037: the course layer contributes a primary only.
+                if course_default is not None and course_default.model_id is not None:
+                    global_model_id = course_default.model_id
 
             if course_id is not None:
                 course_override = session.get(CourseTaskAssignment, (course_id, task))
@@ -320,19 +327,26 @@ class LLMGateway:
                         reasoning_effort=db_model.reasoning_effort,
                         temperature=db_model.temperature,
                         max_tokens=db_model.max_tokens,
+                        chat_transport=db_model.chat_transport,
                     )
                 )
             if chain:
                 return chain
         raise TaskUnassigned(task)
 
-    def resolve(self, task: str, course_id: int | None = None) -> ResolvedModel:
+    def resolve(self, task: str, course_id: str | None = None) -> ResolvedModel:
         return self._resolve_chain(task, None, course_id)[0]
 
     def record_usage(
-        self, task: str, resolved: ResolvedModel, prompt: str, latency_ms: int
+        self,
+        task: str,
+        resolved: ResolvedModel,
+        prompt: str,
+        latency_ms: int,
+        *,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
-        self._ledger(task, resolved, prompt, "", latency_ms, None)
+        self._ledger(task, resolved, prompt, "", latency_ms, None, metadata=metadata)
 
     def _sleep_backoff(self, attempt: int) -> None:
         time.sleep(min(self._retry_wait * (2**attempt), 5.0))
@@ -360,7 +374,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -389,7 +403,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         schema: type[Any],
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
 
         self._check_budget(task)
@@ -414,10 +428,7 @@ class LLMGateway:
                         result = structured.invoke(langchain_messages)
                         break
                     except Exception as error:
-                        if (
-                            attempt + 1 >= self._retry_attempts
-                            or not is_transient_error(error)
-                        ):
+                        if attempt + 1 >= self._retry_attempts or not is_transient_error(error):
                             raise _provider_failure(resolved, error) from error
                         self._sleep_backoff(attempt)
                 if not isinstance(result, dict) or result.get("parsed") is None:
@@ -452,7 +463,7 @@ class LLMGateway:
         instruction: str | None = None,
         task: str = "transcribe",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -489,9 +500,7 @@ class LLMGateway:
         for attempt in range(self._retry_attempts):
             try:
                 with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
-                    return transcribe_with(
-                        client, resolved, data, mime, language, instruction
-                    )
+                    return transcribe_with(client, resolved, data, mime, language, instruction)
             except TranscriptionUnsupported as error:
                 raise ProviderError(resolved, str(error)) from error
             except Exception as error:
@@ -507,7 +516,7 @@ class LLMGateway:
         voice: str | None = None,
         task: str = "tts",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> SpeechResult:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -554,7 +563,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[str]:
         for chunk in self.stream_events(task, messages, model, course_id):
             if chunk.kind == "text":
@@ -613,7 +622,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)

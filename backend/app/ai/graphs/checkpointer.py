@@ -37,9 +37,7 @@ async def open_checkpointer(
 ) -> AsyncIterator[BaseCheckpointSaver[Any]]:
     if dialect == "postgresql":
         if postgres_uri is None:
-            raise ValueError(
-                "postgres checkpointing needs a database uri (got none)"
-            )
+            raise ValueError("postgres checkpointing needs a database uri (got none)")
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         async with AsyncPostgresSaver.from_conn_string(postgres_uri) as saver:

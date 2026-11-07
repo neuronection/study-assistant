@@ -18,8 +18,8 @@ vi.mock('react-i18next', async (importOriginal) => {
 
 function makeItem(overrides: Partial<PlanItem>): PlanItem {
   return {
-    id: 1,
-    course_id: 1,
+    id: '1',
+    course_id: '1',
     node_id: null,
     title: 'task',
     detail: null,
@@ -51,9 +51,9 @@ describe('PlannerWeekView', () => {
     const { container } = render(
       <PlannerWeekView
         items={[
-          makeItem({ id: 1, title: 'midweek task', due_date: '2026-09-16' }),
-          makeItem({ id: 2, title: 'friday task', due_date: '2026-09-18' }),
-          makeItem({ id: 3, title: 'outside week', due_date: '2026-09-25' }),
+          makeItem({ id: '1', title: 'midweek task', due_date: '2026-09-16' }),
+          makeItem({ id: '2', title: 'friday task', due_date: '2026-09-18' }),
+          makeItem({ id: '3', title: 'outside week', due_date: '2026-09-25' }),
         ]}
         todayIso={TODAY}
         onMove={vi.fn()}
@@ -75,9 +75,9 @@ describe('PlannerWeekView', () => {
     render(
       <PlannerWeekView
         items={[
-          makeItem({ id: 1, title: 'late task', due_date: '2026-09-15' }),
+          makeItem({ id: '1', title: 'late task', due_date: '2026-09-15' }),
           makeItem({
-            id: 2,
+            id: '2',
             title: 'finished',
             due_date: '2026-09-16',
             done_at: '2026-09-16T10:00:00Z',
@@ -98,7 +98,7 @@ describe('PlannerWeekView', () => {
     const onMove = vi.fn()
     const { container } = render(
       <PlannerWeekView
-        items={[makeItem({ id: 9, title: 'movable', due_date: '2026-09-16' })]}
+        items={[makeItem({ id: '9', title: 'movable', due_date: '2026-09-16' })]}
         todayIso={TODAY}
         onMove={onMove}
         onToggleDone={vi.fn()}
@@ -113,6 +113,6 @@ describe('PlannerWeekView', () => {
       dataTransfer: { getData: () => '9' },
     })
     expect(onMove).toHaveBeenCalledTimes(1)
-    expect(onMove).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }), '2026-09-18')
+    expect(onMove).toHaveBeenCalledWith(expect.objectContaining({ id: '9' }), '2026-09-18')
   })
 })

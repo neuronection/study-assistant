@@ -1,10 +1,27 @@
+import hashlib
 import os
 import socket
 import sqlite3
+import tempfile
 from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+# Test boot context (study's equivalent of career's `.env.test`
+# APP_ENV=test): the family boot guards (nx_auth.boot) otherwise assume
+# production and demand pinned keys. Forced — tests must be hermetic;
+# the boot-guard cases override per-Settings.
+os.environ["SA_APP_ENV"] = "test"
+# Hermetic §8 key resolution: the at-rest cipher resolves its KeyRing
+# through `get_settings()`, so without an explicit config dir the suite
+# would read (or first-run generate!) `auth_keys.json` in the real user
+# config dir. Every Settings-built-from-env points here instead;
+# fixtures that pass an explicit tmp config_dir override it.
+os.environ.setdefault("SA_CONFIG_DIR", tempfile.mkdtemp(prefix="sa-test-config-"))
+# T3 stdio launches are allowlisted (plan 37 6.3); tests use common
+# interpreter names so the hermetic MCP fixtures can spawn.
+os.environ.setdefault("SA_MCP_STDIO_ALLOWED_COMMANDS", "python,python3,node,uvx,npx")
 
 import fastapi.testclient as fastapi_testclient
 import keyring
@@ -14,6 +31,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from filelock import FileLock
 from keyring.backend import KeyringBackend
+from nx_auth.instance import IdentityMode
 from nx_auth.passwords import hash_password
 from nx_auth.tokens import AuthMode, TokenKind, mint_token
 from sqlalchemy.engine import Engine
@@ -72,11 +90,29 @@ def _reset_native_tools_degradation() -> Iterator[None]:
     _NATIVE_TOOLS_DEGRADED.clear()
 
 
+@pytest.fixture(autouse=True)
+def _fresh_atrest_key_material() -> Iterator[None]:
+    """Per-test at-rest key resolution (tests pin/rotate keys between
+    cases; the underlying auth_keys.json in the scratch config dir is
+    shared per process, so untouched tests see one stable key)."""
+    from app.core import keys
+    from app.core import secrets as app_secrets
+
+    keys.reset_keyring_cache()
+    app_secrets.reset_secret_caches()
+    yield
+    keys.reset_keyring_cache()
+    app_secrets.reset_secret_caches()
+
+
+def uid(n: int) -> str:
+    """Deterministic UUID-shaped id for synthetic fixtures: `uid(1)`."""
+    return f"{n:032x}"
+
+
 def _block_network() -> None:
     def _deny(*args: object, **kwargs: object) -> None:
-        raise AssertionError(
-            "network access during tests is forbidden — inject an httpx transport"
-        )
+        raise AssertionError("network access during tests is forbidden — inject an httpx transport")
 
     socket.socket.connect = _deny  # type: ignore[method-assign]
     socket.socket.connect_ex = _deny  # type: ignore[method-assign, assignment]
@@ -88,9 +124,50 @@ def _no_network() -> None:
     _block_network()
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_fetch_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``perform_fetch``'s guard resolver never touches DNS in tests.
+
+    The production path resolves before it connects (plan 37 §8 / 4.8);
+    the suite pins that lookup to a public TEST-NET-free address unless a
+    test passes ``resolver=`` itself. ``socket.getaddrinfo`` is not covered
+    by ``_no_network`` (it only blocks connects), so without this a test
+    would silently resolve on the wire.
+    """
+    from app.extensions.search import polite_fetch
+
+    monkeypatch.setattr(polite_fetch, "system_resolver", lambda host: ["93.184.216.34"])
+
+
+def _schema_fingerprint() -> str:
+    """Content hash of everything that decides the migrated schema.
+
+    The template cache is keyed on this hash, so a schema change can never
+    be silently tested against an old template (the pre-squash "delete
+    /tmp/pytest-of-*/migrated_template.db" ritual). Revisions decide the
+    built shape; the models and the shared metadata/vocab declarations
+    decide whether a revision is still model-first.
+    """
+    backend = Path(__file__).resolve().parents[1]
+    paths = [
+        *sorted((backend / "alembic" / "versions").glob("*.py")),
+        *sorted((backend / "app" / "domain" / "models").glob("*.py")),
+        backend / "app" / "core" / "vocab.py",
+        backend / "app" / "domain" / "schema_contract.py",
+        backend / "app" / "storage" / "db.py",
+    ]
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:16]
+
+
 @pytest.fixture(scope="session")
 def migrated_db_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    template = tmp_path_factory.getbasetemp().parent / "migrated_template.db"
+    template = (
+        tmp_path_factory.getbasetemp().parent / f"migrated_template_{_schema_fingerprint()}.db"
+    )
     with FileLock(f"{template}.lock"):
         if not template.exists():
             # Build on a staging path and publish atomically: a reader must
@@ -125,19 +202,28 @@ def _clone_template(template: Path, database: str | Path) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _fast_fresh_db_migrations(
-    migrated_db_template: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    real_run_migrations = app_main._run_migrations
+def _fresh_test_db(migrated_db_template: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every app gets a migrated database (D6: `create_app` never migrates).
 
-    def fast_or_real(engine: Engine) -> None:
+    SQLite: clone the migrated template when the DB file is missing (the
+    old fast path). Other dialects: migrate the engine's database with a
+    connection-scoped `alembic upgrade head` — parity with the pre-split
+    behavior (PG tests that pre-migrate scratch DBs see a no-op).
+    """
+    real_make_engine = app_main.make_engine  # type: ignore[attr-defined]
+
+    def make_engine_migrated(url: str) -> Engine:
+        engine = real_make_engine(url)
         database = engine.url.database
         if engine.dialect.name == "sqlite" and database and not Path(database).exists():
-            _clone_template(migrated_db_template, database)
-            return
-        real_run_migrations(engine)
+            _clone_template(migrated_db_template, Path(database))
+        elif engine.dialect.name != "sqlite":
+            from app.local import run_migrations
 
-    monkeypatch.setattr(app_main, "_run_migrations", fast_or_real)
+            run_migrations(engine)
+        return engine
+
+    monkeypatch.setattr(app_main, "make_engine", make_engine_migrated)
 
 
 @lru_cache(maxsize=1)
@@ -227,6 +313,7 @@ def _settings(tmp_path: Path) -> Settings:
         config_dir=tmp_path / "config",
         spa_dist=tmp_path / "no-spa",
         log_level="WARNING",
+        app_env="test",
     )
 
 
@@ -257,7 +344,8 @@ def desktop_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         config_dir=tmp_path / "config",
         spa_dist=tmp_path / "no-spa",
         log_level="WARNING",
-        identity_mode="desktop",
+        app_env="test",
+        identity_mode=IdentityMode.DESKTOP,
         shell_secret="test-shell-secret",
     )
     app = create_app(settings)

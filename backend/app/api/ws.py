@@ -31,9 +31,7 @@ def _origin_allowed(websocket: WebSocket) -> bool:
     if host is not None and urlparse(origin).netloc == host:
         return True
     settings = websocket.app.state.settings
-    allowed = {
-        raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()
-    }
+    allowed = {raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()}
     return origin.rstrip("/") in allowed
 
 
@@ -63,9 +61,9 @@ def _topic_owner_id(db: Session, topic: str, editor_ai: Any) -> str | None:
     the job rows themselves carry no owner column.
     """
     kind, _, raw = topic.partition(":")
-    if not raw.isdigit():
+    if not raw:
         return None
-    ident = int(raw)
+    ident = raw
     if kind == "chat":
         chat = db.get(ChatSession, ident)
         return _profile_owner_id(db, chat.profile_id) if chat is not None else None
@@ -86,28 +84,28 @@ def _topic_owner_id(db: Session, topic: str, editor_ai: Any) -> str | None:
         if "profile_id" in payload:
             return _profile_owner_id(db, str(payload["profile_id"]))
         if "chat_session_id" in payload:
-            chat = db.get(ChatSession, int(payload["chat_session_id"]))
+            chat = db.get(ChatSession, str(payload["chat_session_id"]))
             return _profile_owner_id(db, chat.profile_id) if chat is not None else None
         if "material_id" in payload:
-            material = db.get(Material, int(payload["material_id"]))
+            material = db.get(Material, str(payload["material_id"]))
             return _profile_owner_id(db, material.profile_id) if material is not None else None
         if "note_id" in payload:
-            note = db.get(Note, int(payload["note_id"]))
+            note = db.get(Note, str(payload["note_id"]))
             return _profile_owner_id(db, note.profile_id) if note is not None else None
         if "drawing_id" in payload:
-            drawing = db.get(MaterialDrawing, int(payload["drawing_id"]))
+            drawing = db.get(MaterialDrawing, str(payload["drawing_id"]))
             if drawing is None:
                 return None
             material = db.get(Material, drawing.material_id)
             return _profile_owner_id(db, material.profile_id) if material is not None else None
         if "image_id" in payload:
-            image = db.get(MaterialImage, int(payload["image_id"]))
+            image = db.get(MaterialImage, str(payload["image_id"]))
             if image is None:
                 return None
             material = db.get(Material, image.material_id)
             return _profile_owner_id(db, material.profile_id) if material is not None else None
         if "course_id" in payload:
-            course = db.get(Course, int(payload["course_id"]))
+            course = db.get(Course, str(payload["course_id"]))
             return _profile_owner_id(db, course.profile_id) if course is not None else None
         return None
     return None

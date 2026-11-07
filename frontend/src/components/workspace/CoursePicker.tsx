@@ -5,7 +5,7 @@ import { listCourses, type Course } from '@/lib/api'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
 export interface RequiredCourseState {
-  courseId: number | null
+  courseId: string | null
   courses: Course[]
   needsPicker: boolean
   blocked: boolean
@@ -28,8 +28,8 @@ export function CourseSelectField({
   value,
   onChange,
 }: {
-  value: number | null
-  onChange: (courseId: number) => void
+  value: string | null
+  onChange: (courseId: string) => void
 }) {
   const { t } = useTranslation()
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
@@ -41,7 +41,7 @@ export function CourseSelectField({
         className="bg-surface border-border rounded-md border px-2 py-1.5 text-xs"
         value={value ?? ''}
         onChange={(event) => {
-          const next = Number(event.target.value)
+          const next = event.target.value
           if (next) {
             onChange(next)
           }

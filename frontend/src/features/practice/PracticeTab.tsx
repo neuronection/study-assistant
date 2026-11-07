@@ -56,9 +56,9 @@ function ScopeChip({
   courseId,
   titles,
 }: {
-  nodeId: number | null
+  nodeId: string | null
   courseId: string
-  titles: Map<number, string>
+  titles: Map<string, string>
 }) {
   const { t } = useTranslation()
   if (nodeId === null) {
@@ -77,7 +77,7 @@ function ScopeChip({
   )
 }
 
-function scopeLabel(nodeId: number | null, titles: Map<number, string>): string {
+function scopeLabel(nodeId: string | null, titles: Map<string, string>): string {
   if (nodeId === null) {
     return ''
   }
@@ -86,8 +86,8 @@ function scopeLabel(nodeId: number | null, titles: Map<number, string>): string 
 
 type PracticeRow = EntityItemEntry & {
   kind: 'quiz' | 'exercise'
-  quizId?: number
-  exerciseId?: number
+  quizId?: string
+  exerciseId?: string
 }
 
 export type PracticeSegment = 'sets' | 'flashcards'
@@ -100,9 +100,9 @@ export function PracticeTab({
   initialSegment = 'sets',
 }: {
   courseId: string
-  currentId: number
-  rootId: number
-  titles: Map<number, string>
+  currentId: string
+  rootId: string
+  titles: Map<string, string>
   initialSegment?: PracticeSegment
 }) {
   const { t } = useTranslation()
@@ -114,12 +114,12 @@ export function PracticeTab({
   const [showImport, setShowImport] = useState(false)
   const [similarError, setSimilarError] = useState<string | null>(null)
   const [view, setView] = useStoredView(storageKeys.practiceView, 'list')
-  const [undoItem, setUndoItem] = useState<number | null>(null)
+  const [undoItem, setUndoItem] = useState<string | null>(null)
   const [moveTarget, setMoveTarget] = useState(false)
   const [renaming, setRenaming] = useState<
-    { kind: 'quiz' | 'exercise'; id: number; title: string } | null
+    { kind: 'quiz' | 'exercise'; id: string; title: string } | null
   >(null)
-  const [timing, setTiming] = useState<{ id: number; limit: number | null } | null>(null)
+  const [timing, setTiming] = useState<{ id: string; limit: number | null } | null>(null)
   const [showCardsGenerate, setShowCardsGenerate] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -138,13 +138,13 @@ export function PracticeTab({
     queryFn: () => listFlashcards(undefined, currentId),
   })
   const dueCards = useQuery({
-    queryKey: ['cards-due', Number(courseId), currentId],
-    queryFn: () => dueFlashcards(20, Number(courseId), currentId),
+    queryKey: ['cards-due', courseId, currentId],
+    queryFn: () => dueFlashcards(20, courseId, currentId),
   })
   const [printing, setPrinting] = useState(false)
 
   const reviewCard = useMutation({
-    mutationFn: ({ cardId, rating }: { cardId: number; rating: number }) =>
+    mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
       reviewFlashcard(cardId, rating),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ['cards-due'] })
@@ -156,7 +156,7 @@ export function PracticeTab({
   })
 
   const importAnki = useMutation({
-    mutationFn: (file: File) => importAnkiDeck(file, Number(courseId)),
+    mutationFn: (file: File) => importAnkiDeck(file, courseId),
     onSuccess: async (result) => {
       setImportMessage(t('cards.ankiImported', { count: result.imported }))
       await queryClient.invalidateQueries({ queryKey: ['cards'] })
@@ -166,7 +166,7 @@ export function PracticeTab({
   })
 
   const similar = useMutation({
-    mutationFn: (exerciseId: number) => similarExercise(exerciseId),
+    mutationFn: (exerciseId: string) => similarExercise(exerciseId),
     onSuccess: async () => {
       setSimilarError(null)
       await queryClient.invalidateQueries({ queryKey: ['exercises'] })
@@ -174,7 +174,7 @@ export function PracticeTab({
     onError: (err: Error) => setSimilarError(err.message),
   })
   const renameQuizMutation = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) => renameQuiz(id, title),
+    mutationFn: ({ id, title }: { id: string; title: string }) => renameQuiz(id, title),
     onSuccess: async () => {
       setRenaming(null)
       await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
@@ -182,7 +182,7 @@ export function PracticeTab({
     },
   })
   const deleteQuizMutation = useMutation({
-    mutationFn: (quizId: number) => deleteQuiz(quizId),
+    mutationFn: (quizId: string) => deleteQuiz(quizId),
     onSuccess: async (result) => {
       setUndoItem(result.deleted_item_id)
       await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
@@ -190,7 +190,7 @@ export function PracticeTab({
     },
   })
   const renameExerciseMutation = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) =>
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
       renameExercise(id, title),
     onSuccess: async () => {
       setRenaming(null)
@@ -199,7 +199,7 @@ export function PracticeTab({
     },
   })
   const deleteExerciseMutation = useMutation({
-    mutationFn: (exerciseId: number) => deleteExercise(exerciseId),
+    mutationFn: (exerciseId: string) => deleteExercise(exerciseId),
     onSuccess: async (result) => {
       setUndoItem(result.deleted_item_id)
       await queryClient.invalidateQueries({ queryKey: ['exercises'] })
@@ -211,8 +211,8 @@ export function PracticeTab({
       nodeId,
       quizIds,
     }: {
-      nodeId: number
-      quizIds: number[]
+      nodeId: string
+      quizIds: string[]
     }) => {
       for (const quizId of quizIds) {
         await moveQuiz(quizId, nodeId)
@@ -229,8 +229,8 @@ export function PracticeTab({
       nodeId,
       exerciseIds,
     }: {
-      nodeId: number
-      exerciseIds: number[]
+      nodeId: string
+      exerciseIds: string[]
     }) => {
       for (const exerciseId of exerciseIds) {
         await moveExercise(exerciseId, nodeId)
@@ -255,14 +255,14 @@ export function PracticeTab({
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('quiz-'))
-        .map((key) => Number(key.slice(5))),
+        .map((key) => key.slice(5)),
     [selection.selected]
   )
   const selectedExerciseIds = useMemo(
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('exercise-'))
-        .map((key) => Number(key.slice(9))),
+        .map((key) => key.slice(9)),
     [selection.selected]
   )
 
@@ -299,7 +299,7 @@ export function PracticeTab({
     selection.clear()
   }
 
-  const onMoveDone = (nodeId: number) => {
+  const onMoveDone = (nodeId: string) => {
     if (selectedQuizIds.length > 0) {
       void moveQuizzes.mutateAsync({ nodeId, quizIds: selectedQuizIds })
     }
@@ -553,7 +553,7 @@ export function PracticeTab({
             {
               label: t('cards.ankiExport'),
               icon: Download,
-              onAction: () => window.open(ankiExportUrl(Number(courseId)), '_blank'),
+              onAction: () => window.open(ankiExportUrl(courseId), '_blank'),
             },
           ]}
         />
@@ -587,7 +587,7 @@ export function PracticeTab({
           ) : null}
           {printing ? (
             <FlashcardPrintSheet
-              courseId={Number(courseId)}
+              courseId={courseId}
               nodeId={currentId}
               autoPrint={false}
               onBack={() => setPrinting(false)}
@@ -678,13 +678,13 @@ export function PracticeTab({
             <ErrorBanner message={similarError} />
           </div>
 
-          <DrillsCard courseId={Number(courseId)} />
+          <DrillsCard courseId={courseId} />
         </>
       )}
 
       {moveTarget ? (
         <AssignToNodeDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           title={t('workspace.moveToNode')}
           countText={t('moveToNode.count', { count: selectedCount })}
           confirmLabel={t('moveToNode.confirm')}
@@ -727,7 +727,7 @@ export function PracticeTab({
       {showPractice ? (
         <AIGenerateDialog
           task="practice"
-          courseId={Number(courseId)}
+          courseId={courseId}
           scopeNodeId={currentId}
           rootNodeId={rootId}
           onClose={() => setShowPractice(false)}
@@ -747,12 +747,12 @@ export function PracticeTab({
         />
       ) : null}
       {showImport ? (
-        <ImportDialog courseId={Number(courseId)} onClose={() => setShowImport(false)} />
+        <ImportDialog courseId={courseId} onClose={() => setShowImport(false)} />
       ) : null}
       {showCardsGenerate ? (
         <AIGenerateDialog
           task="flashcards"
-          courseId={Number(courseId)}
+          courseId={courseId}
           scopeNodeId={currentId}
           rootNodeId={rootId}
           onClose={() => setShowCardsGenerate(false)}

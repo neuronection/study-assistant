@@ -22,6 +22,7 @@ import { hasStructuredBlocks } from '@/features/chat/chatMessages'
 import { ReadAloudButton } from '@/components/read-aloud/ReadAloudButton'
 import { diffState } from '@/lib/state'
 import { patchChatMessageState, type ChatMessage as ChatMessageRow } from '@/lib/api'
+import { messageTurnFailure } from '@/lib/api/hand-types'
 import type { ChatMessageView } from '@/components/ui/chat-core'
 
 function MessageBlocks({ message }: { message: ChatMessageRow }) {
@@ -105,9 +106,9 @@ export function TranscriptMessage({
   view: ChatMessageView
   actionPending?: boolean
   onOpenGenerate?: (request: GenerateRequest) => void
-  onEditResend?: (messageId: number, content: string) => void
-  onRegenerate?: (userMessageId: number) => void
-  onSwitchVariant?: (messageId: number) => void
+  onEditResend?: (messageId: string, content: string) => void
+  onRegenerate?: (userMessageId: string) => void
+  onSwitchVariant?: (messageId: string) => void
 }) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
@@ -136,7 +137,7 @@ export function TranscriptMessage({
     setEditing(false)
   }
 
-  const turnFailed = !isUser ? (message.state?.turn_failed ?? null) : null
+  const turnFailed = !isUser ? messageTurnFailure(message.state) : null
 
   const readAloud = !isUser ? <ReadAloudButton markdown={message.markdown} /> : null
   const meta =
@@ -180,7 +181,7 @@ export function TranscriptMessage({
                 message.parent_id != null &&
                 onRegenerate !== undefined &&
                 !actionPending
-                  ? () => onRegenerate(message.parent_id as number)
+                  ? () => onRegenerate(message.parent_id!)
                   : undefined,
             }
           : {
@@ -191,12 +192,12 @@ export function TranscriptMessage({
                   : undefined,
               onRegenerate:
                 !isUser && onRegenerate !== undefined && message.parent_id != null && !actionPending
-                  ? () => onRegenerate(message.parent_id as number)
+                  ? () => onRegenerate(message.parent_id!)
                   : undefined,
             }
       }
       variants={view.variants}
-      onSelectVariant={(id) => onSwitchVariant?.(Number(id))}
+      onSelectVariant={(id) => onSwitchVariant?.(id)}
       chips={
         isUser && (message.mentions ?? []).length > 0 ? (
           <>

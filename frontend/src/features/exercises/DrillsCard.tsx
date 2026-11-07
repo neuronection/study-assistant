@@ -19,7 +19,7 @@ function PatternRow({
   onDrill,
 }: {
   pattern: DrillPattern
-  courseId: number
+  courseId: string
   busyKey: string | null
   onDrill: (pattern: string) => void
 }) {
@@ -46,7 +46,7 @@ function PatternRow({
       <Button
         variant="outline"
         size="sm"
-        disabled={busy || courseId === 0}
+        disabled={busy || courseId === null}
         onClick={() => onDrill(pattern.pattern)}
       >
         {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Target aria-hidden />}
@@ -56,7 +56,7 @@ function PatternRow({
   )
 }
 
-export function DrillsCard({ courseId }: { courseId?: number }) {
+export function DrillsCard({ courseId }: { courseId?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const from = useCurrentOrigin()
@@ -68,12 +68,12 @@ export function DrillsCard({ courseId }: { courseId?: number }) {
 
   const patterns = useQuery({
     queryKey: ['drill-patterns', resolvedCourseId],
-    queryFn: () => drillPatterns(resolvedCourseId as number),
+    queryFn: () => drillPatterns(resolvedCourseId!),
     enabled: resolvedCourseId !== null,
   })
 
   const drill = useMutation({
-    mutationFn: ({ pattern, courseIdForBody }: { pattern: string; courseIdForBody: number }) =>
+    mutationFn: ({ pattern, courseIdForBody }: { pattern: string; courseIdForBody: string }) =>
       startDrill(pattern, courseIdForBody),
     onSuccess: async (exercise) => {
       navigate({ to: '/exercises/$exerciseId', params: { exerciseId: String(exercise.id) }, search: { from } })
@@ -81,7 +81,7 @@ export function DrillsCard({ courseId }: { courseId?: number }) {
   })
 
   const propose = useMutation({
-    mutationFn: (courseIdForBody: number) => proposePatterns(courseIdForBody),
+    mutationFn: (courseIdForBody: string) => proposePatterns(courseIdForBody),
     onSuccess: (result) => {
       setProposals(result)
       setProposeResult(result.length > 0 ? null : 'empty')
@@ -93,7 +93,7 @@ export function DrillsCard({ courseId }: { courseId?: number }) {
       courseIdForBody,
       proposal,
     }: {
-      courseIdForBody: number
+      courseIdForBody: string
       proposal: PatternProposal
     }) => createPattern(courseIdForBody, proposal),
     onSuccess: (_created, { proposal }) => {

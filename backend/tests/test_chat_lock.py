@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
 from app.ai.graphs.chat_turn_adapter import ChatTurnEngine
 from app.domain.models import ChatMessage, ChatSession
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 from app.services.platform.profiles import ensure_default_profile
 
 
@@ -20,15 +20,15 @@ class LockCheckGateway(LLMGateway):
     def __init__(self, bind: Any) -> None:
         super().__init__(session_factory=None)
         self._factory = sessionmaker(bind=bind, expire_on_commit=False)
-        self.session_id: int | None = None
+        self.session_id: str | None = None
 
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake",
@@ -42,7 +42,7 @@ class LockCheckGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         from app.ai.gateway import StreamChunk
 
@@ -70,7 +70,7 @@ def test_chat_turn_commits_pre_stream_writes_before_streaming(
         ChatMessage(
             session_id=session_row.id,
             role="user",
-            blocks=[{"type": "md", "md": "test"}],
+            blocks=[{"type": "text", "md": "test"}],
         )
     )
     db_session.commit()

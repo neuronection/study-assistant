@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -46,7 +47,7 @@ def _normalize_interval(raw: Any, index: int, problems: list[str]) -> None:
             problems.append(f"interval {index}: {key} must be a boolean")
 
 
-def _payload_problems(payload: dict[str, Any]) -> list[str]:
+def _payload_problems(payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     points = payload.get("points", [])
     intervals = payload.get("intervals", [])
@@ -69,7 +70,7 @@ def _payload_problems(payload: dict[str, Any]) -> list[str]:
     return problems
 
 
-def validate_region_answer(answer: dict[str, Any]) -> list[str]:
+def validate_region_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     domain = answer.get("domain")
     if not isinstance(domain, dict):
@@ -135,7 +136,7 @@ def _parse_response(
     return points, intervals
 
 
-def _expected_parts(answer: dict[str, Any]) -> tuple[list[float], list[Interval]]:
+def _expected_parts(answer: Mapping[str, Any]) -> tuple[list[float], list[Interval]]:
     points: list[float] = []
     for point in answer.get("points", []):
         value = _as_float(point.get("value") if isinstance(point, dict) else point)
@@ -173,9 +174,7 @@ def _total_length(intervals: list[IntervalSpan]) -> float:
     return sum(hi - lo for lo, hi in intervals)
 
 
-def _intersection_length(
-    left: list[IntervalSpan], right: list[IntervalSpan]
-) -> float:
+def _intersection_length(left: list[IntervalSpan], right: list[IntervalSpan]) -> float:
     total = 0.0
     for lo_l, hi_l in left:
         for lo_r, hi_r in right:
@@ -192,7 +191,7 @@ def _format_interval(lo: float, hi: float, lo_closed: bool, hi_closed: bool) -> 
     return f"{left}{_clean_number(lo)}, {_clean_number(hi)}{right}"
 
 
-def region_tolerance(answer: dict[str, Any]) -> float:
+def region_tolerance(answer: Mapping[str, Any]) -> float:
     tolerance = _as_float(answer.get("tolerance"))
     if tolerance is not None and tolerance >= 0:
         return tolerance
@@ -205,7 +204,7 @@ def region_tolerance(answer: dict[str, Any]) -> float:
     return 1e-6
 
 
-def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
+def grade_regions(expected: Mapping[str, Any], response: Any) -> RegionGrade:
     tolerance = region_tolerance(expected)
     parsed = _parse_response(response)
     if parsed is None:
@@ -260,13 +259,9 @@ def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
             boundary_mismatch += 1
             sides: list[str] = []
             if match[2] != lo_closed:
-                sides.append(
-                    f"{_clean_number(lo)} should be {'closed' if lo_closed else 'open'}"
-                )
+                sides.append(f"{_clean_number(lo)} should be {'closed' if lo_closed else 'open'}")
             if match[3] != hi_closed:
-                sides.append(
-                    f"{_clean_number(hi)} should be {'closed' if hi_closed else 'open'}"
-                )
+                sides.append(f"{_clean_number(hi)} should be {'closed' if hi_closed else 'open'}")
             feedback.append(
                 f"region {_format_interval(lo, hi, lo_closed, hi_closed)}: "
                 f"wrong boundary type ({'; '.join(sides)})"
@@ -285,13 +280,11 @@ def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
     extra_regions = len(remaining_actual)
     missed_regions = len(leftover_expected)
 
-    expected_mass = (
-        _total_length([(lo, hi) for lo, hi, _, _ in expected_intervals])
-        + len(expected_points)
+    expected_mass = _total_length([(lo, hi) for lo, hi, _, _ in expected_intervals]) + len(
+        expected_points
     )
-    actual_mass = (
-        _total_length([(lo, hi) for lo, hi, _, _ in actual_intervals])
-        + len(actual_points)
+    actual_mass = _total_length([(lo, hi) for lo, hi, _, _ in actual_intervals]) + len(
+        actual_points
     )
     intersection = overlap + sum(exact_lengths) + matched_points
     denominator = expected_mass + actual_mass

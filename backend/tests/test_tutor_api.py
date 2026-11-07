@@ -19,10 +19,10 @@ class TutorGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="tutor-model",
@@ -36,7 +36,7 @@ class TutorGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -50,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -60,7 +60,7 @@ def make_client(responses: list[str]) -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-tutor-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-tutor-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=TutorGateway(responses),
@@ -71,11 +71,11 @@ def make_client(responses: list[str]) -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
-def create_exercise(client: TestClient) -> int:
+def create_exercise(client: TestClient) -> str:
     created = client.post(
         "/api/v1/exercises",
         json={
@@ -94,7 +94,7 @@ def create_exercise(client: TestClient) -> int:
         },
     )
     assert created.status_code == 201, created.text
-    exercise_id: int = created.json()["id"]
+    exercise_id: str = created.json()["id"]
     return exercise_id
 
 
@@ -124,14 +124,10 @@ def test_exercise_full_flow_with_hints_and_independence() -> None:
         assert hint1["violations"] is None
         assert "?" in hint1["markdown"]
 
-        skip = client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 4}
-        )
+        skip = client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 4})
         assert skip.status_code == 422
 
-        hint2 = client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 2}
-        )
+        hint2 = client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 2})
         assert hint2.status_code == 200
 
         right = client.post(
@@ -189,9 +185,7 @@ def test_audit_logged_for_tutor_hints() -> None:
     with make_client(["What does the product rule say?"]) as client:
         exercise_id = create_exercise(client)
         session = client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()
-        client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1})
         app = client.app
         assert isinstance(app, FastAPI)
         with app.state.session_factory() as db:
@@ -215,9 +209,7 @@ def test_socratic_mode_requires_question() -> None:
         ["The product rule applies here, consider its structure carefully."]
     ) as client:
         exercise_id = create_exercise(client)
-        session = client.post(
-            f"/api/v1/exercises/{exercise_id}/sessions?socratic=true"
-        ).json()
+        session = client.post(f"/api/v1/exercises/{exercise_id}/sessions?socratic=true").json()
         hint = client.post(
             f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1}
         ).json()

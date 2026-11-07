@@ -31,7 +31,7 @@ export function NoteHistoryDialog({
   onRestored,
   onClose,
 }: {
-  noteId: number
+  noteId: string
   dirty: boolean
   onSaveVersion: () => Promise<unknown>
   onRestored: () => void
@@ -40,7 +40,7 @@ export function NoteHistoryDialog({
   useCloseFloatings()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [picked, setPicked] = useState<number | null>(null)
+  const [picked, setPicked] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [compareBase, setCompareBase] = useState<string>('')
   const [compareTarget, setCompareTarget] = useState<string>('current')
@@ -52,12 +52,12 @@ export function NoteHistoryDialog({
 
   const selectedVersion = useQuery({
     queryKey: ['note', noteId, 'versions', picked],
-    queryFn: () => getNoteVersion(noteId, picked as number),
+    queryFn: () => getNoteVersion(noteId, picked!),
     enabled: picked !== null,
   })
 
   const restore = useMutation({
-    mutationFn: () => restoreNoteVersion(noteId, picked as number),
+    mutationFn: () => restoreNoteVersion(noteId, picked!),
     onSuccess: async () => {
       onRestored()
       await queryClient.invalidateQueries({ queryKey: ['note', noteId] })

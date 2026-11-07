@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select, update
@@ -11,11 +12,11 @@ CANCELLED_ERROR = "source deleted before this job finished"
 
 _active_statuses = (JobStatus.QUEUED, JobStatus.RUNNING)
 
-_cancel_flags: dict[int, threading.Event] = {}
+_cancel_flags: dict[str, threading.Event] = {}
 _flags_lock = threading.Lock()
 
 
-def _flag_for(job_id: int) -> threading.Event:
+def _flag_for(job_id: str) -> threading.Event:
     with _flags_lock:
         flag = _cancel_flags.get(job_id)
         if flag is None:
@@ -24,17 +25,17 @@ def _flag_for(job_id: int) -> threading.Event:
         return flag
 
 
-def request_cancel(job_id: int) -> None:
+def request_cancel(job_id: str) -> None:
     _flag_for(job_id).set()
 
 
-def is_cancel_requested(job_id: int) -> bool:
+def is_cancel_requested(job_id: str) -> bool:
     with _flags_lock:
         flag = _cancel_flags.get(job_id)
     return flag is not None and flag.is_set()
 
 
-def clear_cancel(job_id: int) -> None:
+def clear_cancel(job_id: str) -> None:
     with _flags_lock:
         _cancel_flags.pop(job_id, None)
 
@@ -43,23 +44,23 @@ class JobCancelled(Exception):
     pass
 
 
-def _payload_id(payload: dict[str, Any] | None, key: str) -> int | None:
+def _payload_id(payload: Mapping[str, Any] | None, key: str) -> str | None:
     if not payload:
         return None
     value = payload.get(key)
     if value is None:
         return None
     try:
-        return int(value)
+        return str(value)
     except (TypeError, ValueError):
         return None
 
 
 def _job_matches(
     job: Job,
-    material_ids: set[int],
-    chat_session_ids: set[int],
-    note_ids: set[int],
+    material_ids: set[str],
+    chat_session_ids: set[str],
+    note_ids: set[str],
 ) -> bool:
     if material_ids and _payload_id(job.payload, "material_id") in material_ids:
         return True
@@ -71,18 +72,16 @@ def _job_matches(
 def cancel_jobs_for(
     session: Session,
     *,
-    material_ids: list[int] | tuple[int, ...] = (),
-    chat_session_ids: list[int] | tuple[int, ...] = (),
-    note_ids: list[int] | tuple[int, ...] = (),
+    material_ids: list[str] | tuple[str, ...] = (),
+    chat_session_ids: list[str] | tuple[str, ...] = (),
+    note_ids: list[str] | tuple[str, ...] = (),
 ) -> int:
-    wanted_materials = {int(entry) for entry in material_ids}
-    wanted_chats = {int(entry) for entry in chat_session_ids}
-    wanted_notes = {int(entry) for entry in note_ids}
+    wanted_materials = set(material_ids)
+    wanted_chats = set(chat_session_ids)
+    wanted_notes = set(note_ids)
     if not material_ids and not chat_session_ids and not note_ids:
         return 0
-    active = list(
-        session.scalars(select(Job).where(Job.status.in_(_active_statuses)))
-    )
+    active = list(session.scalars(select(Job).where(Job.status.in_(_active_statuses))))
     cancelled = 0
     for job in active:
         if not _job_matches(job, wanted_materials, wanted_chats, wanted_notes):
@@ -100,13 +99,11 @@ def cancel_jobs_for(
     return cancelled
 
 
-def cancel_jobs_for_material(session: Session, material_id: int) -> int:
+def cancel_jobs_for_material(session: Session, material_id: str) -> int:
     return cancel_jobs_for(session, material_ids=[material_id])
 
 
-def ensure_target_exists(
-    session: Session, model: type, entity_id: int, label: str
-) -> None:
+def ensure_target_exists(session: Session, model: type, entity_id: str, label: str) -> None:
     session.expire_all()
     if session.get(model, entity_id) is None:
         raise JobCancelled(f"{label} was deleted while this job was running")

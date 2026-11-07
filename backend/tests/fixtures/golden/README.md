@@ -18,3 +18,11 @@ Naming: `pages/scan-<nn>-<short-desc>.png`, `handwriting/hw-<nn>-<short-desc>.jp
 The eval suite that consumes these (`tests/evals/`) lands in Phase 1; thresholds are
 defined in plan 04 ("Prompt & evaluation governance"). Until then this directory records
 the collection obligation.
+
+**Plan 84 C (2026-10-22):** the gate now exists — `tests/evals/test_ocr_golden.py`
+scores per-page routing, native PDF extraction and hybrid assembly against
+`tests/evals/ocr_thresholds.json` (block structure, math-fence integrity, numeric
+fidelity). Files here are picked up automatically; each fixture needs a matching
+`expected/<same-stem>.md`, and a test asserts that once the first real scan lands.
+The default run is deterministic (no live OCR); the vision half is opt-in with
+`SA_EVAL_LIVE=1`. Three synthetic fixtures exercise the mechanics in the meantime.

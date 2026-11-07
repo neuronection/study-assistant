@@ -49,8 +49,8 @@ import { TextDiffView } from '@/components/ui/text-diff-view'
 import type { EditorTransformRequest } from '@/lib/api'
 
 export interface AiHelperContext {
-  courseId?: number
-  nodeId?: number
+  courseId?: string
+  nodeId?: string
   title: string
 }
 
@@ -273,6 +273,7 @@ export function AiHelperPopover({
     paramsRef.current = params
     requestRef.current = {
       text: params.text,
+      diagnostic: params.diagnostic ?? '',
       instruction: params.instruction,
       preset: params.preset,
       mode: params.mode,

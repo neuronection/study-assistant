@@ -2,10 +2,10 @@ import type { useNavigate } from '@tanstack/react-router'
 
 export interface WorkspaceSearchState {
   tab?: string
-  note?: number
-  material?: number
-  study?: number | 'new'
-  folder?: number
+  note?: string
+  material?: string
+  study?: string
+  folder?: string
 }
 
 export type WorkspaceSearchUpdater = (

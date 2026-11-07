@@ -11,7 +11,7 @@ function extractChatId(pathname: string): string | null {
 
 export interface ActiveChatSession {
   chatId: string | null
-  sessionId: number | null
+  sessionId: string | null
   session: ChatSession | null
   isResolving: boolean
 }

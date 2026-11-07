@@ -16,7 +16,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -25,7 +25,7 @@ const TREE = [
     is_root: true,
     children: [
       {
-        id: 2,
+        id: '2',
         title: 'Limits',
         summary: null,
         objectives: [],
@@ -36,7 +36,7 @@ const TREE = [
         materials: [],
       },
       {
-        id: 3,
+        id: '3',
         title: 'Derivatives',
         summary: null,
         objectives: [],
@@ -51,12 +51,12 @@ const TREE = [
   },
 ]
 
-function renderDialog(onDone: (nodeId: number) => Promise<void> = vi.fn()) {
+function renderDialog(onDone: (nodeId: string) => Promise<void> = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <AssignToNodeDialog
-        courseId={3}
+        courseId="3"
         title="Assign to node"
         countText="2 materials"
         confirmLabel="Assign"
@@ -92,7 +92,7 @@ describe('AssignToNodeDialog', () => {
     expect(await screen.findByRole('button', { name: 'Assign' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
 
-    await waitFor(() => expect(onDone).toHaveBeenCalledWith(2))
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith('2'))
   })
 
   test('empty tree shows the empty state', async () => {

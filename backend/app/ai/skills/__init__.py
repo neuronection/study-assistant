@@ -59,42 +59,49 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline" | "table_fill" | "composite" | "graph_read" | "code",\n'
+    '| "numberline" | "table_fill" | "composite" | "graph_read" | "code" '
+    '| "matching" | "ordering" | "cloze" | "essay",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
-    "truefalse: {\"value\": true|false}, text: {\"value\": str, \"accept\": [str]}, "
-    "numeric: {\"value\": number, \"tolerance\": number, \"relative\": bool}, "
-    "equation: {\"value\": str (LaTeX/sympy-parseable)}, "
-    "numberline: {\"domain\": {\"min\": number, \"max\": number}, "
-    "\"points\": [{\"value\": number}], "
-    "\"intervals\": [{\"lo\": number, \"hi\": number, \"lo_closed\": bool, "
-    "\"hi_closed\": bool}], \"tolerance\": number (optional)}, "
-    "table_fill: {\"headers\": [str], \"rows\": [{\"label\": str, \"cells\": "
-    "[{\"kind\": \"text\" | \"numeric\" | \"equation\" | \"locked\", "
-    "\"value\": str, \"tolerance\": number (numeric, optional)}]}]} "
-    "(cells align with headers; \"locked\" cells hold fixed display text, "
+    'truefalse: {"value": true|false}, text: {"value": str, "accept": [str]}, '
+    'numeric: {"value": number, "tolerance": number, "relative": bool}, '
+    'equation: {"value": str (LaTeX/sympy-parseable)}, '
+    'numberline: {"domain": {"min": number, "max": number}, '
+    '"points": [{"value": number}], '
+    '"intervals": [{"lo": number, "hi": number, "lo_closed": bool, '
+    '"hi_closed": bool}], "tolerance": number (optional)}, '
+    'table_fill: {"headers": [str], "rows": [{"label": str, "cells": '
+    '[{"kind": "text" | "numeric" | "equation" | "locked", '
+    '"value": str, "tolerance": number (numeric, optional)}]}]} '
+    '(cells align with headers; "locked" cells hold fixed display text, '
     "every other cell carries its expected answer), "
-    "composite: {\"parts\": [{\"type\": \"text\" | \"numeric\" | \"equation\", "
-    "\"value\": str, \"tolerance\": number (numeric, optional), "
-    "\"follow_through\": str (sympy expression over the prior parts' answers, "
+    'composite: {"parts": [{"type": "text" | "numeric" | "equation", '
+    '"value": str, "tolerance": number (numeric, optional), '
+    '"follow_through": str (sympy expression over the prior parts\' answers, '
     "using the symbols a, b, c for parts 1, 2, 3 — optional; must reproduce "
     "this part's value when the declared prior answers are substituted)}]} "
     "(2-4 ordered sub-questions forming one multi-part problem), "
-    "graph_read: {\"expression\": str (a function of x, sympy-parseable), "
-    "\"x_min\": number, \"x_max\": number, \"mode\": \"value\" | \"point\", "
-    "\"point_x\": number (the x the question asks about, inside the domain), "
-    "\"tolerance\": number (optional)} — the app renders the curve and computes "
+    'graph_read: {"expression": str (a function of x, sympy-parseable), '
+    '"x_min": number, "x_max": number, "mode": "value" | "point", '
+    '"point_x": number (the x the question asks about, inside the domain), '
+    '"tolerance": number (optional)} — the app renders the curve and computes '
     "the expected reading itself, so NEVER invent values; the stem asks the "
-    "student to read the graph (e.g. \"What is f(2)?\" or \"Click where f "
-    "reaches its maximum on the shown domain\"), "
-    "code: {\"starter_code\": str (skeleton with the function signature), "
-    "\"reference_solution\": str (complete working Python), \"tests\": "
-    "[{\"call\": str (expression calling the student's function, e.g. "
-    "is_palindrome('abba')), \"expected\": <JSON value>, \"expected_stdout\": "
-    "str (optional)}], \"timeout_ms\": int (optional)} — the student's code "
+    'student to read the graph (e.g. "What is f(2)?" or "Click where f '
+    'reaches its maximum on the shown domain"), '
+    'code: {"starter_code": str (skeleton with the function signature), '
+    '"reference_solution": str (complete working Python), "tests": '
+    '[{"call": str (expression calling the student\'s function, e.g. '
+    'is_palindrome(\'abba\')), "expected": <JSON value>, "expected_stdout": '
+    'str (optional)}], "timeout_ms": int (optional)} — the student\'s code '
     "runs in an in-page Python sandbox (never on the server); propose code "
-    "questions only when the material or topic is about programming\n"
+    "questions only when the material or topic is about programming, "
+    'matching: {"pairs": [{"left": str, "right": str}]} (2-8 pairs), '
+    'ordering: {"items": [str]} (3-8 items in the correct order), '
+    'cloze: {"prompt_md": str with {{1}}..{{n}} blanks, '
+    '"answers": [[str] (accepted answers per blank)]}, '
+    'essay: {"prompt_md": str, "rubric": [{"id": str, "text": str}]} '
+    "(1-8 rubric rows; graded by the rubric engine)\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'
@@ -112,7 +119,7 @@ QUIZGEN_SYSTEM = (
     "solution set), the domain must be wide enough that every expected point/interval "
     "end lies strictly inside it, and the expected answer marks the full solution set. "
     "For table_fill questions the stem explains the table; keep tables 2-4 columns "
-    "and 2-5 rows, mark pre-filled cells as \"locked\", and give every fillable cell "
+    'and 2-5 rows, mark pre-filled cells as "locked", and give every fillable cell '
     "the exact expected answer for its declared kind (numeric cells may carry a "
     "tolerance)."
 )
@@ -133,8 +140,8 @@ EXGEN_SYSTEM = (
     '     "expected_kind": "math" | "numeric" | "numberline",\n'
     '     "expected_value": str (math: LaTeX/sympy-parseable; numeric: plain number; '
     "numberline: the answer object {domain, points, intervals} with points as "
-    "[{\"value\": number}] and intervals as [{\"lo\": number, \"hi\": number, "
-    "\"lo_closed\": bool, \"hi_closed\": bool}]),\n"
+    '[{"value": number}] and intervals as [{"lo": number, "hi": number, '
+    '"lo_closed": bool, "hi_closed": bool}]),\n'
     '     "tolerance": number (numeric only, optional),\n'
     '     "widgets": [ {"type":"widget","widget":<name>,"id":str,"props":{...}} ]\n'
     "       (optional interactive UI for this step — see the widget grammar in the user "
@@ -155,14 +162,14 @@ FLASHCARDS_SYSTEM = (
     "one card.\n"
     "Respond with ONLY a JSON object:\n"
     '{\n  "cards": [\n'
-    '    {"kind": "basic" | "cloze" | "reverse",\n'
+    '    {"kind": "card_basic" | "card_cloze" | "card_reverse",\n'
     '     "front_md": str (markdown; LaTeX with $...$),\n'
     '     "back_md": str}\n'
     "  ]\n}\n"
-    "Rules: basic = question front, answer back; cloze = front uses "
+    "Rules: card_basic = question front, answer back; card_cloze = front uses "
     "{% raw %}{{...}}{% endraw %} around the "
-    "single deletable key fact, back is the full fact; reverse = the reverse-direction "
-    "card of a basic fact. Math must be correct LaTeX. No duplicates."
+    "single deletable key fact, back is the full fact; card_reverse = the reverse-direction "
+    "card of a card_basic fact. Math must be correct LaTeX. No duplicates."
 )
 
 OCR_PAGE_SYSTEM = (
@@ -272,7 +279,7 @@ PRACTICE_SET_SYSTEM = (
     '{"index": i} (single) or {"indices": [i, ...]} (multi), 0-based.\n'
     '- truefalse: answer = {"value": true | false}.\n'
     '- numeric: answer = {"value": "<number>"}.\n'
-    "- equation: answer = {\"value\": \"<expression>\"} (plain math or "
+    '- equation: answer = {"value": "<expression>"} (plain math or '
     "LaTeX, parseable by SymPy).\n"
     "- Every answer must be objectively correct for its stem; wrong choices "
     "must be plausible but provably not the answer.\n"
@@ -280,7 +287,7 @@ PRACTICE_SET_SYSTEM = (
     "inline, $$...$$ display).\n"
     "- Ground stems in the provided context and reference its handles "
     "(e.g. [M12]) exactly as given; never invent content that is not there.\n"
-    "- Add 1-3 short \"solution_steps\" per item showing how the answer is "
+    '- Add 1-3 short "solution_steps" per item showing how the answer is '
     "reached."
 )
 
@@ -401,7 +408,7 @@ SEEDS: list[SkillSeed] = [
         key="flashcards.generate",
         task="flashcards",
         name="Flashcard generation",
-        description="Atomic basic/cloze/reverse cards from study content.",
+        description="Atomic card_basic/card_cloze/card_reverse cards from study content.",
         system_prompt=FLASHCARDS_SYSTEM,
         contract={"max_words": None, "no_answer_reveal": False, "citation_if_context": False},
     ),
@@ -417,8 +424,7 @@ SEEDS: list[SkillSeed] = [
         task="notes_ocr",
         name="Handwriting OCR",
         description=(
-            "Extracts handwritten text (math as LaTeX) from note drawings — "
-            "no descriptions."
+            "Extracts handwritten text (math as LaTeX) from note drawings — no descriptions."
         ),
         system_prompt=NOTES_OCR_SYSTEM,
     ),
@@ -572,8 +578,7 @@ SEED_ERROR_PATTERNS: list[ErrorPatternSeed] = [
         course_type="math",
         name="Dropped factor",
         description=(
-            "losing a multiplicative factor when simplifying or applying "
-            "product/quotient rules"
+            "losing a multiplicative factor when simplifying or applying product/quotient rules"
         ),
         example="d/dx (x^2 e^x) written as 2x e^x instead of 2x e^x + x^2 e^x",
         detection={"type": "factor", "factors": [2, 3, 4, 5]},
@@ -608,8 +613,7 @@ CONTEXT_VARS: dict[str, tuple[str, str]] = {
     ),
     "tool_results": (
         "text",
-        "Chat: deterministic tool results (CALC/SYMPY/READ) fed back "
-        "before the rewrite.",
+        "Chat: deterministic tool results (CALC/SYMPY/READ) fed back before the rewrite.",
     ),
     "text": ("markdown", "The selected text the inline editor AI transforms (or writes about)."),
     "instruction": ("str", "The user's instruction or the preset's canonical instruction."),

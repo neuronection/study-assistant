@@ -31,7 +31,7 @@ def make_runner(
         JobRunner(
             factory,
             bus,
-            handlers={"noop": handler},
+            handlers={"ingest": handler},
             poll_interval=0.02,
             workers=workers,
             job_timeout_sec=job_timeout_sec,
@@ -50,21 +50,21 @@ def wait_until(predicate: Any, timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def job_status(runner: JobRunner, job_id: int) -> str:
+def job_status(runner: JobRunner, job_id: str) -> str:
     with runner._session_factory() as session:
         job = session.get(Job, job_id)
         assert job is not None
         return job.status
 
 
-def job_error(runner: JobRunner, job_id: int) -> str | None:
+def job_error(runner: JobRunner, job_id: str) -> str | None:
     with runner._session_factory() as session:
         job = session.get(Job, job_id)
         assert job is not None
         return job.error
 
 
-def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> int:
+def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> str:
     with runner._session_factory() as session:
         job = JobRunner.enqueue(session, job_type, cast("IngestPayload", payload))
         session.commit()
@@ -72,14 +72,14 @@ def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> int:
 
 
 def test_runner_executes_handler_and_marks_done(tmp_path: Path) -> None:
-    seen: list[int] = []
+    seen: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         seen.append(job.id)
         report(50, "halfway")
 
     runner, _bus = make_runner(tmp_path, handler)
-    job_id = enqueue(runner, "noop", {"x": 1})
+    job_id = enqueue(runner, "ingest", {"x": 1})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, job_id) == "done")
@@ -93,7 +93,7 @@ def test_runner_marks_failure_with_error(tmp_path: Path) -> None:
         raise JobError("boom")
 
     runner, _bus = make_runner(tmp_path, handler)
-    job_id = enqueue(runner, "noop", {})
+    job_id = enqueue(runner, "ingest", {})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, job_id) == "failed")
@@ -107,7 +107,7 @@ def test_runner_unknown_type_fails(tmp_path: Path) -> None:
         raise AssertionError("should not run")
 
     runner, _bus = make_runner(tmp_path, handler)
-    job_id = enqueue(runner, "mystery", {})
+    job_id = enqueue(runner, "postprocess", {})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, job_id) == "failed")
@@ -117,7 +117,7 @@ def test_runner_unknown_type_fails(tmp_path: Path) -> None:
 
 
 def test_runner_survives_handler_crash_and_runs_next(tmp_path: Path) -> None:
-    calls: list[int] = []
+    calls: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         calls.append(job.id)
@@ -125,8 +125,8 @@ def test_runner_survives_handler_crash_and_runs_next(tmp_path: Path) -> None:
             raise RuntimeError("worker crash")
 
     runner, _bus = make_runner(tmp_path, handler)
-    first = enqueue(runner, "noop", {})
-    second = enqueue(runner, "noop", {})
+    first = enqueue(runner, "ingest", {})
+    second = enqueue(runner, "ingest", {})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, second) == "done")
@@ -137,14 +137,14 @@ def test_runner_survives_handler_crash_and_runs_next(tmp_path: Path) -> None:
 
 
 def test_runner_reclaims_interrupted_running_jobs_on_start(tmp_path: Path) -> None:
-    seen: list[int] = []
+    seen: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         seen.append(job.id)
 
     runner, _bus = make_runner(tmp_path, handler)
-    stale_id = enqueue(runner, "noop", {})
-    fresh_id = enqueue(runner, "noop", {})
+    stale_id = enqueue(runner, "ingest", {})
+    fresh_id = enqueue(runner, "ingest", {})
     with runner._session_factory() as session:
         stale = session.get(Job, stale_id)
         assert stale is not None
@@ -166,7 +166,7 @@ def test_runner_worker_pool_processes_jobs_concurrently(tmp_path: Path) -> None:
         time.sleep(0.3)
 
     runner, _bus = make_runner(tmp_path, handler, workers=3)
-    ids = [enqueue(runner, "noop", {}) for _ in range(3)]
+    ids = [enqueue(runner, "ingest", {}) for _ in range(3)]
     started = time.monotonic()
     runner.start()
     try:
@@ -186,20 +186,18 @@ def test_runner_grouped_jobs_run_in_enqueue_order(tmp_path: Path) -> None:
         events.append(f"end:{job.id}")
 
     def group(job: Job) -> str | None:
-        key = (job.payload or {}).get("k")
+        payload = cast(dict[str, Any], job.payload or {})
+        key = payload.get("k")
         return str(key) if key is not None else None
 
     runner, _bus = make_runner(tmp_path, handler, workers=3, group_key=group)
-    first = enqueue(runner, "noop", {"k": "s1"})
-    second = enqueue(runner, "noop", {"k": "s1"})
-    other = enqueue(runner, "noop", {"k": "s2"})
+    first = enqueue(runner, "ingest", {"k": "s1"})
+    second = enqueue(runner, "ingest", {"k": "s1"})
+    other = enqueue(runner, "ingest", {"k": "s2"})
     runner.start()
     try:
         wait_until(
-            lambda: all(
-                job_status(runner, job_id) == "done"
-                for job_id in (first, second, other)
-            )
+            lambda: all(job_status(runner, job_id) == "done" for job_id in (first, second, other))
         )
     finally:
         runner.stop()
@@ -212,7 +210,7 @@ def test_runner_timeout_marks_failed(tmp_path: Path) -> None:
         time.sleep(2.0)
 
     runner, _bus = make_runner(tmp_path, handler, job_timeout_sec=0.3)
-    job_id = enqueue(runner, "noop", {})
+    job_id = enqueue(runner, "ingest", {})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, job_id) == "failed")
@@ -226,7 +224,7 @@ def test_runner_logs_failures(tmp_path: Path, capsys: Any) -> None:
         raise JobError("boom")
 
     runner, _bus = make_runner(tmp_path, handler)
-    job_id = enqueue(runner, "noop", {})
+    job_id = enqueue(runner, "ingest", {})
     runner.start()
     try:
         wait_until(lambda: job_status(runner, job_id) == "failed")

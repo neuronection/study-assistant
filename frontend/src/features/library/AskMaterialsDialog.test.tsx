@@ -14,24 +14,28 @@ vi.mock('@/lib/api', () => ({
     updateChatSessionQuizme(...(args as [number, boolean])),
 }))
 
-function material(id: number, title: string): Material {
+function material(id: string, title: string): Material {
   return {
     id,
-    course_id: 3,
+    course_id: '3',
     title,
     kind: 'pdf',
     status: 'ready',
     filename: `${title}.pdf`,
     mime: 'application/pdf',
     pages: null,
-    group_id: null,
     folder_id: null,
     blob_sha: null,
     created_at: '2026-09-07T00:00:00Z',
+    has_extraction: false,
+    tags: [],
+    starred: false,
+    link_count: 0,
+    reextract_modes: [],
   }
 }
 
-const MATERIALS = [material(12, 'Lecture notes'), material(7, 'Problem set')]
+const MATERIALS = [material('12', 'Lecture notes'), material('7', 'Problem set')]
 
 describe('AskMaterialsDialog', () => {
   beforeEach(() => {
@@ -67,9 +71,9 @@ describe('AskMaterialsDialog', () => {
 
   test('submit attaches every material to one new session and queues the send', async () => {
     createChatSession.mockResolvedValue({
-      id: 31,
+      id: '31',
       public_id: 'uuid-31',
-      course_id: 3,
+      course_id: '3',
       title: '2 materials',
     })
     const onClose = vi.fn()
@@ -78,17 +82,17 @@ describe('AskMaterialsDialog', () => {
     fireEvent.change(input, { target: { value: 'Compare these two.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
     await waitFor(() =>
-      expect(createChatSession).toHaveBeenCalledWith(3, null, '2 materials'),
+      expect(createChatSession).toHaveBeenCalledWith('3', null, '2 materials'),
     )
     const state = useChatStore.getState()
     expect(state.open).toBe(true)
-    expect(state.session).toEqual({ id: 31, publicId: 'uuid-31' })
-    expect(state.selectionAsks['7-12']).toEqual({ id: 31, publicId: 'uuid-31' })
+    expect(state.session).toEqual({ id: '31', publicId: 'uuid-31' })
+    expect(state.selectionAsks['12-7']).toEqual({ id: '31', publicId: 'uuid-31' })
     expect(state.pendingSend).toEqual({
       content: 'Compare these two.',
       attachments: [
-        { kind: 'material', id: 12, title: 'Lecture notes' },
-        { kind: 'material', id: 7, title: 'Problem set' },
+        { kind: 'material', id: '12', title: 'Lecture notes' },
+        { kind: 'material', id: '7', title: 'Problem set' },
       ],
       mode: 'send',
     })
@@ -97,20 +101,20 @@ describe('AskMaterialsDialog', () => {
 
   test('the quiz-me chip keeps its flag and patches the session', async () => {
     createChatSession.mockResolvedValue({
-      id: 31,
+      id: '31',
       public_id: 'uuid-31',
-      course_id: 3,
+      course_id: '3',
       title: '2 materials',
     })
-    updateChatSessionQuizme.mockResolvedValue({ id: 31, quizme: true })
+    updateChatSessionQuizme.mockResolvedValue({ id: '31', quizme: true })
     render(<AskMaterialsDialog materials={MATERIALS} onClose={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: 'Quiz me' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
-    await waitFor(() => expect(updateChatSessionQuizme).toHaveBeenCalledWith(31, true))
+    await waitFor(() => expect(updateChatSessionQuizme).toHaveBeenCalledWith('31', true))
   })
 
   test('more than ten selected materials disables Ask with a warning', () => {
-    const many = Array.from({ length: 11 }, (_, index) => material(index + 1, `M${index + 1}`))
+    const many = Array.from({ length: 11 }, (_, index) => material(String(index + 1), `M${index + 1}`))
     render(<AskMaterialsDialog materials={many} onClose={() => undefined} />)
     const input = screen.getByLabelText('Your question') as HTMLTextAreaElement
     fireEvent.change(input, { target: { value: 'Too many' } })
@@ -120,20 +124,20 @@ describe('AskMaterialsDialog', () => {
 
   test('a single material keeps singular phrasing and title', async () => {
     createChatSession.mockResolvedValue({
-      id: 21,
+      id: '21',
       public_id: 'uuid-21',
-      course_id: 3,
+      course_id: '3',
       title: 'Lecture notes',
     })
     render(
-      <AskMaterialsDialog materials={[material(12, 'Lecture notes')]} onClose={() => undefined} />,
+      <AskMaterialsDialog materials={[material('12', 'Lecture notes')]} onClose={() => undefined} />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Summarize' }))
     const input = screen.getByLabelText('Your question') as HTMLTextAreaElement
     expect(input.value).toBe('Summarize the key points of this material.')
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
     await waitFor(() =>
-      expect(createChatSession).toHaveBeenCalledWith(3, null, 'Lecture notes'),
+      expect(createChatSession).toHaveBeenCalledWith('3', null, 'Lecture notes'),
     )
   })
 })

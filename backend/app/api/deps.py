@@ -1,10 +1,19 @@
 from collections.abc import Iterator
 from urllib.parse import quote
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
+from nx_auth.deps import get_current_user
+from nx_auth.principal import Principal
 from sqlalchemy.orm import Session
 
 from ..core.profile_context import active_profile_id
+
+
+def require_admin(user: Principal = Depends(get_current_user)) -> Principal:
+    """Admin-only surfaces (destructive ops) — desktop's owner is admin."""
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="admin access required")
+    return user
 
 
 def content_disposition(filename: str, kind: str = "attachment") -> str:

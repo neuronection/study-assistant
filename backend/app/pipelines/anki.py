@@ -203,9 +203,7 @@ def _deck_name(connection: sqlite3.Connection) -> str:
     return "Imported deck"
 
 
-def import_apkg(
-    data: bytes, session: Session, profile_id: str, course_id: int
-) -> AnkiImportResult:
+def import_apkg(data: bytes, session: Session, profile_id: str, course_id: str) -> AnkiImportResult:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             names = archive.namelist()
@@ -223,13 +221,21 @@ def import_apkg(
     deck_name = "Imported deck"
     try:
         deck_name = _deck_name(memory)
-        rows = memory.execute("SELECT flds, tags FROM notes").fetchall()
+        try:
+            rows = memory.execute(
+                "SELECT c.id, n.flds, n.tags FROM cards c JOIN notes n ON n.id = c.nid"
+            ).fetchall()
+        except sqlite3.DatabaseError:
+            rows = [
+                (None, flds, tags)
+                for flds, tags in memory.execute("SELECT flds, tags FROM notes").fetchall()
+            ]
     except sqlite3.DatabaseError as error:
         raise ValueError("unreadable Anki collection") from error
 
     imported = 0
     skipped = 0
-    for flds, _tags in rows:
+    for card_id, flds, _tags in rows:
         fields = flds.split(FIELD_SEPARATOR)
         if len(fields) < 2:
             skipped += 1
@@ -239,7 +245,7 @@ def import_apkg(
         if not front or not back:
             skipped += 1
             continue
-        kind = "cloze" if CLOZE_RE.search(front) else "basic"
+        kind = "card_cloze" if CLOZE_RE.search(front) else "card_basic"
         create_card_exercise(
             session,
             profile_id=profile_id,
@@ -251,6 +257,7 @@ def import_apkg(
             source="anki_import",
             source_ref=deck_name,
             deck_ref=deck_name,
+            external_uid=str(card_id) if card_id is not None else None,
         )
         imported += 1
     memory.close()

@@ -23,10 +23,23 @@ page's sections below in sync with it when security behavior changes.
 - API keys live **only in the OS keyring**, accessed through
   `backend/app/core/secrets.py` (`keyring`, service `StudyAssistant`). They are
   never written to files, env blocks or the database.
+- Values are **sealed with the family at-rest cipher** (`nx_auth.atrest`,
+  ADR-0027 / plan 19): every write stores an `enc::<fernet-token>` string
+  sealed under the KeyRing `SA_DATA_KEY`, so a keyring dump alone no longer
+  exposes plaintext. Reads are plaintext-tolerant (plan 19 D4): study's
+  values are keyring-held — there is no DB ciphertext surface — so
+  pre-adoption plaintext entries return verbatim (no backfill script is
+  needed; that is the recorded D4 ruling) and ciphertext that does not
+  verify under the key ring reads as `None` — never a guess.
 - Secrets are masked in every API response (for example `••••1234`); the full
   value never leaves the keyring except on the outbound provider call.
-- A pre-rename `CourseAssistant` keyring service is read as a fallback and
-  copied forward on first read; the legacy entry stays as a backup.
+- **Connected-source credentials use the same store** (plan 86, ADR-215):
+  token providers declare keyring slots (`source:<id>:<slot>`); OAuth
+  providers run an authorization-code + PKCE flow whose redirect is
+  loopback-only (`http://127.0.0.1:<port>/oauth/callback`) and seal the token
+  response in `app.core.oauth` via `core/secrets.py`. No client secret, refresh
+  token or provider password is ever persisted outside the keyring, and the
+  provider catalog declares only scopes and the client-id env name.
 - **Token material is separate**: three independent per-instance keys
   (`nx_auth.keys.KeyRing`) — `SA_SESSION_KEY` (session JWTs), `SA_REFRESH_KEY`
   (refresh JWTs), `SA_DATA_KEY` (Fernet at-rest sealing) — env-first, else a
@@ -34,8 +47,107 @@ page's sections below in sync with it when security behavior changes.
   (`~/.config/StudyAssistant/`); no key is derived from another. They never
   appear in backup archives or the database.
 - **Tests must never touch the real keyring.** `backend/tests/conftest.py`
-  installs an in-memory backend for the whole suite; any new secret read/write
-  goes through `secrets.py`, which that fixture isolates.
+  installs an in-memory backend for the whole suite and points
+  `SA_CONFIG_DIR` at a per-process scratch dir (the cipher's `KeyRing`
+  resolution); any new secret read/write goes through `secrets.py`, which
+  that fixture isolates.
+
+### Rotating the at-rest key
+
+Non-disruptive, in order (dropping a prior key early is **permanent
+ciphertext loss** — nothing recovers it):
+
+1. Generate the new key: `python3 -c "from cryptography.fernet import
+   Fernet; print(Fernet.generate_key().decode())"`.
+2. Set `SA_DATA_KEY_PREVIOUS` to the **old** value (comma-separated for
+   multiple priors) and move the new value into `SA_DATA_KEY`. Desktop
+   instances without env pins: edit the `data` entry of the config dir's
+   `auth_keys.json` and set `SA_DATA_KEY_PREVIOUS` to the old spelling for
+   the transition. New writes now seal under the new key; everything old
+   keeps reading.
+3. Census — the bare `enc::` strings carry no `_kid` tags, so the proof
+   is a **decrypt probe per secret surface**: every provider key
+   (Settings → AI Configuration must still show its `••••` mask), the
+   web-search key, and each MCP server token/env must still resolve. A
+   secret that suddenly reads empty where one was stored is a stale
+   entry — the old key is missing from the ring.
+4. Re-seal each surface by re-entering (or re-saving) the key so it
+   seals under the new primary, then probe again.
+5. Only after every probe passes **with `SA_DATA_KEY_PREVIOUS` unset**:
+   drop the old key everywhere and restart once more.
+
+Plaintext tolerance is a migration affordance, not a steady state: a
+keyring writer who swaps a stored secret for chosen plaintext bypasses
+Fernet's authentication (plan 19 D4). Study's surfaces are keyring-held
+(ruled 2026-10-09: no DB ciphertext, no backfill script); a strict flip
+would require a full keyring census first and stays tracked with plan
+19's per-product D4 ledger.
+
+## Identity glue & boot guards (ADR-0028, plan 20)
+
+- **One §4 implementation.** Instance init (`instance_settings.auth_mode`
+  / `demo_mode`) runs through `nx_auth.instance.initialize_instance` —
+  §4.4 coerces `SA_AUTH_MODE=open` on a server entrypoint to
+  `authenticated` with a loud warning, unknown values fail closed, and
+  post-init env flips are ignored loudly (mode changes are admin actions,
+  `PATCH /api/v1/admin/instance`). The pre-plan-20 inline copy seeded an
+  open server on `SA_AUTH_MODE=open` (bug B1) — fixed and pinned by
+  `tests/test_contract_identity_glue.py`.
+- **§16 knobs are Settings-routed (bug B2, fixed).** The kit config is
+  built through `nx_auth.config.knob_overrides` from `Settings`, so
+  deployment `.env` values (`SA_COOKIE_SECURE`, TTLs, lockout,
+  `SA_REGISTRATION_ENABLED`, `SA_TRUSTED_PROXY_COUNT`, `SA_RATELIMIT_*`)
+  reach the kit exactly like OS-environment ones (OS env wins per key).
+  Pinned by `tests/test_sec16_env.py` (§18.14).
+- **App-level rate limiting + hardened response headers (plan 21).** The
+  kit's family limiter (`nx_auth.ratelimit`) mounts with study's policy:
+  in-memory counter (single-process topology), Settings-routed
+  `SA_RATELIMIT_{ENABLED,AUTH,AUTH_EMAIL,AI,MCP,DEFAULT}` ceilings read
+  per request (`0` disables a general bucket; the AUTH/AUTH_EMAIL knobs
+  also feed the kit's auth-flow limiters, which keep their F8 `>= 1`
+  floor), login-shaped endpoints ride AUTH, the AI surfaces
+  (`/api/v1/ai/*`, `/api/v1/chat/*`) ride AI, other `/api/` paths ride
+  DEFAULT, and per-IP identity trusts only rightmost
+  `SA_TRUSTED_PROXY_COUNT` hops of `X-Forwarded-For`. Responses carry the
+  family baseline (`nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  CSP with `frame-ancestors 'none'`) from `nx_auth.headers` — web CSP
+  strict, the desktop shell document (valid per-boot `?shell=` token)
+  gets the `'unsafe-eval'` variant for the pywebview bridge. Pinned by
+  `tests/test_rate_limit.py` + `tests/test_security_headers.py`
+  (§18.19–22).
+- **Production boot guards.** `nx_auth.boot.validate_boot_config` runs at
+  app construction and aborts production boots (`SA_APP_ENV=production`,
+  the fail-safe default) on partial/weak key pins, non-Fernet
+  `SA_DATA_KEY` or any non-Fernet `SA_DATA_KEY_PREVIOUS` entry, or
+  `SA_DEBUG`/`SA_DEMO_MODE`; server boots require
+  pinned keys while desktop self-hosting keeps its generated
+  `auth_keys.json` (warning). `scripts/run-dev.sh` sets
+  `SA_APP_ENV=development`.
+- **Key pins** (`SA_SESSION_KEY`/`SA_REFRESH_KEY`/`SA_DATA_KEY`) resolve
+  through `KeyRing.load_for("SA", config_dir, pinned=…)` — all three or
+  none, from env **or** the deployment `.env`, else the 0600
+  `auth_keys.json`. `SA_DATA_KEY_PREVIOUS` (comma-separated) is the
+  decryption-only rotation ring (`app/core/keys.py`, validated by the
+  boot guard; runbook above).
+
+
+### Turning on login (the "desktop app with users" story)
+
+- **At initialization:** set `SA_AUTH_MODE=authenticated` before the
+  first boot of an empty DB (or answer "Shared device" in the first-boot
+  wizard) — the desktop instance then shows the login screen instead of
+  booting straight into the last-used profile. DIM auto-login stops
+  applying (§11.5): no `local-boot` token is ever valid again.
+- **At runtime:** Settings → Users → *Access mode* (the shared
+  `InstanceModeControl`, §4.5): "Require login" sets the owner password
+  and flips `open → authenticated` in one audited admin action;
+  "Remove login" needs the current password plus an explicit
+  acknowledgement, and is refused while other accounts exist (and always
+  on server entrypoints).
+- Mode changes are **never** launch-time actions — env flips after init
+  are ignored with a loud warning (§4.1). Multi-user works once login is
+  on: users register (while enabled) or are created through the admin
+  surface, and every user gets an auto-provisioned Default profile (§6).
 
 ## Network exposure & access control
 

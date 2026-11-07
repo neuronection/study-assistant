@@ -16,6 +16,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
+vi.mock('@/lib/ws-client', () => ({
+  getWsClient: () => ({ subscribe: () => () => undefined }),
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children }: { children: React.ReactNode }) => <a href="#">{children}</a>,
@@ -34,14 +38,14 @@ function renderBell() {
 const AGGREGATE: Notifications = {
   due_cards: 3,
   due_reviews: [
-    { card_id: 1, kind: 'card_basic', course_id: 1, course_title: 'Calculus' },
+    { card_id: '1', kind: 'card_basic', course_id: '1', course_title: 'Calculus' },
   ],
   plan_today: [
     {
-      item_id: 7,
+      item_id: '7',
       title: 'overdue task',
       kind: 'study',
-      course_id: 1,
+      course_id: '1',
       course_title: 'Calculus',
       due_date: '2026-09-14',
       overdue: true,
@@ -50,13 +54,15 @@ const AGGREGATE: Notifications = {
   plan_overdue_count: 1,
   exams: [
     {
-      course_id: 1,
+      course_id: '1',
       course_title: 'Calculus',
       exam_date: '2026-09-20',
       days_left: 5,
     },
   ],
   pending_proposals: 0,
+  staged_imports: [],
+  alerts: [],
   generated_at: '2026-09-15T00:00:00Z',
 }
 
@@ -117,6 +123,56 @@ describe('NotificationBell', () => {
   })
 })
 
+describe('NotificationBell staged imports (plan 87 D)', () => {
+  test('lists watched-inbox files without opening the quiz page', async () => {
+    getNotifications.mockResolvedValue({
+      ...AGGREGATE,
+      staged_imports: [
+        {
+          filename: 'chapter-4.caq.json',
+          kind: 'caq',
+          title: 'Chapter 4',
+          ok: true,
+          question_count: 6,
+        },
+        {
+          filename: 'broken.json',
+          kind: 'caq',
+          title: '',
+          ok: false,
+          question_count: 0,
+        },
+      ],
+    })
+    renderBell()
+    const trigger = await screen.findByRole('button', { name: /notifications/i })
+    expect(await screen.findByText('6')).toBeInTheDocument()
+    fireEvent.click(trigger)
+    expect(await screen.findByText('Staged imports')).toBeInTheDocument()
+    expect(screen.getByText('chapter-4.caq.json')).toBeInTheDocument()
+    expect(screen.getByText('6 questions')).toBeInTheDocument()
+    expect(screen.getByText('broken.json')).toBeInTheDocument()
+    expect(screen.getByText('Needs fixes')).toBeInTheDocument()
+  })
+
+  test('actionableTotal counts staged imports', () => {
+    expect(
+      actionableTotal({
+        ...AGGREGATE,
+        staged_imports: [
+          {
+            filename: 'one.caq.json',
+            kind: 'caq',
+            title: '',
+            ok: true,
+            question_count: 1,
+          },
+        ],
+      })
+    ).toBe(5)
+  })
+})
+
 describe('NotificationBell pending proposals (plan 78-E)', () => {
   test('lists pending tutor suggestions and links to chat', async () => {
     getNotifications.mockResolvedValue({
@@ -128,5 +184,38 @@ describe('NotificationBell pending proposals (plan 78-E)', () => {
     fireEvent.click(trigger)
     expect(await screen.findByText(/2 tutor suggestions to review/)).toBeInTheDocument()
     expect(view.getByText(/waiting for you/i)).toBeInTheDocument()
+  })
+})
+
+describe('NotificationBell retrieval alerts (plan 51 Q3c3a)', () => {
+  test('shows active admin alerts and counts them in the actionable total', async () => {
+    const withAlert: Notifications = {
+      ...AGGREGATE,
+      due_cards: 0,
+      due_reviews: [],
+      plan_today: [],
+      plan_overdue_count: 0,
+      exams: [],
+      alerts: [
+        {
+          id: 'n-1',
+          kind: 'retrieval.quality_gate',
+          severity: 'warning',
+          title: 'Retrieval quality below floor',
+          body: 'The golden-query compare missed the floor.',
+          link: '/settings?tab=tools&section=indexing',
+          created_at: '2026-11-04T00:00:00Z',
+        },
+      ],
+    }
+    getNotifications.mockResolvedValue(withAlert)
+    expect(actionableTotal(withAlert)).toBe(1)
+    renderBell()
+    const trigger = await screen.findByRole('button', { name: /notifications/i })
+    fireEvent.click(trigger)
+    expect(await screen.findByText('Alerts')).toBeInTheDocument()
+    expect(
+      screen.getByText('Retrieval quality below floor')
+    ).toBeInTheDocument()
   })
 })

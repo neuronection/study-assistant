@@ -28,7 +28,7 @@ function renderMenu(onSelect: (item: PendingAttachment) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <AttachMenu courseId={3} attached={[]} onSelect={onSelect} />
+      <AttachMenu courseId="3" attached={[]} onSelect={onSelect} />
     </QueryClientProvider>,
   )
 }
@@ -37,7 +37,7 @@ describe('AttachMenu nodes tab', () => {
   test('lists course tree nodes flattened and selects them as node attachments', async () => {
     courseTree.mockResolvedValue([
       {
-        id: 10,
+        id: '10',
         title: 'Chapter 1',
         summary: 'Rates of change',
         objectives: [],
@@ -46,7 +46,7 @@ describe('AttachMenu nodes tab', () => {
         is_root: false,
         children: [
           {
-            id: 11,
+            id: '11',
             title: 'Section 1.1',
             summary: null,
             objectives: [],
@@ -72,11 +72,11 @@ describe('AttachMenu nodes tab', () => {
     await waitFor(() =>
       expect(onSelect).toHaveBeenCalledWith({
         kind: 'node',
-        id: 11,
+        id: '11',
         title: 'Section 1.1',
       }),
     )
-    expect(courseTree).toHaveBeenCalledWith(3)
+    expect(courseTree).toHaveBeenCalledWith('3')
   })
 
   test('shows an empty state when the course has no nodes', async () => {

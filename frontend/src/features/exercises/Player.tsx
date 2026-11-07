@@ -44,7 +44,7 @@ import { practiceFallback, useOriginBack } from '@/lib/origin'
 import { cn } from '@/lib/utils'
 import { useStudySession } from '@/lib/use-study-session'
 
-export function Player({ exerciseId }: { exerciseId: number }) {
+export function Player({ exerciseId }: { exerciseId: string }) {
   const { t } = useTranslation()
   const presets = useMotionPresets()
   const from = useRouterState({ select: (state) => (state.location.search as { from?: string }).from })
@@ -75,7 +75,7 @@ export function Player({ exerciseId }: { exerciseId: number }) {
   const [check, setCheck] = useState<StepCheck | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [summaryNoteId, setSummaryNoteId] = useState<number | null>(null)
+  const [summaryNoteId, setSummaryNoteId] = useState<string | null>(null)
 
   const summary = useMutation({
     mutationFn: () => saveSessionSummaryNote(session!.id),
@@ -419,5 +419,5 @@ export function Player({ exerciseId }: { exerciseId: number }) {
 
 export function ExercisePlayerRoute() {
   const { exerciseId } = useParams({ from: '/exercises/$exerciseId' })
-  return <Player exerciseId={Number(exerciseId)} />
+  return <Player exerciseId={exerciseId} />
 }

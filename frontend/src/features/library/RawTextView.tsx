@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getMaterial } from '@/lib/api'
 
-export function RawTextView({ materialId }: { materialId: number }) {
+export function RawTextView({ materialId }: { materialId: string }) {
   const { t } = useTranslation()
   const { data, isLoading } = useQuery({
     queryKey: ['material', materialId],

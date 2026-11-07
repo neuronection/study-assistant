@@ -10,7 +10,7 @@ import { isKeyboardClick } from '@/lib/useSelection'
 import { cn } from '@/lib/utils'
 
 export interface MaterialSummary {
-  id: number
+  id: string
   title: string
   kind?: string
   status?: string

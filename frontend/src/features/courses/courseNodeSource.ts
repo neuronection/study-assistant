@@ -5,7 +5,7 @@ import type {
 } from '@/components/entity-menu/types'
 import type { NodeInfo } from '@/lib/api'
 
-export function createCourseNodeSource(courseId: number): NodeSource<NodeInfo> {
+export function createCourseNodeSource(courseId: string): NodeSource<NodeInfo> {
   return {
     kind: 'course-tree',
     toEntity: (node: NodeInfo): EntityNode => ({

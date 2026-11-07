@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from nx_auth.deps import get_optional_principal
+from nx_auth.principal import Principal
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -30,27 +33,45 @@ MAX_EXAMS = 3
 
 
 class DueReviewEntryOut(BaseModel):
-    card_id: int
+    card_id: str
     kind: str
-    course_id: int
+    course_id: str
     course_title: str
 
 
 class PlanEntryOut(BaseModel):
-    item_id: int
+    item_id: str
     title: str
     kind: PlanItemKind
-    course_id: int
+    course_id: str
     course_title: str
     due_date: str
     overdue: bool
 
 
 class ExamEntryOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     exam_date: str
     days_left: int
+
+
+class StagedImportOut(BaseModel):
+    filename: str
+    kind: str
+    title: str
+    ok: bool
+    question_count: int
+
+
+class AlertEntryOut(BaseModel):
+    id: str
+    kind: str
+    severity: str
+    title: str
+    body: str = ""
+    link: str
+    created_at: str | None = None
 
 
 class NotificationsOut(BaseModel):
@@ -60,11 +81,38 @@ class NotificationsOut(BaseModel):
     plan_overdue_count: int
     exams: list[ExamEntryOut]
     pending_proposals: int
+    staged_imports: list[StagedImportOut] = []
+    alerts: list[AlertEntryOut] = []
     generated_at: str
 
 
+def _staged_imports(inbox_dir: Path) -> list[StagedImportOut]:
+    from ..services.study.inbox import InboxService
+
+    try:
+        entries = InboxService(inbox_dir).scan()
+    except (OSError, ValueError):
+        return []
+    return [
+        StagedImportOut(
+            filename=entry.filename,
+            kind=entry.kind,
+            title=entry.title,
+            ok=entry.ok,
+            question_count=entry.question_count,
+        )
+        for entry in entries
+    ]
+
+
 @router.get("", response_model=NotificationsOut)
-def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
+def notifications(
+    request: Request,
+    user: Principal | None = Depends(get_optional_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    from ..services.platform.notifications import active_alerts
+
     profile = ensure_default_profile(session)
     now = utcnow()
     today = now.date()
@@ -158,6 +206,7 @@ def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
         "plan_overdue_count": plan_overdue_count,
         "exams": exams,
         "pending_proposals": pending_proposals,
+        "staged_imports": _staged_imports(request.app.state.settings.inbox_dir),
+        "alerts": active_alerts(session, user.user_id if user is not None else None),
         "generated_at": generated_at,
     }
-

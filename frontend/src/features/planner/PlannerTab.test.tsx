@@ -14,12 +14,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    listPlanItems: (id: number) => listPlanItems(id),
-    createPlanItem: (id: number, body: unknown) => createPlanItem(id, body),
-    updatePlanItem: (id: number, itemId: number, body: unknown) =>
+    listPlanItems: (id: string) => listPlanItems(id),
+    createPlanItem: (id: string, body: unknown) => createPlanItem(id, body),
+    updatePlanItem: (id: string, itemId: string, body: unknown) =>
       updatePlanItem(id, itemId, body),
-    deletePlanItem: (id: number, itemId: number) => deletePlanItem(id, itemId),
-    generatePlan: (id: number) => generatePlan(id),
+    deletePlanItem: (id: string, itemId: string) => deletePlanItem(id, itemId),
+    generatePlan: (id: string) => generatePlan(id),
   }
 })
 
@@ -31,8 +31,8 @@ function todayPlus(days: number): string {
 
 function makeItem(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 1,
-    course_id: 5,
+    id: '1',
+    course_id: '5',
     node_id: null,
     title: 'Study: Limits',
     detail: null,
@@ -57,8 +57,8 @@ function renderTab() {
 describe('PlannerTab', () => {
   test('groups open items under day headings and shows drafts with keep/discard', async () => {
     listPlanItems.mockResolvedValue([
-      makeItem({ id: 1, origin: 'draft' }),
-      makeItem({ id: 2, title: 'manual item', origin: 'manual' }),
+      makeItem({ id: '1', origin: 'draft' }),
+      makeItem({ id: '2', title: 'manual item', origin: 'manual' }),
     ])
     renderTab()
 
@@ -70,7 +70,7 @@ describe('PlannerTab', () => {
 
     fireEvent.click(keepButtons[0])
     await waitFor(() =>
-      expect(updatePlanItem).toHaveBeenCalledWith(5, 1, {
+      expect(updatePlanItem).toHaveBeenCalledWith('5', '1', {
         title: 'Study: Limits',
         due_date: todayPlus(0),
         kind: 'study',
@@ -79,12 +79,12 @@ describe('PlannerTab', () => {
   })
 
   test('check-off marks the item done and it moves to the done section', async () => {
-    listPlanItems.mockResolvedValue([makeItem({ id: 3, origin: 'manual' })])
+    listPlanItems.mockResolvedValue([makeItem({ id: '3', origin: 'manual' })])
     updatePlanItem.mockResolvedValue({})
     renderTab()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Mark done' }))
-    await waitFor(() => expect(updatePlanItem).toHaveBeenCalledWith(5, 3, { done: true }))
+    await waitFor(() => expect(updatePlanItem).toHaveBeenCalledWith('5', '3', { done: true }))
   })
 
   test('generate calls the deterministic drafting endpoint', async () => {
@@ -93,7 +93,7 @@ describe('PlannerTab', () => {
     renderTab()
 
     fireEvent.click(await screen.findByRole('button', { name: /generate plan/i }))
-    await waitFor(() => expect(generatePlan).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(generatePlan).toHaveBeenCalledWith('5'))
     expect(screen.getByText(/nothing planned yet/i)).toBeInTheDocument()
   })
 })

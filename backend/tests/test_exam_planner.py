@@ -19,10 +19,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -36,7 +36,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls = messages
         return self.responses.pop(0)
@@ -50,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -67,7 +67,7 @@ def make_client(responses: list[str], tmp: Any) -> TestClient:
     return TestClient(app)
 
 
-def seed_tree(client: TestClient, course_id: int) -> dict[int, int]:
+def seed_tree(client: TestClient, course_id: str) -> dict[int, int]:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     root_id = tree[0]["id"]
     nodes: dict[int, int] = {}
@@ -84,17 +84,13 @@ def seed_tree(client: TestClient, course_id: int) -> dict[int, int]:
 def test_exam_date_crud_and_clear(tmp_path: Any) -> None:
     client = make_client([], tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Calculus"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Calculus"}).json()["id"]
 
         listed = client.get("/api/v1/courses").json()
         assert listed[0]["exam_date"] is None
 
         exam_day = (utcnow().date() + timedelta(days=10)).isoformat()
-        patched = client.patch(
-            f"/api/v1/courses/{course_id}", json={"exam_date": exam_day}
-        )
+        patched = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": exam_day})
         assert patched.status_code == 200, patched.text
         assert patched.json()["exam_date"] == exam_day
 
@@ -102,18 +98,14 @@ def test_exam_date_crud_and_clear(tmp_path: Any) -> None:
         assert cleared.status_code == 200
         assert cleared.json()["exam_date"] is None
 
-        invalid = client.patch(
-            f"/api/v1/courses/{course_id}", json={"exam_date": "not-a-date"}
-        )
+        invalid = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": "not-a-date"})
         assert invalid.status_code == 422
 
 
 def test_exam_status_pacing_and_most_behind(tmp_path: Any) -> None:
     client = make_client([], tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Calculus"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Calculus"}).json()["id"]
         nodes = seed_tree(client, course_id)
 
         empty = client.get("/api/v1/analytics/exams").json()
@@ -198,9 +190,7 @@ Use it whenever a definite integral matches a known antiderivative pair.
 def test_formula_sheet_collects_validates_and_strips(tmp_path: Any) -> None:
     client = make_client([FORMULA_SHEET], tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Calculus"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Calculus"}).json()["id"]
         nodes = seed_tree(client, course_id)
         node_id = nodes[2]
 
@@ -272,9 +262,7 @@ def test_formula_sheet_collects_validates_and_strips(tmp_path: Any) -> None:
 def test_formula_sheet_without_sources_fails_cleanly(tmp_path: Any) -> None:
     client = make_client([], tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Empty"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Empty"}).json()["id"]
         refused = client.post(
             "/api/v1/materials/compose",
             json={"course_id": course_id, "kind": "formula_sheet"},

@@ -11,6 +11,1122 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Breaking changes — 0.13 schema baseline (clean install required)
+- **The datastore schema was rebuilt.** The Alembic chain was squashed into
+  `0001_baseline` (ADR-196) and the content identity moved to UUIDs; there is
+  **no migration path** from 0.12.x databases. A 0.12.x datastore is refused at
+  boot with an actionable message (and `STARTUP-ERROR.txt` in the data
+  directory) instead of an opaque Alembic error. To keep working, move the old
+  data directory aside (or run `python -m studyassistant reset --all`) and start
+  fresh.
+- **Backups from 0.12.x are refused.** The archive manifest now records the
+  schema revision; a restore whose schema does not match this release is
+  rejected **before** anything is swapped (HTTP 422 on the API). Backups made
+  by 0.13 restore normally.
+- **No legacy shims.** The `ca-*` compatibility vocabulary, the hand-rolled
+  `app/core/oauth.py` flow, the update banner and the pre-0.13 backup reader
+  are gone; nothing reads the old formats.
+
+### Added (bounded live indexing progress + read-only parity — plan 52 T5c)
+- **Live detail**: migration `0019_job_progress_detail` adds nullable
+  `jobs.progress_detail`. The Study retrieval pipeline folds one bounded
+  counters document into its existing per-document progress UPDATE — phase,
+  exact scan-start `total_documents`, cumulative/estimated chunks,
+  embedded/skipped/failed documents and chunks, local-tokenizer tokens,
+  embed calls and the exactness flag — with no second write, no source ids
+  and no document text. The v1 character path labels chunks exact; the v2
+  window path labels them estimated.
+- **Continuation + pruning**: a limited pass exposes its counters as
+  `progress_carry`; a retry seeds the new run from the stored detail so the
+  bar resumes instead of resetting. The detail is pruned when the final
+  `result` commits — the result stays authoritative.
+- **Read surface**: `GET /admin/retrieval/runs` (and the composed overview)
+  carries the optional `progress_detail` additively; a malformed row reads
+  as absent. Run/space DTOs keep `token_aware` and now expose the persisted
+  tokenizer `source` beside kind/identifier/exactness.
+- **UI**: Settings → Indexing and the read-only observation run drawer render
+  an accessible `role=progressbar` bar with processed/total documents,
+  pending and estimated chunks, embedded/skipped/failed, approximate-token
+  and embed-call counters, and a token-aware/legacy + exact/approximate
+  label. Compact rows keep mobile width; the observation surface adds no
+  action controls.
+- **Not in this slice**: rollout docs/publication (T5d) and any token-aware
+  write/cutover change.
+
+### Added (token-aware writes + v2 cutover — plan 52 T5b2)
+- **Profile + identity**: `services/retrieval/chunk_profile.py` resolves one
+  effective tokenizer/chunk pair (explicit admin pair → curated OpenAI exact
+  `cl100k_base` → labelled heuristic fallback) with separate per-item
+  (`max_input_tokens`) and per-request (`batch_max_items`/`batch_max_tokens`)
+  limits. `lifecycle.build_space` persists the pair, forces
+  `chunker_version='2'`, validates the budget and computes `space_key_v2`;
+  v1 builds stay on the character path. The ORM `space_key` default computes
+  v2 from a complete pair and still refuses a half pair; `ContentSpace`
+  reconstructs the pair and stored key.
+- **Token chunking**: `pipelines/chunking.py` adds `chunk_tokens` using
+  `encode_with_offsets` — exact char/token offsets, token overlap, a hard
+  `max_chars` ceiling, no truncation and a typed `input_too_long` failure.
+  `chunk_markdown` is unchanged. Ingest, trash restore, material edits and
+  course import use the active v2 profile through `chunk_texts_for_space`;
+  legacy chunks are preserved.
+- **Writes + cutover**: `StudyVectorStore.store_specs` writes one
+  `vector_records` row per token window with the vendored `IndexRecord` token
+  columns; reindex skips unchanged windows, batches by items and token sum,
+  and reports `input_too_long` once per chunk. Migration
+  `0018_vector_record_token_windows` widens record uniqueness to
+  `(space, chunk, window)`, so a source chunk can own several windows while
+  v1 rows keep one/NULL. A v2 space builds beside v1, backfills, passes the
+  coverage/quality gate, activates with the retired stored key and retains
+  v1; space/run read DTOs expose `token_aware`, tokenizer/exactness and chunk
+  config.
+- **Not in this slice**: bounded `progress_detail`, Tools/Audit progress UI
+  and rollout docs. Those are T5c; see
+  [dev/retrieval-ops.md](docs/dev/retrieval-ops.md).
+
+### Added (stored space key + tokenizer/chunk schema — plan 52 T5b1)
+- **Stored space identity**: migration `0016_vector_space_stored_key` adds
+  non-null `vector_spaces.space_key` and stamps every existing row once with
+  the frozen v1 pre-image before enforcing NOT NULL. `ContentSpace`,
+  `space_key_for`, build idempotency, activation (`previous_space_key`),
+  status/DTO reads and `load_store` use the stored value instead of
+  recomputing it; new spaces persist the v1 key. (T5b2 later replaced the
+  explicit-key refusal with the v2 default.)
+- **Schema for T5b2**: migration `0017_vector_token_schema` adds nullable
+  tokenizer/chunk identity columns to `vector_spaces` and nullable
+  `token_count`/`token_start`/`token_end` to `vector_records`, with
+  all-or-none, kind/provenance/bounds, `chunker_version='2'` and
+  ordered/consistent-token CHECKs. Downgrade drops the token columns but keeps
+  `space_key`.
+- **Not in this slice**: token-aware chunking/writes, v2 builds or cutover,
+  progress detail or UI. Character chunking, token counts and write behavior
+  are unchanged; the T5b2 handoff is in
+  [dev/retrieval-ops.md](docs/dev/retrieval-ops.md).
+
+### Added (offline tokenizer + real token accounting — plan 52 T5a)
+- **Family contracts synced byte-identically**: `tokenizer_contract.py` +
+  fixtures, the token-aware `vector_contract.py` (stored space key, v2 space
+  identity, `IndexRecord` token fields) and the token-aware
+  `retrieval_ops.py` DTOs (space/run tokenizer + chunk, bounded run progress
+  detail). Vendored copies stay canonical; the dev ledgers record study.
+- **Real offline tokenizer**: `app/ai/tokenizers/` bundles
+  `cl100k_base.tiktoken.gz` with gzip + BPE SHA-256 verification and builds
+  the encoding directly — no `tiktoken.get_encoding`, no `tiktoken_ext`, no
+  network, no `sentencepiece`/HF download. Bounded LRU, `count`/`encode`/
+  `decode`/`encode_with_offsets`, and a visibly labelled heuristic fallback.
+- **One accounting seam**: `app/ai/tokenizers/accounting.py` resolves the
+  effective tokenizer for the assigned embedding model (curated OpenAI
+  embeddings → exact `cl100k_base`; anything else → `exact=False` heuristic,
+  no model-name guessing). Ingest, trash restore, material edit/course
+  import, chat context/trace, tutor/quiz help, note actions and the gateway
+  ledger now use real local counts; the `len//4` estimate is gone. The
+  exact/approximate label travels on `TokenCount` and the interaction
+  metadata (same `ai_interactions` row).
+- **Not in this slice**: token-aware chunk writes/offsets, `space_key` v2
+  stamping, cutover, progress emission or UI (T5b/T5c). `Chunk.token_count`
+  counts the existing character chunks only.
+
+### Fixed (calendar identity + delta safety — ADR-0052 / E9 / M4)
+- **A calendar link's `uid` is now the LOCAL uid**, with the provider's handle
+  in `remote_id`. Providers may mint their own (Graph's `iCalUId` is
+  server-generated), and uid-matching split one event into `unlink` +
+  `create-remote` — a duplicate on every sync.
+- **Orphan repair**: an unlinked plan item with a matching unlinked remote
+  event is attached (`LINK_EXISTING`), never duplicated. This closes the
+  crash window even on providers with no idempotency key.
+- **Delta cursors are a fast path, never the remote view**: when the provider
+  reports no changes the reconcile is skipped; any change falls through to the
+  full window. The bind form is rendered entirely from the catalog's
+  `setupFields`, so a new provider needs no UI change.
+### Added (retrieval observation inside Tools → Indexing — plan 51 Q3c3b)
+- **Admin-only read-only observation card.** The existing Tools → Indexing
+  section now hosts a second, read-only surface without adding a settings
+  domain or audit route. It is URL-synced on the same `/settings` route:
+  `?tab=tools&section=indexing&obs=overview|spaces|runs|quality|query-health|failures|usage`,
+  with the pinned `&detail=<id>` opening run (`<run_id>`), space
+  (`space:<space_id>`) and quality (`quality:<space_id>`) drawers. Alert
+  manage URLs that already carry a run id keep working.
+- **Composed from the shipped read DTOs only** (`overview`, `spaces`, `runs`,
+  `quality`, `query-health`, `usage`); the card imports no action client and
+  renders no reindex/cutover/maintenance/compare/cancel/retry control. It
+  links to the management controls above, and a test pins the read-only
+  source guard. Overview shows the active space/backend/model/dim, honest
+  coverage (never a fabricated percentage), p50/p95, degraded and zero-result
+  rates and embed calls/tokens; runs include result counters and a drawer
+  with stage/progress and bounded failed ids; quality includes set version,
+  recall/precision vs floor, gate state and bad-match ids/scores only;
+  query health shows latency, candidates, degraded reasons, per-view hits and
+  an honest "not sampled" ANN state; usage shows calls/tokens by day, space
+  and kind with `tokens_available=false` and the no-budget gap intact.
+- **Failures are structured, never raw.** There is no `/failures` endpoint and
+  no failures table: the card groups failed runs, space failed-document
+  counts, a below-floor quality gate and query-health degraded reasons into
+  reason-code groups with ids/counts. `run.error`, space `last_error` and all
+  document/query text are never rendered.
+- **No backend change.** Tests: `RetrievalObservationPanel.test.tsx`
+  (cold/degraded, URL section switching, run/space/quality drawers,
+  structured failures, usage gaps, admin-only and read-only/no-raw-text
+  guards), updated `IndexingSection.test.tsx`, translations for en/de/el.
+  Q5 (family closeout) remains.
+
+### Added (retrieval alerts, generation tagging & canonical adoption — plan 51 Q3c3a)
+- **Ten retrieval alerts through the existing notification funnel.**
+  Migration `0015_retrieval_alerts` adds the boot-seeded
+  `notification_kinds` registry and deduped `notifications` event rows.
+  `services/platform/notifications.py` is the only emit seam and
+  `services/retrieval/alerts.py` evaluates coverage_low, reindex_failed,
+  reindex_stalled, quality_gate (fed by the real Q3c2b2 compare), query_slo,
+  degraded_rate, provider_unassigned, index_missing and space_drop_pending
+  on the existing `ScanScheduler` periodic seam — never the request path.
+  Dedup keys are released when a condition clears so recovery is honest;
+  admin fanout is bounded, daily caps come from the family `ALERT_DEFAULTS`,
+  payloads pass `assert_no_raw_text`, and every manage URL points at the
+  shipped Tools → Indexing (run detail included) or the AI task assignment.
+  `retrieval.budget_exhausted` reports `unavailable` rather than inventing a
+  token budget study does not have. The latency histogram writer now counts
+  overflow only above the largest finite bound (it double-counted every sample
+  before, so p95 was always 10000 ms and query_slo could never recover). `GET /notifications` carries the active
+  recipient-scoped alerts and the bell renders them.
+- **Generation-ledger tagging and an honest usage read.** Study's ledger is
+  `ai_interactions`; migration `0015` adds `metadata` + `metadata_schema_version`
+  and the caller supplies `space_id`/`kind`/`view`/`chunk_index` through
+  `GatewayEmbedder.embed`/`record_usage` (indexing, reindex, live search and
+  golden-query compares). `GET /admin/retrieval/usage` exposes calls/tokens by
+  day/space/kind with `reindex_calls`; it never selects `prompt`, reports
+  `errors_available=false` (the ledger has no status column) and `budget=null`
+  (no token budget), and marks untagged rows `unattributed` instead of guessing.
+- **Canonical settings-map/ledger adoption.** The `/dev` canonical settings map
+  marks career and study `tools.retrieval` aligned, study hosts it in the
+  `indexing` section, and the study vendored copy + `settingsMap.test.ts` match
+  it. `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's bytes
+  with the branch note; the parity runner now reports only
+  `adoption:study-main` until `/study-assistant` main carries the same bytes.
+- Tests: `test_retrieval_alerts.py` (one per kind, dedup/recovery, fanout,
+  caps, manage URLs, no raw text, empty/cold/quality fail),
+  `test_generation_tags.py`, the 0015 SQLite/PG migration round-trips,
+  `test_retrieval_ops_family_parity.py`, `NotificationBell.test.tsx` and
+  `settingsMap.test.ts`. Audit → Retrieval (Q3c3b) and the Q5 closeout remain.
+
+### Added (golden-query quality compare & gate — plan 51 Q3c2b2)
+- **Versioned admin golden-query sets.** `services/retrieval/quality.py`
+  loads `backend/app/data/retrieval/golden_queries.json` (empty by default —
+  no fabricated pass), selects the newest set by space id then name,
+  normalizes UUID-shaped expected ids, and validates every set through the
+  family contract. Query text stays fixture-only; every read DTO carries
+  query ids, document ids, scores and miss lists.
+- **Bounded real-backend compare.** `POST /admin/retrieval/quality/compare`
+  embeds each golden query once, searches the active and candidate space
+  through `StudyVectorStore.search_scored`, maps chunk hits to material
+  document ids, and returns the contract `QualityCompareDTO` plus a
+  deterministic (distance, chunk id) bad-match detail: chunk/document ids,
+  view, distance and score, never document or query text. The compare is
+  persisted on the `VECTOR_CUTOVER` job result with same-key idempotent
+  replay; `GET /admin/retrieval/quality` reports the newest evidence as
+  `no_golden_set` / `not_sampled` / `sampled` / `stale_compare`.
+- **The quality activation/cutover gate is real.** Activation verifies
+  physical health, coverage (`0.995`) and the golden-query compare;
+  `VECTOR_CUTOVER` backfills, enforces coverage, runs the compare and refuses
+  below the floor. Refusals are structured (`quality_gate_failed`) and persist
+  `quality`, `quality_state`, `bad_matches` and `activation_gate` on the failed
+  job. The old `quality="not_sampled"` success path is gone: only a missing or
+  blocked setup reports `not_sampled`/`blocked`, and never a pass. Repeating
+  an activation/cutover on an already-active space is an explicit
+  `already_active` no-op (no re-compare, no quality pass claimed).
+- **Tools → Indexing quality surface.** The card lists each space's quality
+  gate state, shows the set version/k, recall/precision vs floor, pass/fail,
+  the gate and a bad-match drawer; it can run the compare against the active
+  space, and activation/cutover refusals render the gate reasons. No Audit →
+  Retrieval tab yet (Q3c3).
+- **Cross-repo family parity runner.** `services/retrieval/parity.py` +
+  `tests/test_retrieval_ops_family_parity.py` compare the study/career
+  contract and fixture bytes, run every shared quality case through the
+  vendored scorer, pin the DTO shapes and record the sha plus sync-gate
+  status. It deliberately does not claim the family `--strict` gate while the
+  canonical ledger and settings map still record study as pending.
+- Tests: `test_retrieval_quality.py` (SQLite), the PG quality/gate twins in
+  `test_vector_backends_postgres.py`, the updated lifecycle/action/parity
+  walls, and the frontend card/panel tests. Alerts, generation tagging and
+  the canonical sync landed in plan 51 Q3c3a.
+
+### Added (vector backend & provisioning — plan 51 Q3c2a)
+- **The content space now runs on a real family vector backend.**
+  `storage/vector_backends.py` implements the vendored `VectorBackend`
+  protocol: pgvector + HNSW cosine with the scope joined before the ANN
+  scan (and an exact scan at or below the scoped threshold), sqlite-vec
+  `vec0` keyed by the `vector_records.rowid` map with bounded over-fetch /
+  post-filter, and an exact `LinearBackend` fallback that publishes
+  `ann=False`.
+- **Physical provisioning is one seam, off the request path.**
+  `storage/vector_provisioning.py` creates `vec_<8hex>` (pgvector
+  `vector(dim)` + HNSW, or sqlite-vec `float[dim]`) and writes
+  `vector_spaces.index_table` in the same transaction as the DDL.
+  `storage/vector_schema.py` owns the `vec_[0-9a-f]{8}` name guard and the
+  Alembic autogenerate exemption.
+- **Migration `0013_vector_space_provisioning` moves the legacy vectors.**
+  It provisions `vec_dfbcce9b`, copies `chunk_vecs` through
+  `chunk_vec_ids` into the metadata records, verifies the copied row count
+  and only then switches `index_table`. `chunk_vecs` is left intact and
+  stays the dual-written compatibility fallback; downgrade drops the new
+  table and resets the pointer.
+- **Search routes through the backend without changing fusion.**
+  `StudyVectorStore.search()` now scopes the vector query by
+  `course_id`/`material_ids`/`profile_id` before the ANN scan, falls back
+  to the legacy search when the backend is unavailable, and returns the
+  unchanged `(chunk id, distance)` shape; `retrieve_chunks_hybrid` and the
+  FTS/RRF weights are untouched.
+- **Status tells the truth.** `health()` / `space_status()` report the
+  active table, HNSW/vec0 presence, row count and partial/missing states
+  through the overview notes and `last_error`; `records` is the active
+  backend count, not the legacy one.
+- Tests: `test_vector_backends.py` (SQLite parity, scope, rowid map,
+  linear fallback, partial/missing health), `test_vector_backends_postgres.py`
+  (pgvector HNSW, exact vs ANN, scope, legacy fallback),
+  `test_search_vector_backend.py` (FTS/RRF regression and fallback), and
+  migrated SQLite/PostgreSQL 0013 round-trips.
+
+### Added (vector space lifecycle & cutover — plan 51 Q3c2b1)
+- **Real embedding-space lifecycle.** `services/retrieval/lifecycle.py`
+  builds a `building` space with real model/dim/prefix metadata, provisions
+  its `vec_<8hex>` backend, backfills it through the ordinary reindex writer,
+  activates it only when physical health and coverage pass, retires every
+  previous active row in one transaction, and supports typed retire/drop with
+  the 7-day grace period. The active space can never be dropped.
+- **Real cutover.** `VECTOR_CUTOVER` backfills the candidate, refuses a
+  non-`pass` coverage gate, activates it, retires the previous space and
+  reports `quality="not_sampled"` — no fake quality pass. `chunk_vecs` stays
+  as the compatibility store until the retired legacy space is explicitly
+  dropped.
+- **Two spaces coexist.** Migration `0014_vector_record_chunk_id` adds
+  `vector_records.chunk_id`; records use a deterministic per-space id and the
+  sqlite-vec rowid rule, while search hydrates back to the chunk id. Rollups,
+  coverage snapshots, run DTOs and query health follow the active real space
+  id.
+- **Management surface.** `POST /admin/retrieval/spaces`,
+  `/spaces/{id}/{activate,retire,drop}` and `/cutover` are wired to the
+  existing idempotency/lock/audit seam; Tools → Indexing lists spaces and
+  exposes build/cutover/retire/drop with typed confirmations and an explicit
+  quality-not-sampled note. `quality/compare` remains an honest Q3c2b2
+  refusal.
+- Tests: `test_vector_space_lifecycle.py` (build/backfill/activate/retire/
+  drop, coverage refusal, one-active pointer, cutover, legacy compatibility,
+  active-space identity), updated service/action/read/migration and frontend
+  card tests.
+
+### Fixed (PostgreSQL migration baseline — plan 51 Q3c1)
+- **The PostgreSQL migration chain now runs end to end** from
+  `0001_baseline` to `0012_vector_spaces` (PostgreSQL 16 + pgvector).
+  `tests/test_migrations_postgres.py` executes against the configured test
+  server instead of being skipped, and a fresh upgrade no longer fails at
+  `CREATE TABLE courses`.
+- Six boolean column defaults (`0`/`1`) became dialect-portable
+  `sa.false()`/`sa.true()`: `courses.hidden`,
+  `material_sources.mirror_subdirs`, `chat_sessions.quizme`,
+  `chat_quiz_pendings.awaiting_answer`, `materials.starred` and
+  `calendar_links.enabled`. The baseline decision-slot seed also casts its
+  bind parameter (PostgreSQL rejected the reused parameter as
+  `text` vs `character varying`).
+- Revisions 0002–0011 no longer force a full table copy on PostgreSQL
+  (`batch_alter_table(recreate="always")` broke dependent foreign keys when
+  it dropped the primary key). SQLite still copies; PostgreSQL alters in
+  place. Final schema and existing data are unchanged.
+- The PG suite now seeds a real legacy store and asserts the 0012
+  `content`/`legacy-chunk-vecs` space, document/record backfill shape,
+  rowid parity, content hashes, no fabricated coverage snapshot, model/dim
+  agreement with `vec_meta`, the Q3b partial indexes, and a
+  downgrade/upgrade that leaves `chunk_vecs` intact.
+- **PostgreSQL lexical search works again** (exposed by the now-runnable
+  chain): the FTS/trigram chunk and material joins compared a UUID
+  `materials.id` with the hex-keyed `material_fts*.material_id`, and the
+  swallowed operator error returned no hits. Both twins now compare the
+  hex form; SQLite behaviour is unchanged. Covered by
+  `test_search_postgres.py` and `test_search_parity.py`.
+
+### Added (vector storage foundation — plan 50 P3a)
+- **The family vector contract is vendored byte-identically**
+  (`storage/vector_contract.py` + its fixture table) with the canonical
+  sha256 recorded in `docs/dev/retrieval-ops.md`; `test_vector_contract.py`
+  runs every fixture group and the dev-checkout identity check.
+- **Migration `0012_vector_spaces`** adds the portable metadata layer —
+  `vector_spaces`, `vector_documents`, `vector_records` — and backfills the
+  one `content` space (`legacy-chunk-vecs`) from `vec_meta`, with documents
+  (materials) and records (chunk `body` + content hash + rowid reverse map)
+  from `chunk_vec_ids`. `chunk_vecs` is untouched; no coverage snapshot is
+  written.
+- **`storage/vector_store.py::StudyVectorStore`** is now the read/write seam:
+  search, embed writes, purge and the retrieval handlers use it. A
+  model/dimension change raises `VectorSpaceChangeRequired` instead of
+  silently dropping `chunk_vecs`; the old vectors remain readable until
+  plan 51 Q3c's explicit new-space/cutover.
+- **Honest state stays honest:** a cold store has no space row and no
+  coverage number; `backfill_metadata()` fills content hashes idempotently
+  for rows the SQL backfill mapped without them. The physical backend is
+  still the legacy `chunk_vecs` store — P3a exposes the port, it does not
+  claim the lifecycle yet.
+
+### Added (retrieval operations — plan 51 Q3b)
+- **Admin action API over the one legacy space.**
+  `POST /api/v1/admin/retrieval/{reindex,maintenance,runs/{id}/cancel,
+  runs/{id}/retry}` enqueues the existing `VECTOR_*` handlers; long work
+  never runs in the request. Lifecycle verbs (build/activate/retire/drop,
+  cutover, quality compare) answer with a structured `unsupported` 409
+  instead of faking a space.
+- **Idempotency and a database-level single-run lock** (migration
+  `0011_retrieval_run_actions`): `jobs.idempotency_key` replays the
+  original row inside the contract's 24 h window and 409s on a different
+  payload; `jobs.lock_key` is a partial unique index over queued/running
+  vector runs. `jobs.heartbeat_at` is written at worker progress
+  checkpoints and a bounded reaper fails stale running rows (15 min) so a
+  crash cannot block the space until restart.
+- **Actions are audited in the existing `audit_events` table** (no second
+  ledger): `vector.reindex.started`, `vector.reindex.cancelled`,
+  `vector.reindex.retried`, `vector.maintenance.started`,
+  `vector.run.stalled` and `vector.gate.failed` (full reconcile gate) —
+  ids-only resources, never document/query/prompt text.
+- **Tools → Indexing is now a real control surface** for admins: reindex
+  (verify or force), recent runs with queued≠finished status, cancel,
+  retry, orphan-sweep/vacuum/index-rebuild/retry-failed maintenance, an
+  orphan-sweep dry run, and structured refusal messages. The legacy-space
+  warning stays explicit. `tools.retrieval` is declared `aligned` in the
+  study settings map (dev canonical sync is a follow-up handoff).
+- **Read-DTO vocabulary parity test** pins study's run status, cold and
+  degraded tokens to the shared career/study fixture table.
+- **Deliberately not shipped (Q3c):** the real vector-space lifecycle and
+  cutover target, golden-query quality gates/compare, the full family
+  parity runner, alerts, and `ai_generations`-style metadata tagging.
+
+### Added (retrieval operations — plan 51 Q3a)
+- **The family retrieval-operations contract is vendored** (byte-identical
+  to `dev-vector-p0`, sha-gated by the fixture wall) with the exact
+  `VECTOR_REINDEX` / `VECTOR_MAINTENANCE` / `VECTOR_CUTOVER` job names.
+  Study's closed `JobType` vocabulary and `jobs.type` CHECK gain the three
+  slots; `jobs.result` carries the bounded
+  `scanned/embedded/skipped/failed/failed_ids/truncated/gate` contract.
+- **Bounded handlers over the existing legacy `chunk_vecs` store** — a
+  resumable-free, limit/batch-capped reconcile that verifies or re-embeds
+  chunks and publishes coverage only after a full pass; maintenance for
+  orphan sweep, vacuum, index rebuild and scoped retry; a cutover handler
+  that refuses honestly because study has no space lifecycle yet (Q3b).
+- **Two operational aggregates** (`retrieval_query_rollups`,
+  `retrieval_coverage_snapshots`, migration `0010_retrieval_ops`) with
+  30/90-day TTLs. Query health (latency, zero-result, candidates, degraded
+  reason) is buffered off the search hot path and flushed in 5-minute
+  buckets; no query text is recorded. Rollups are aggregates, not audit
+  history.
+- **Admin read surface** `GET /api/v1/admin/retrieval/{overview,spaces,
+  coverage,runs,query-health}` composed from the legacy store, jobs and the
+  aggregates; cold/empty/degraded states stay truthful. Settings → Tools →
+  Indexing gains a read-only status card for admins.
+- **At Q3a this was deliberately not shipped:** the management/action UI,
+  space lifecycle, quality gate, idempotency/single-active-run lock,
+  `ai_generations`-style metadata tagging, and `tools.retrieval` alignment.
+  Q3b (above) shipped the action API, lock, audit and Tools controls; the
+  lifecycle, quality gate and full parity runner remain Q3c.
+
+### Added (cloud calendars — ADR-0052 / plan 52)
+- **A course can bind its own cloud calendar.** Providers come from the
+  family catalog (Google, Microsoft 365, Nextcloud, iCloud, Fastmail, generic
+  CalDAV, read-only ICS); exam, deadline and milestone plan items project as
+  all-day events, and two-way sync is opt-in with an explicit study-event
+  acceptance filter. Credentials live only in the OS keyring
+  (`calendar:<link-id>:…`); the database stores a pointer, never a token.
+- New `GET/POST/PATCH/DELETE /api/v1/calendar/links`, the provider catalog,
+  one-shot secret write, OAuth start/complete, and test/sync verbs; migration
+  `0009_calendar_links` adds the binding + identity-map tables and the
+  `exam`/`deadline` plan kinds.
+- Settings → Tools → Connectors → **Cloud calendars**: bind, status, test,
+  sync and disconnect. The planner's add form offers the two new kinds.
+- **The bind form is data-driven (plan 52 §12 Rev 4).** Fields — including
+  the sign-in method (app password vs access token) — are derived from the
+  catalog row's protocol, auth kinds and base-URL rule (`setup_fields` on the
+  provider catalog response); adding a provider that speaks an existing
+  protocol needs no frontend change, and the card holds no provider branches.
+- **Calendar discovery (§9 M1).** `POST /api/v1/calendar/links/discover`
+  lists an account's calendars (CalDAV PROPFIND, Google `calendarList`, Graph
+  `me/calendars`) — capped at 50 rows, credentials held only for the one
+  request, URLs sanitized to scheme+host+path. The bind form picks a calendar
+  instead of pasting collection URLs; bound links offer **Choose calendar**
+  (this is how Microsoft links select a calendar after OAuth).
+- **OAuth honesty (§10 E12).** The bind flow's `state` is bound to the
+  profile and single-use: the pending slot is consumed on success, expiry,
+  profile mismatch or state mismatch, so a replayed or cross-profile
+  completion is refused. The hand-rolled `app/core/oauth.py` flow is kept for
+  now behind a marked seam in `calendar_sync.py`; migration to the family
+  `nx_auth.oauth` module (PKCE S256, session-bound state) is documented in
+  `docs/dev/cloud-calendars.md` and lands as a drop-in when that module
+  ships.
+- **Host contract pins** (`tests/test_calendar_sync.py`): the
+  `local_hash`/`remote_hash` two-pin link schema (E3), the `skip` conflict
+  default (C2/E4), window-aware reconcile — out-of-window links are skipped,
+  never unlinked (E5) — and private-ICS-URL custody: the full URL goes to the
+  keyring, the row keeps only scheme+host+path (C4).
+
+### Changed (update checks — family version API, plan 48 W6)
+- **`GET /api/v1/instance/update-check` now runs on the synced family
+  version-check contract** (`backend/app/services/platform/version_check.py`,
+  canonical in `the family contract canonical/`): the ad-hoc GitHub-Releases poll and its
+  crude version tuples are replaced by the neuronection.com version API
+  (ADR-0048) with real semver ordering, the stable-channel law (prereleases
+  are never offered to stable clients), document validation before use and
+  the skip-on-failure rule. Response shape is unchanged — the OpenAPI type
+  is untouched. The plan-87 F banner is replaced by a discreet update badge
+  in the sidebar footer (dot + popover with release links, self-clearing);
+  accepted by the shared cross-language fixture wall
+  (`backend/tests/fixtures/version_check.fixtures.json`).
+
+### Changed (provider settings — family adoption)
+- **Web search providers render through the family `web-search-providers`
+  modules** (assistant-ui ^0.74.0), in the AI-providers pattern: configured
+  providers are cards with all management actions in the `⋯` menu (enable,
+  reorder, test, edit, delete), adding a provider is a two-step wizard
+  (provider tiles → settings form) in a modal with the connection name
+  auto-seeded from the provider label (numbered when taken), and the form
+  keeps the main page minimal — the API key (or the required instance URL)
+  plus the get-key link, with the name, endpoint overrides and the
+  timeout/result-count tuning under **Advanced**. Endpoint overrides persist
+  only when they deviate from the catalog default; editing keeps the stored
+  key unless a new one is typed, and a **Clear stored key** action removes
+  it. The search-provider API now accepts `timeout_ms` (500–30000, the
+  catalog limit) alongside `max_results`.
+
+### Added (connected sources — plan 86 / ADR-214–216)
+- **One adapter family for source providers.** WebDAV/Nextcloud, Google
+  Drive, Dropbox, OneDrive, a local Zotero collection and local Anki decks
+  join RSS/YouTube/site search behind one reconciliation seam. Provider
+  identity is catalog data (`providers.json`) validated at registration, so a
+  new provider of an existing kind is a catalog row plus an adapter class —
+  no migration (ADR-214).
+- **OAuth2 loopback accounts.** Google Drive, Dropbox and OneDrive connect
+  through an authorization-code + PKCE flow with a one-shot `127.0.0.1`
+  listener; access/refresh tokens and token-provider passwords are sealed in
+  the OS keyring, refresh stays inside the adapter layer, and disconnecting
+  wipes the slots (ADR-215; supersedes plan 73's external-MCP-only OAuth
+  ruling for loopback-capable providers).
+- **WebDAV backup destination.** A WebDAV source (and a Dropbox connection)
+  can hold `sa-backup/v1` archives: upload, list, download and restore
+  round-trip from the source row. Google Drive and OneDrive stay read-only and
+  request no write scopes.
+- **Zotero and Anki bridges.** Zotero items arrive as citation-complete
+  suggestions (DOI/authors/year/container) with attachment import; Anki
+  reviews union-merge into `external_review_events` and deterministically
+  recompute mapped cards' FSRS state (ADR-216).
+- **RSS media enclosures.** Allowlisted audio/video enclosures become
+  audio/video suggestions with a size cap; accepting one downloads it and
+  feeds the existing transcribe job.
+
+- **Discover integrates connected sources.** Saved suggestion rows from
+  adapter-backed providers gain an **Import & parse** action that fetches
+  through the source adapter (remote files never need to be publicly
+  reachable), and a vanished remote file is marked missing on the next scan.
+
+### Added (academic ingest — plan 85 / ADR-211–213)
+- **Scholarly discovery providers.** arXiv (Atom), OpenAlex and Crossref join
+  the Discover dialog beside web/YouTube/site presets — key-free, behind the
+  polite perimeter, with `paper | dataset | reference` kinds and DOI metadata
+  carried into saved suggestions (ADR-211).
+- **Citations as schema.** Materials gain nullable citation columns
+  (title/authors/year/DOI/container/kind); a `.bib`/`.ris` upload imports
+  entries as link materials with DOI-first dedupe, a selection exports back to
+  BibTeX, and notes render `[[cite:<id>]]` as an `Author (Year) — Title` chip
+  (ADR-212).
+- **Calendar import.** A `.ics` timetable stages a preview, expands recurring
+  events into bounded planner items, dedupes re-imports by calendar UID, and
+  fills `exam_date` only after an explicit confirmation (ADR-213).
+- **Markdown-vault preset.** Link a folder of Markdown notes: frontmatter
+  titles/tags, resolvable `[[wikilinks]]` with backlinks, versioned rescans, and
+  a "download as vault" export (ADR-213).
+- **Site presets.** Wikipedia, MIT OpenCourseWare and OpenStax join Khan
+  Academy as default discovery site presets (data only).
+
+### Changed (record — plan 83 / ADR-206/207)
+- **`docs/STATUS.md` is a lean living index.** The phase header, module-status
+  table, open issues and next-round pointers stay; the ~9,200-line narrative
+  (round as-builts, dated changelog, incident post-mortems) moved to
+  `docs/dev/history.md` (9,573 → 237 lines and 9,386 archived).
+- **The STATUS version line is auto-derived.** `scripts/version_manager.py`
+  gained a `check` command and a `[[propagate]]` entry for
+  `docs/STATUS.md`; `scripts/check-status-version.sh` runs in CI, so a version
+  bump cannot leave `v0.8.0` in the header again.
+- **Three contradicting docs corrected:** the data model no longer lists the
+  shipped `study_sessions` as "not yet built", and the SDK reference describes
+  the live two-strikes `failing` status instead of calling it reserved.
+- **Plan corpus hygiene:** seven shipped plans flipped to COMPLETE (as-built),
+  the two stale `HANDOFF-*` files and the duplicate library-placement plan were
+  archived, and a deferred-follow-ups register now lives in the family plans
+  README.
+
+### Added (quality gates — plan 84 C/D / ADR-210)
+- **Coverage is measured report-only.** CI publishes `pytest --cov=app` and
+  vitest v8 coverage artifacts on every PR; no floor is set until a month of
+  numbers exists (baseline 2026-10-22: 88% backend statements, 77.5% frontend
+  lines).
+- **Golden OCR/extraction regression gate.** `tests/evals/test_ocr_golden.py`
+  + `ocr_thresholds.json` score per-page routing, native PDF extraction and
+  hybrid assembly against recorded thresholds (block structure, math-fence
+  integrity, numeric fidelity). The deterministic subset runs in CI; the live
+  vision half is opt-in (`SA_EVAL_LIVE=1`). Proven with three synthetic
+  fixtures; the owner's real scans drop into the documented `golden/` slots.
+- **Two e2e smoke specs:** `07-discovery` (link material → Discover dialog)
+  and `08-extensions` (MCP connector → refresh → instance status → docs).
+
+### Changed (structure — plan 84 A/B / ADR-208/209)
+- **`NodeWorkspace` is a tab host (3,395 → under 400 lines).** Per-tab
+  components live under `features/courses/workspace/` (`MaterialsTab`,
+  `OverviewTab`, `NotesTab`, `CoverageTab`, `TutorTab`, plus `tabs.ts`,
+  `navigation.ts`, `shared.tsx`); the shell keeps routing, query wiring and
+  the shared header. The colocated test block was split 1:1 into
+  `workspace/__tests__/` with a shared harness (95 tests, count unchanged).
+- **Backend router domains split (zero route-shape change):** planner + ICS
+  → `api/plan.py`, node/tree/placement/outline/concepts → `api/nodes.py`,
+  genesis → `api/genesis.py`; `course_bundle.py` → `course_export.py` /
+  `course_import.py` / `course_validate.py`. Regenerating `openapi.json`
+  produces an empty diff (the proof).
+- **`ca-course/v2` rows are TypedDicts:** manifest, course, tree, concepts
+  (rows + links + coverage), materials (drawings/extraction/index card/links)
+  and folders (rows + links) are declared wire types (plan 82-D residual 5).
+- **Pyodide is lazy:** the code-question runner is dynamically imported, so
+  the 9.6 MB runtime is no longer reachable from the initial route chunk
+  (entry 1,709.10 kB → 1,689.25 kB min / 473.36 → 465.22 kB gzip).
+
+### Fixed (frontend flake — plan 84 D)
+- **`SnapIntoNote`'s insert no longer races the mutation options.** The
+  capture flow reads current state through a latest-ref (and the reset moved
+  from a passive effect to the render-phase transition), so a click cannot
+  land on a stale `shot === null` closure. Suite deadlines are load-immune
+  (testing-library 20 s, vitest 30 s); proven with 5/5 clean full-suite runs
+  under concurrent-session load and 20/20 isolated suspect-file runs.
+
+### Removed (legacy residue — plan 82 D / ADR-205)
+- **The Phase-0 rendering harness is gone.** The `/spike` route and
+  `features/spike/` are deleted; the Settings → Developer tab now shows build
+  diagnostics (app/backend version + health). Three unused direct dependencies
+  (`simple-icons`, `@radix-ui/react-slot`, `type-fest`) are removed.
+- Hot-path payload typing: the chat turn-failure marker and the course-bundle
+  adaptation maps are TypedDicts (service layer only; the DB shape is
+  unchanged).
+
+### Changed (vocabulary sweep — closed sets at every boundary, plan 82 C / ADR-204)
+- **Question types, exercise kinds, flashcard kinds and job handler keys are
+  StrEnums.** The API DTOs carry them, so the OpenAPI schema emits closed
+  unions: an unknown quiz `type` is rejected with a 422 and a new member
+  fails the frontend typecheck until the UI handles it. `questions.type` and
+  `exercises.kind` gain DB CHECK twins in migration `0002_vocab_sweep`, and a
+  job-dispatch test asserts every `JobType` member has a handler and vice
+  versa.
+
+### Changed (typed contracts — generated types everywhere, plan 82 B / ADR-203)
+- **Every `lib/api` module consumes the generated OpenAPI schema.** The ~250
+  hand-written wire interfaces are gone; what remains is 27 registered
+  client-side shapes (narrowed views of open documents plus the few routes the
+  schema cannot see), enforced by `pnpm check:api-types` in CI. A backend DTO
+  change now fails `pnpm typecheck` instead of silently widening to `string`.
+- **Closed payload maps are typed server-side:** the chat turn trace, proposal
+  result document, provider status and preset model refs are generated shapes;
+  `MaterialOut.provenance` stays an open metadata document by design and
+  workspace materials expose `reextract_modes`.
+
+### Changed (no-legacy sweep — mermaid fork removed, plan 82 A / ADR-202)
+- **Mermaid diagrams render through `@neuronection/assistant-ui`.** The local
+  `components/blocks/MermaidDiagram.tsx` fork is deleted; `BlockRenderer` and
+  the editor's mermaid node view consume the library renderer via
+  `components/ui/chat-markdown.ts`, and the editor keeps its own
+  broken-diagram diagnostic (app logic, not renderer logic).
+- **Chat composition hosts renamed** `StudyChatPanel` / `StudyChatSessionList`
+  so the family usage audit stops flagging legitimate composition as a shadow
+  copy; the app keeps zero local copies of library components.
+- The family `HitlProposalCard` gained the study-promoted extras (body slot,
+  conflict re-apply, conflict note, `reapply` label); study adopts it with the
+  next library release.
+
+### Changed (schema — payload contract law, plan 81 D / ADR-200)
+- **Known-shape JSON state is typed; canonical content documents are
+  versioned.** `chat_proposals` stores the card's target/snapshot as columns
+  (`target_kind`, `target_name`, `target_node_id`, `target_node_path`,
+  `original_md`) and its anchored edits in `chat_proposal_anchors`; the
+  per-action instruction document stays JSON behind `payload_schema_version`
+  and is validated by the action's payload model at every write.
+  `chat_sessions.quiz_pending` moved to the one-row `chat_quiz_pendings` table
+  (the session API exposes the public card state only — expected answers never
+  leave the server), and drawing `view` JSON became
+  `view_x`/`view_y`/`view_width`/`view_height`. `notes.body`/`note_versions.body`,
+  `chat_messages.blocks`, `extractions.blocks` and drawing
+  `strokes`/`ocr_blocks` keep their shape with `<column>_schema_version`
+  siblings and write-boundary validation; `profiles.preferences` is validated
+  at the preferences API edge. Every remaining JSON column has a named payload
+  type and a `keep-open | typed-out` verdict in
+  `contracts/data-model.jsonb-inventory.txt`; a model⇄DB drift gate asserts an
+  empty autogenerate diff. Migration `0074_payload_law` (real downgrade).
+
+### Fixed (extensions — bundled manifest provenance)
+- **The three bundled connectors declared the wrong license.** The
+  envelope manifests of `external-sources`, `discovery` and `mcp`
+  carried `"license": "MIT"`, while Study Assistant itself ships under
+  **Apache-2.0** (repo `LICENSE`, README) — and every sibling host
+  (health / career / desktop) already declares `Apache-2.0` on its
+  bundled manifests. The provenance field is rendered verbatim on the
+  family's extension surfaces (the hub's extension detail pages, the
+  in-app Docs dialog), so the wrong identifier reached visitors.
+  Corrected to `Apache-2.0` in all three manifests — metadata only, no
+  behaviour change.
+
+### Added (per-extension docs — the wave-8 surfaces)
+- **Every bundled connector now documents itself** (plan 34 wave 8): the
+  three builtins (`external-sources`, `discovery`, `mcp`) carry a `docs/`
+  tree (the closed-category `extensionDocsTree` form) with real,
+  code-grounded pages — overview / setup / usage / troubleshooting, and
+  the mcp connector adds **security** with the T3 perimeter disclosure
+  rendered verbatim from the charter (byte-checked by the suite). The
+  manifests bind the trees with the `docs` pointer, and the registry
+  validates the binding at registration — a pointer with a missing or
+  invalid tree throws exactly like an invalid manifest (red-checked).
+- **The docs surface**: `GET /api/v1/extensions/{id}/documentation`
+  (tree + markdown, opens on the landing page, traversal-safe,
+  fence-aware raw-HTML neutralization) and the settings **Docs** action
+  on the Web sources / Discovery / Connectors cards, rendering the kit's
+  docs dialog (sidebar from the tree, audience badges, landing rule).
+
+### Changed (docs — the Extension SDK set)
+- **The extension documentation set lands at `docs/dev/sdk/`** (plan 34
+  wave 5, the last content wave): all ten chapters of the family
+  taxonomy with the `chapters` marker declared, quickstart = register an
+  MCP server (the family template's shape) → refresh → declare the
+  discovery contract → DISCOVER uses it, with a REAL transcript and the
+  CI-pinned pipeline; five recipes in the four-part frame; the T3
+  perimeter disclosure verbatim (byte-verified by the tree gate) in the
+  security chapter and the new
+  [Add an MCP connector](docs/user/add-an-mcp-connector.md) page. Four
+  user pages (`add-a-search-provider`, `add-an-mcp-connector`,
+  `manage-web-sources`, `extension-troubleshooting`) join the user
+  guide; `docs/docs-tree.json` lists the set chapters and the new pages.
+  The set's tree validates in-repo
+  (`backend/tests/test_extension_docs_tree.py` — vendored schema +
+  fixtures via the family sync, audience routing, both-trees listing,
+  verbatim-disclosure + internal-link doc checks). Truthfulness pass
+  over the pre-plan-28 leftovers: every stale `Settings → AI →
+  Integrations/Skills` and `Settings → Search` path in user/dev docs
+  now points at the real Tools-tab sections; `docs/dev/architecture.md`'s
+  extension sections re-point to the set.
+
+### Fixed (extensions — real MCP spawns)
+- **Every real MCP server spawn raised `TypeError` before the first
+  byte of protocol** (plan 34 wave 5 finding): `app/ai/mcp_client.py`
+  exited its transport/session stack with a *sync* `with` on an
+  `AsyncExitStack` — invalid, and never caught because the whole suite
+  monkeypatches the spawn functions. Fixed to `async with` (two sites);
+  the suite now carries a REAL-subprocess wall
+  (`test_mcp_connectors.py::test_real_stdio_spawn_feeds_discovery_end_to_end`
+  + the `tests/fixtures/mcp_discovery_server.py` twin) so the spawn
+  path can never silently rot again. Refresh/call against actual
+  external servers works for the first time since plan 73-G.
+
+### Changed (settings — the MCP instance surface renders through the family kit)
+- **The MCP connectors card swaps onto the `@neuronection/assistant-ui`
+  integrations kit** (plan 33 Phase D / ADR-0040 D19/D25): the hand-rolled
+  server rows are now `IntegrationInstancesList` — every configured MCP
+  server renders as a D19 instance of the ONE bundled `mcp` extension (G1
+  grouping), with the family status vocabulary (`ok | degraded | failing |
+  stale`), `needs-config` conditions, `last_success_at` and
+  `consecutive_failures` coming straight off the wire→kit mapping in
+  `mcpIntegrationViews.ts` (desktop's pure-mapping-module precedent;
+  statuses narrow through the kit's generated vocabulary). The wire line,
+  sealed-credential chips, last error and the refresh/edit actions ride the
+  kit's instance-actions slot; delete is the kit's tombstone action; enable
+  is the kit toggle. **The Phase-7 wall holds: the T3 perimeter disclosure
+  still renders verbatim from the vendored charter** (`GET /mcp/charter` →
+  `mcp-t3-disclosure`, asserted byte-for-byte by the card test). The
+  declared-tool contract editor (`discovery | parse`) stays study-domain
+  app content under the list (the kit has no per-tool channel); the
+  add/edit dialog keeps its bespoke keep-token/clear-env semantics.
+  WebSourcesCard and DiscoveryCard stay app sections — course-scoped
+  RSS/YouTube/site-search scanners and profile site presets are content
+  pipelines, not extension sources (the kit's source row models the
+  GitOps surface; recorded, not forced). Pin moves to `^0.67.0` (the
+  pending library publish wave); local dev runs the tarball overlay
+  until it lands.
+
+### Added (family extension charter — plan 32 Phase 7, 2026-10-16)
+- **Study converges onto the family extension charter (ADR-0040)** with the
+  D24 subsystem home: `backend/app/extensions/` (vendored contract modules +
+  the app-side registry, typed errors, instance status, the relocated
+  ADR-0035 search trio, the MCP instance lifecycle) and repo-root
+  `contracts/` (charter, envelope/source schemas, capability-RPC, the
+  contract + polite-HTTP fixture walls — byte-identical via the dev sync
+  scripts). Bundled connectors (`external-sources`, `discovery`, `mcp`)
+  carry charter-envelope manifests validated at registration — an invalid
+  or unhonored-capability manifest throws, never half-runs — and capability
+  use is gated by declared data (D3), never probed.
+- **MCP servers surface as D19 instances**: `GET /mcp/servers` rows now
+  carry the family status vocabulary (`ok | degraded | failing | stale`,
+  `last_success_at`, `consecutive_failures`, `needs-config` conditions —
+  computed without a migration) and the declared `discovery | parse` tool
+  contracts; the settings card renders the status and, verbatim from the
+  vendored charter, the T3 perimeter disclosure (`GET /mcp/charter`).
+- **The charter typed 15-code error model** (`extensions/errors.py`)
+  replaces the local error vocabularies on the extension surface: external
+  sources raise typed codes (`invalid`, `not-ready`, `protocol`,
+  `provider`, `unreachable`), MCP validation raises `invalid`, and the
+  vendored ADR-0035 `SearchError` taxonomy maps onto the charter codes via
+  the D4 projection (the vendored trio itself stays byte-identical per the
+  ADR-0035 wire contract).
+- `docs/user/settings.md` corrected to the real settings tabs (General, AI,
+  Tools, Data, Users, Developer) and the MCP/Integrations + status copy.
+
+### Fixed (OpenAI-compatible wire sends `max_tokens` again — endpoint-routed token cap, 2026-10-15)
+- **Local and OpenAI-compatible endpoints stop receiving
+  `max_completion_tokens`:** Python `langchain-openai` renames the token
+  cap unconditionally, which modern OpenAI models require but strict
+  compatible servers (Ollama, LM Studio, llama.cpp, vLLM) reject. The
+  factory now routes by endpoint (ADR-0038) — api.openai.com keeps the
+  modern name, every other base URL gets `max_tokens` via
+  `CompatibleChatOpenAI` (with `CompatibleCaChatOpenAI` preserving the
+  reasoning-delta extraction). Model ids are never sniffed for the wire
+  contract. Pinned by tests/test_chat_models.py.
+- **The policy is canonical and enforced:** the wire rules live in the
+  vendored `app/ai/wire_params.py` (byte-identical across the family —
+  this repo no longer carries its own copy), temperature stays
+  omit-unless-configured (study never manufactured a default), the
+  shared fixture table (`tests/fixtures/wire_params.fixtures.json`)
+  drives the new tests/test_wire_params_contract.py alongside the other
+  repos, and alignment rules R6/R7 keep wire construction in the AI
+  layer and temperature defaults out of app code.
+
+### Added (model transport knob — reasoning + function tools on gpt-6 via the Responses API, 2026-10-15)
+- **Model rows can set `chat_transport='responses'`** (nullable column,
+  migration 0071) to ride the Responses API — honored only when the
+  base URL is api.openai.com (compatible servers don't implement
+  /responses and keep completions), always store-less (`store=False`).
+  The gpt-6 family rejects function tools + `reasoning_effort` on chat
+  completions; the knob keeps reasoning on tool tasks, while
+  `reasoning_effort='none'` remains the zero-config alternative.
+  `auto`/NULL stays on completions — nothing changes for existing rows.
+  The shared fixture table pins the resolution matrix. **Field learning,
+  same day:** gpt-6 rejects tool tasks on completions even with
+  reasoning_effort omitted — so `auto` now routes by endpoint
+  (api.openai.com → responses store-less, else completions;
+  `chat_transport='completions'` pins the legacy wire).
+
+### Changed (Add-model form polish — provider context, modern manual toggle, capability implications, 2026-10-13)
+- **The form always answers "model of what?":** the add/edit modal opens
+  with a discreet provider context banner (configured name + base URL)
+  above the picker, and the manual-id toggle becomes a labelled ghost
+  control with direction copy (pen icon → manual entry; "Pick from the
+  catalog" to go back) — library 0.57.0 (`providerContextLabel`,
+  `useCatalogLabel`).
+- **Vision/tools imply text:** the form expresses the family's own
+  semantics (`infer_caps` builds text first and appends the modifiers;
+  every preset vision/tool model carries text) via `capImplications` —
+  selecting Vision or Tools auto-enables Text, and deselecting Text
+  drops everything that implies it. Catalog picks normalize the same
+  way. i18n en + el + de.
+- **Decision slots suggest their basic default:** an empty decision slot
+  shows a muted "Suggested: {{model}} ({{provider}})" line from the
+  first canonical preset declaring a `decision_default` — display-only,
+  never an assignment.
+
+### Changed (embeddings defaults wave — the embeddings slot gap-fills at setup, 2026-10-13)
+- **Embeddings defaults join the setup flow:** the canonical presets gain
+  `embeddings_model` (docs-verified: openai `text-embedding-3-small`,
+  gemini `gemini-embedding-2`, mistral `mistral-embed`, ollama
+  `nomic-embed-text` — pull-required; honest nulls elsewhere; openai and
+  gemini ids join curated lists so catalog curation keeps them) and
+  setup gap-fills the EMPTY `embeddings` default slot from it —
+  `bind_embeddings` joins the options body (D14's binds + embeddings),
+  `assigned_embeddings_model` rides the outcome, never-clobber rules
+  hold, and `bind_embeddings: false` binds nothing. Contract matrix
+  cases 21/21b pin the gap-fill both ways. i18n unchanged (the slot
+  predates this wave).
+
+### Added (plan 26 follow-up — decision models in the manual Add-model form, 2026-10-13)
+- **Add-model speaks decision:** the models-tab add/edit form (library
+  `ModelRegistry`, assistant-ui 0.56.0) gains standalone capability
+  kinds — decision, speech-to-text, text-to-speech and embeddings select
+  exclusively (a standalone kind replaces the chat caps and vice versa —
+  the family's D4 slot-separation law expressed in the form), and a
+  decision selection stamps the transport seam (read-only
+  `Transport: systemone`, carried on the row). Generation options —
+  temperature, max tokens, reasoning effort — now render per capability
+  (only for chat-family caps), so decision/stt/tts/embeddings models get
+  the minimal form.
+- **Backend contract:** `POST/PATCH /api/v1/models` accept `decision`
+  caps on any provider row (the API vocabulary gains the frozen §15
+  `decision` capability) plus `decision_transport` (validated — the one
+  shipping transport, `systemone`); creating/editing a decision model
+  stamps the transport from the payload or the default, and editing the
+  caps away clears it. Matrix-pinned by the new contract test.
+
+### Added (plan 26 follow-up wave B — capability chips on the setup tiles, 2026-10-13)
+- **The preset grid is self-explanatory:** the setup wizard derives
+  per-tile capability chips from the API preset data — chat type → Chat
+  (+ Vision where the preferred model carries it, + Speech-to-text where
+  `stt_model` exists), `decision_models` → Decision, keyless-local →
+  Local — rendered by assistant-ui 0.55.0's new `chips` prop with i18n
+  labels (`settings.setup.chip*`, en + el + de). The grid now reads:
+  openai [Chat, Vision, Speech-to-text] · gemini [Chat, Vision] ·
+  openrouter [Chat, Decision] · typesafe [Decision] · anthropic
+  [Chat, Vision] · groq/mistral/deepseek [Chat] · ollama
+  [Chat, Decision, Local].
+
+### Changed (plan 26 §13.3 follow-up — decision presets exposed, 2026-10-13)
+- **Three decision providers, one transport, docs-verified:** the
+  `typesafe` preset flips into `presetOrder` (a decision-only tile after
+  OpenRouter; keyUrl → docs.typesafe.ai/api with console-worded steps —
+  the console URL is not stated in the docs); Ollama gains decision
+  models (`nimble` default, `tev1`, `clef`, `clef-flash` — pull-required,
+  version floor riding the preset steps: v0.35.0+, clef models v0.35.1+);
+  OpenRouter's decision ids are corrected to `typesafe/jev-1.13` (pinned,
+  the default) + `~typesafe/jev-latest` (rolling) with the systemone
+  surface pinned via `base_url_override` (`https://openrouter.ai/api` —
+  the `/api` prefix; the SDK appends `/v1/systemone`). No `provisional`
+  markers remain on decision data. Canonical + sync re-vendored
+  byte-identical; `presets_data.py` regenerated.
+- **Keyless decision resolution (local Ollama):** the official
+  `typesafe-sdk` requires a non-empty API key (D9), so keyless presets
+  (no `key_url` in the canonical data) resolve through the explicit
+  sentinel key instead of failing `needs-key`; keyed presets keep the
+  needs-key failure. Pinned by the conformance suite; the contract
+  matrix's exposure assertions flip to the new reality (typesafe in
+  `presetOrder`, openrouter ids corrected, ollama decision data pinned).
+
+### Changed (plan 26 §13.8/§15 no-legacy + single-source sweep, 2026-10-13)
+- **No canonical model ids as code literals:** the decision probe's
+  model id derives from the synced preset data via
+  `decision_probe_model_id()` (specs → `decision_default`, raising on a
+  preset that declares neither — never an invented `jev-latest`), and
+  the key-only `POST /providers/{id}/test` probe derives from the
+  provider's preset stamp; a decision provider with neither models nor
+  a derivable preset returns an actionable failure. Contract matrix
+  gains the derivation pin (case 20b).
+
+### Changed (plan 26 Phase 6 closeout)
+- **Ruff: the generated presets module is excluded from the formatter**
+  (`[tool.ruff.format]` exclude; the lint E501 per-file-ignore stays) —
+  the scoped family accommodation for a file that is emitted, never
+  hand-edited, and not formatter-stable. Ten Phase-3 files
+  (`app/ai/decide/`, `app/ai/providers/`, `app/api/ai_settings.py` and
+  four test files) are reformatted: `ruff format --check .` was red on
+  them. Vendored gates re-synced (byok gate **R8** — no needle/llm
+  decision-engine code; alignment family table all-strict; convergence
+  `--self` layout probe).
+### Fixed (plan 26 Phase 6)
+- **The setup-modal clipboard mock restores the writeText Promise
+  contract** (`mockResolvedValue`) — a bare `vi.fn()` returning
+  undefined fired an unhandled rejection that red-exited the whole
+  vitest run even at 1436/1436 green.
+
+### Fixed (2026-10-13 incident)
+- **One failing chat turn no longer locks the whole app:** the turn job
+  held its SQLite write transaction across minutes of provider retries, so
+  every concurrent request failed with `database is locked`. The handler
+  now commits the pre-engine writes before the turn engine starts, and the
+  mention-registry refresh inside turn preparation commits immediately
+  instead of flushing into a transaction that stayed open until the
+  contract step. Regression tests probe the write lock from a second
+  connection during a blocked model call, blocked preparation, and the
+  retry window.
+- **`touch_last_used` is throttled and fail-soft:** the per-request
+  profile-timestamp write runs at most once a minute per profile and a
+  busy database logs-and-skips instead of failing the request.
+
+### Added (plan 26 Phase 3)
+- **Decision models (Python decision reference):** `decision` joins the
+  model-capability vocabulary (explicit only) and `models.decision_transport`
+  (`systemone`) is the transport seam (migration 0069, tested downgrade);
+  assignment moves to four `decision:tool-dispatch | decision:boolean-gate |
+  decision:choice | decision:score` slots (primary + fallback) in
+  `DefaultTaskAssignment`/course defaults. Setup gains `bind_decision`
+  (capability-aware gap-fill, never a live slot or `open-args`), decision
+  rows persist from preset `decision_models`, and the provisional
+  decision-only `typesafe` preset validates via the 10 s decision probe
+  (classified failure persists nothing; it renders no tile). New
+  `app/ai/decide/` funnel: transport registry over the slots (D2b routing,
+  fallback chain, per-assignments-revision cache), `typesafe-sdk` client
+  behind a typed seam, the tool-dispatch projection, `run_decision` with one
+  audit row per invocation, and the shared conformance suite. Settings UI:
+  *Decision models* group (library pickers, decision-only filtering, privacy
+  notice at the group), decision rebind rows in the setup success panel, and
+  the re-run review's five-bind body. Contract-test matrix grows to 20 cases
+  (bind_decision, probe, slot separation, presets-v2 shape).
+
+### Changed (plan 26 Phase 3)
+- `scripts/check-ai-alignment.sh` re-vendored after a dev-master fix: R1's
+  Python scope sanctions `typesafe_sdk` inside the whole `app/ai` layer
+  (matching desktop's JS scope and the frozen §3.7 text) instead of the chat
+  factory file alone. `typesafe-sdk>=0.7,<0.8` added (AI-layer confined).
+- `pnpm api:types` works headless again: `scripts/export-openapi.py` now
+  migrates its scratch database and pins `app_env=development` (the startup
+  seed needs tables; the production boot guard no longer trips on export).
+- `pnpm-lock.yaml` resolved the published `@neuronection/assistant-ui@0.54.0`
+  integrity (owner published the RC; the Phase 2 registry-pin follow-up).
+
+### Changed (plan 26 Phase 2)
+- **Setup UI swaps to the library kit:** `ProviderSetupModal`'s tiles and
+  guided form and `ReRunSetupDialog`'s review now render
+  `@neuronection/assistant-ui` components (`provider-setup-tiles` with the
+  manual tile, `provider-setup-form` with hosting/country riding
+  `advancedExtra` and §15 error-enum copy via `errorLabels`,
+  `setup-review` over the library switch row); the local `ProviderLogo.tsx`
+  and the hand-rolled review `SwitchRow` are deleted in the same commit.
+  The review keeps its four-key snake_case wire body (`bind_decision`
+  arrives with the Phase 3 decision port). Dep pin `^0.51.0` → `^0.54.0`
+  (0.54.0 pending publish — verified against the packed release-candidate
+  tarball: frontend lint + typecheck + 1429/1429 tests + build, backend
+  1407 passed + 4 skipped, byok R1–R7 + alignment gates green;
+  `minimumReleaseAgeExclude` gains 0.54.0).
+
+### Fixed (plan 20 S14 residual)
+- **The §4.5 control now knows the entrypoint mode:** the public
+  `GET /api/v1/instance/config` reports `identity_mode` (from the auth
+  kit — public fact, not secret), and the settings Users tab passes
+  `serverIdentity` to `InstanceModeControl` — "Remove login" is blocked
+  with the server reason on server instances instead of being offered
+  and failing at the API. OpenAPI types regenerated (`pnpm api:types`).
+
+### Security (plan 21)
+- **App-level rate limiting + hardened response headers (new coverage;
+  kit v0.4.0, re-pinned `eb3499103ce91cb52e3282c72129f72ed419f3bb`).**
+  Study previously had no limits above the auth surface and no response
+  hardening. The kit's family limiter + `SecurityHeadersMiddleware` now
+  mount with study's policy: `SA_RATELIMIT_{ENABLED,AUTH,AUTH_EMAIL,AI,
+  MCP,DEFAULT}` ceilings (requests/minute; `0` disables a general
+  bucket), login-shaped endpoints → AUTH, AI surfaces (`/ai`, `/chat`) →
+  AI, other `/api/` → DEFAULT, trusted-proxy per-IP identity, and the
+  family header baseline with the web/desktop CSP split (`'unsafe-eval'`
+  only for the valid per-boot `?shell=` marker — the desktop shell
+  document). New `tests/test_rate_limit.py` +
+  `tests/test_security_headers.py` pin the R1–R7 / H1–H3 matrix rows as
+  contract cases (§18.19–22).
+
+### Security (plan 19 Phase 4)
+- **At-rest secrets now sealed with the family cipher:** values stored in
+  the OS keyring (AI provider keys, the web-search key, MCP server
+  tokens/env) are written as `enc::<fernet-token>` strings under the
+  per-instance `SA_DATA_KEY` (`nx_auth.atrest`, the shared audited
+  implementation) instead of plaintext keyring entries — the keyring
+  stays the only storage. Existing plaintext entries keep reading
+  verbatim (study's values are keyring-held; there is no database
+  ciphertext to migrate), and values that cannot be decrypted read as
+  empty — never a guess.
+- **At-rest key rotation:** set `SA_DATA_KEY_PREVIOUS` (comma-separated)
+  to prior keys to keep old sealed entries readable after swapping
+  `SA_DATA_KEY`; the production boot guard now validates every prior
+  entry too. Runbook: `docs/dev/security.md` "Rotating the at-rest key".
+- The legacy pre-rename `CourseAssistant` keyring-service fallback is
+  gone (plan 20 §6c, folded into this phase): keyring entries written
+  under the old service name are no longer copied forward.
+- The pre-rename `CourseAssistant` data directory is no longer migrated:
+  `default_data_dir()` is a pure path computation now (plan 20 §6c,
+  folded into this phase). A machine still on the old directory name
+  moves or re-links it manually (`SA_DATA_DIR` also relocates it).
+
+### Changed (plan 24 V2)
+- **One family chat vocabulary on the chat stream:** the WS chat topic now
+  carries only the family events (`flow_started` / `node_started` / `delta`
+  / `tool_call` / `flow_finished` / `flow_failed` / `flow_interrupted`) —
+  the legacy names (`stream_start`, `phase`, `stream_delta`,
+  `assistant_message`, `turn_error`, `stream_interrupted`) and the
+  dual-emit mapper are gone, backend and frontend in the same change. A
+  stopped generation now ends through the terminal `flow_interrupted`
+  event (library ≥ 0.51.0), so every consumer of a turn learns about the
+  stop; chat behavior is otherwise unchanged (same reasoning stream, tool
+  cards, stop UX, edit/regenerate).
+
+### Fixed
+- **Dev-db interpolation could read the prod env file:** `docker compose -f
+  docker/docker-compose.dev-db.yml` interpolates `${POSTGRES_DB}` /
+  `${POSTGRES_TEST_DB}` / `${SA_DB_PORT}` from the compose file's *directory*
+  `.env` — i.e. `docker/.env`, the standalone/prod stack's env file — so a
+  prod value could silently reshape the dev DB that `run-dev.sh` then
+  connects to (the bootstrap password was already pinned in the compose
+  file against exactly this mismatch). `run-dev.sh` now pins the
+  interpolation to the dev root `.env` (empty env when absent); shell
+  exports (worktree-style `SA_DB_PORT`/`COMPOSE_PROJECT_NAME` overrides)
+  still win over it.
+
+### Changed (plan 20 Phases 6–7)
+- **No-legacy sweep (D10):** the CourseAssistant-era surface is gone —
+  `ca-drawing://` / `ca-image://` / `ca-material://` → `sa-*` schemes,
+  `ca-course/v*` / `caq/v1` / `ca-backup/v1` / `ca-skills/v1` → `sa-*`
+  format markers, legacy card kinds `basic`/`cloze`/`reverse` →
+  `card_basic`/`card_cloze`/`card_reverse` (one-shot migration `0068`
+  rewrites stored strings; the LLM card prompts speak `card_*` now).
+  `LEGACY_CARD_KIND_MAP` and its two bridge functions are deleted; the
+  `ca-*` storage-key namespace, drag MIME types and `CaMath` component
+  drop the prefix.
+- **Family convergence gate** (`check-family-convergence.sh`, vendored +
+  CI).
+
+### Fixed
+- Migration `0068` is PostgreSQL-safe (json columns cast to text and
+  back — `replace()` has no json form) and the deploy path works
+  end-to-end: `entrypoint.sh` drops a bash-only substitution, the
+  compose services pass the §8 key pins into the app container, and
+  `sqlalchemy[asyncio]` is a declared dependency. Found by the
+  standalone stack boot smoke (migrate → app healthy → nginx).
+
+
+### Changed
+- **Plan 20 Phase 4 — uniform family skeleton:** `main.py` is wiring
+  only (≤250 lines): identity install → `app/auth/install.py`, profile
+  binding + SPA fallback → `app/middleware.py`, per-boot seeding →
+  `app/seeds.py`, job handlers → `app/jobs/registry.py`. The desktop
+  bootstrap moves to `app/local.py` (career's reference shape: data dir,
+  `SA_IDENTITY_MODE=desktop` env defaults, migrations) and
+  `studyassistant` runs it before any `Settings` is built.
+- **Migrations are never run by app code (D6):** `create_app` no longer
+  runs `alembic upgrade head`. The desktop entrypoint migrates
+  (`app/local.py:run_migrations`), the docker stack gained a one-shot
+  `migrate` service (`entrypoint.sh migrate` / `serve` modes; `app`
+  depends on its successful completion — the owner-role two-role split
+  is unchanged), `scripts/run-dev.sh` migrates explicitly, and the
+  backup **restore** flow migrates the restored DB through the same
+  helper.
+- **`.env` resolution (ADR-0028 §4):** explicit `SA_ENV_FILE` →
+  source-anchored walk-up → none — and the walk-up is **disabled outside
+  dev/test**, so a baked-in `.env` can never downgrade a production boot
+  (health audit rule C-5). Production operators point `SA_ENV_FILE` at
+  the deployment file explicitly.
+
+### Added
+- `tests/test_local.py` (bootstrap: desktop env defaults, entrypoint
+  migrations) and S9 coverage for the `.env` resolution rules.
+
+### Changed
+- **Identity glue unified on the auth-kit (plan 20 Phase 2, ADR-0028):**
+  the instance-init logic is now `nx_auth.instance.initialize_instance`
+  — fixing two contract bugs in the old inline copy:
+  - **§4.4 violation fixed (B1):** `SA_AUTH_MODE=open` with server
+    identity used to seed an **open server instance**; it now initializes
+    `authenticated` with a loud warning (desktop `open` is unaffected).
+  - **`.env` knobs reached dead code (B2):** the kit config was built
+    from `os.environ` only, so `SA_COOKIE_SECURE`, TTLs, lockout, etc.
+    set in `backend/.env` were silently ignored. All §16 knobs are now
+    routed from `Settings` through `nx_auth.config.knob_overrides` (OS
+    env still wins per key).
+- **New `Settings` fields (ADR-0028 §16):** `SA_APP_ENV` (fail-safe
+  `production` default; `scripts/run-dev.sh` sets `development`),
+  `SA_AUTH_ACCESS_TTL_MINUTES` / `SA_AUTH_REFRESH_TTL_DAYS` /
+  `SA_AUTH_REFRESH_ABSOLUTE_DAYS` / `SA_AUTH_LOCKOUT_THRESHOLD` /
+  `SA_AUTH_LOCKOUT_MINUTES` / `SA_AUTH_PASSWORD_MIN_LENGTH` /
+  `SA_REGISTRATION_ENABLED` / `SA_COOKIE_SECURE` /
+  `SA_TRUSTED_PROXY_COUNT` / `SA_RATELIMIT_AUTH` /
+  `SA_RATELIMIT_AUTH_EMAIL`, and the §8 key pins `SA_SESSION_KEY` /
+  `SA_REFRESH_KEY` / `SA_DATA_KEY` (all three or none). `SA_AUTH_MODE`
+  is now validated fail-closed by the kit instead of raising at settings
+  load.
+- **Production boot guards (nx_auth.boot):** production boots abort on
+  partial/weak key pins, non-Fernet `DATA_KEY`, `SA_DEBUG=1` or
+  `SA_DEMO_MODE=1`; server boots require pinned keys (desktop keeps its
+  generated 0600 `auth_keys.json`). Key resolution is
+  `KeyRing.load_for("SA", config_dir, pinned=…)` (Settings-backed, so
+  `.env` pins work like env pins).
+- **`studyassistant web`** now declares desktop-class identity like the
+  `app` mode (local entrypoint ⇒ `SA_IDENTITY_MODE=desktop`); docker/
+  uvicorn runs stay server-class. `identity_mode` parsing fails closed to
+  `server` on unknown values.
+
+### Added
+- `tests/test_contract_identity_glue.py` (§18 contract cases S1, S2,
+  S13-S15) and `tests/test_sec16_env.py` (§18.14 knob-routing matrix,
+  ported from career's `test_sec16_env.py`).
+
 ## [v0.12.1] - 2026-10-01
 
 **Operational notes for deploy:** the v0.12.0 release's GHCR job failed

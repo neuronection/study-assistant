@@ -10,6 +10,7 @@ const listCourses = vi.fn()
 const courseTree = vi.fn()
 const createCourse = vi.fn()
 const deleteCourse = vi.fn()
+const duplicateCourse = vi.fn()
 const importCourseBundle = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -17,9 +18,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     listCourses: () => listCourses(),
-    courseTree: (id: number) => courseTree(id),
+    courseTree: (id: string) => courseTree(id),
     createCourse: (...args: unknown[]) => createCourse(...(args as [object])),
     deleteCourse: (...args: unknown[]) => deleteCourse(...(args as [number])),
+    duplicateCourse: (...args: unknown[]) => duplicateCourse(...(args as [string])),
     importCourseBundle: (...args: unknown[]) =>
       importCourseBundle(...(args as [File, boolean])),
   }
@@ -56,7 +58,7 @@ function renderCourses() {
 }
 
 const COURSE = {
-  id: 3,
+  id: '3',
   title: 'Calculus I',
   subject: 'mathematics',
   level: null,
@@ -72,9 +74,10 @@ describe('CoursesPage', () => {
     courseTree.mockReset()
     createCourse.mockReset()
     deleteCourse.mockReset()
+    duplicateCourse.mockReset()
     importCourseBundle.mockReset()
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -83,6 +86,42 @@ describe('CoursesPage', () => {
         courseCardMeta: true,
       },
     })
+  })
+
+  test('duplicating from the card context menu opens the clone', async () => {
+    listCourses.mockResolvedValue([COURSE])
+    duplicateCourse.mockResolvedValue({
+      course: { ...COURSE, id: '11', title: 'Calculus I (copy)' },
+      copy_materials: true,
+      materials_copied: 5,
+      nodes_copied: 1,
+      notes_copied: 0,
+      quizzes_copied: 0,
+      exercises_copied: 0,
+      task_assignments_copied: 0,
+    })
+    renderCourses()
+    fireEvent.contextMenu(await screen.findByText('Calculus I'))
+    fireEvent.click(await screen.findByText('Duplicate course'))
+    await waitFor(() => expect(duplicateCourse).toHaveBeenCalledWith('3'))
+  })
+
+  test('the card action row exposes the duplicate button', async () => {
+    listCourses.mockResolvedValue([COURSE])
+    duplicateCourse.mockResolvedValue({
+      course: { ...COURSE, id: '11' },
+      copy_materials: true,
+      materials_copied: 5,
+      nodes_copied: 1,
+      notes_copied: 0,
+      quizzes_copied: 0,
+      exercises_copied: 0,
+      task_assignments_copied: 0,
+    })
+    renderCourses()
+    await screen.findByText('Calculus I')
+    fireEvent.click(screen.getByTitle('Duplicate course'))
+    await waitFor(() => expect(duplicateCourse).toHaveBeenCalledWith('3'))
   })
 
   test('lists courses with subject and material count', async () => {
@@ -94,13 +133,13 @@ describe('CoursesPage', () => {
 
   test('course cards show the last visited node when the course has recents', async () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
+      'sa-recent-nodes.default',
+      JSON.stringify([{ courseId: '3', nodeId: '2', at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([COURSE])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -109,7 +148,7 @@ describe('CoursesPage', () => {
         is_root: true,
         children: [
           {
-            id: 2,
+            id: '2',
             title: 'Limits',
             summary: null,
             objectives: [],
@@ -147,13 +186,13 @@ describe('CoursesPage', () => {
       },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
+      'sa-recent-nodes.default',
+      JSON.stringify([{ courseId: '3', nodeId: '2', at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([COURSE])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -162,7 +201,7 @@ describe('CoursesPage', () => {
         is_root: true,
         children: [
           {
-            id: 2,
+            id: '2',
             title: 'Limits',
             summary: null,
             objectives: [],
@@ -185,7 +224,7 @@ describe('CoursesPage', () => {
   test('course cards show the course description when set', async () => {
     listCourses.mockResolvedValue([
       { ...COURSE, description: 'Limits, derivatives and integrals.' },
-      { ...COURSE, id: 4, title: 'Linear Algebra', description: null },
+      { ...COURSE, id: '4', title: 'Linear Algebra', description: null },
     ])
     renderCourses()
     expect(await screen.findByText('Limits, derivatives and integrals.')).toBeInTheDocument()
@@ -203,7 +242,7 @@ describe('CoursesPage', () => {
   test('search filters courses and shows a no-match note', async () => {
     listCourses.mockResolvedValue([
       COURSE,
-      { ...COURSE, id: 4, title: 'Linear Algebra', subject: 'mathematics' },
+      { ...COURSE, id: '4', title: 'Linear Algebra', subject: 'mathematics' },
     ])
     renderCourses()
     expect(await screen.findByText('Calculus I')).toBeInTheDocument()
@@ -219,7 +258,7 @@ describe('CoursesPage', () => {
 
   test('create form posts a new course', async () => {
     listCourses.mockResolvedValue([])
-    createCourse.mockResolvedValue({ ...COURSE, id: 9, title: 'Linear Algebra' })
+    createCourse.mockResolvedValue({ ...COURSE, id: '9', title: 'Linear Algebra' })
     renderCourses()
     fireEvent.click(await screen.findByRole('button', { name: /new course/i }))
     const titleInput = await screen.findByPlaceholderText('Course title')
@@ -257,7 +296,7 @@ describe('CoursesPage', () => {
 
     importCourseBundle.mockResolvedValue({
       dry_run: false,
-      imported: { course_id: 7, title: 'Calculus I (imported)' },
+      imported: { course_id: '7', title: 'Calculus I (imported)' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     await waitFor(() => expect(importCourseBundle).toHaveBeenCalledWith(file, false))

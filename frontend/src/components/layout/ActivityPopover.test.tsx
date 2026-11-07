@@ -14,9 +14,9 @@ const mockDeleteAllFailed = vi.fn()
 vi.mock('@/lib/api', () => ({
   getJobsSummary: () => mockGetSummary(),
   listJobs: (params?: unknown) => mockListJobs(params),
-  retryJob: (jobId: number) => mockRetryOne(jobId),
+  retryJob: (jobId: string) => mockRetryOne(jobId),
   retryFailedJobs: (types?: string[]) => mockRetryAll(types),
-  deleteJob: (jobId: number) => mockDeleteOne(jobId),
+  deleteJob: (jobId: string) => mockDeleteOne(jobId),
   deleteFailedJobs: (options?: unknown) => mockDeleteAllFailed(options),
 }))
 
@@ -52,14 +52,14 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 const FAILED_JOB = {
-  id: 11,
+  id: '11',
   type: 'ingest',
   status: 'failed' as const,
   progress: 30,
   stage: 'ocr',
   error: 'OCR provider unavailable',
   label: 'Lecture 3.pdf',
-  material_id: 77,
+  material_id: '77',
   retriable: true,
   stale: false,
   created_at: new Date().toISOString(),
@@ -95,7 +95,7 @@ describe('ActivityButton', () => {
     mockListJobs.mockResolvedValue([
       FAILED_JOB,
       {
-        id: 12,
+        id: '12',
         type: 'ingest',
         status: 'running' as const,
         progress: 55,
@@ -108,7 +108,7 @@ describe('ActivityButton', () => {
         finished_at: null,
       },
       {
-        id: 13,
+        id: '13',
         type: 'postprocess',
         status: 'done' as const,
         progress: 100,
@@ -141,7 +141,7 @@ describe('ActivityButton', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.title' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(await within(dialog).findByLabelText(/retry: lecture 3\.pdf/i))
-    await waitFor(() => expect(mockRetryOne).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(mockRetryOne).toHaveBeenCalledWith('11'))
   })
 
   test('retry-all is offered when retryable failures exist', async () => {
@@ -170,7 +170,7 @@ describe('ActivityButton', () => {
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(await within(dialog).findByLabelText(/jobs\.deleteOne: lecture 3/i))
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteOne' }))
-    await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith('11'))
   })
 
   afterEach(() => {

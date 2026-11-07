@@ -19,9 +19,7 @@ from app.pipelines.compose import make_compose_handler
 from app.storage.blobs import BlobStore
 
 
-def wait_job(
-    client: TestClient, job_id: int, timeout: float = 60.0
-) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: str, timeout: float = 60.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     last: dict[str, Any] = {}
     while time.monotonic() < deadline:
@@ -98,7 +96,7 @@ def test_compose_async_fast_fails_on_unknown_node(
         course_id = make_course(test_client)
         response = test_client.post(
             "/api/v1/materials/compose/async",
-            json={"course_id": course_id, "node_id": 987654, "kind": "study_guide"},
+            json={"course_id": course_id, "node_id": "987654", "kind": "study_guide"},
         )
         assert response.status_code == 422
         assert "different course" in response.json()["detail"]
@@ -112,7 +110,7 @@ def test_compose_async_preserves_409_at_enqueue(
         course_id = make_course(test_client)
         add_material(test_client, "src.txt", "chain rule source", course_id)
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         gateway.responses.append(LONG_DOC)
         first = test_client.post(
             "/api/v1/materials/compose",
@@ -188,7 +186,7 @@ def test_cancel_endpoint_cancels_queued_compose(
         assert rerun.status_code == 409
 
 
-def _compose_job(course_id: int, **extra: Any) -> dict[str, Any]:
+def _compose_job(course_id: str, **extra: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "course_id": course_id,
         "kind": "study_guide",
@@ -203,7 +201,7 @@ def test_handler_runs_through_progress_checkpoints(
 ) -> None:
     profile = _profile(db_session, owner.id)
     course = _course(db_session, profile.id)
-    job = Job(type="compose", payload=_compose_job(int(course.id)), status="running")
+    job = Job(type="compose", payload=_compose_job(str(course.id)), status="running")
     db_session.add(job)
     db_session.flush()
     reports: list[tuple[int, str]] = []
@@ -212,15 +210,11 @@ def test_handler_runs_through_progress_checkpoints(
     )
     handler(db_session, job, lambda progress, stage: reports.append((progress, stage)))
     assert [progress for progress, _stage in reports] == [10, 30, 90, 100]
-    material = db_session.scalars(
-        select(Material).where(Material.provenance.is_not(None))
-    ).first()
+    material = db_session.scalars(select(Material).where(Material.provenance.is_not(None))).first()
     assert material is not None
     assert job.payload is not None
     assert job.payload["material_id"] == material.id
-    ingest_jobs = list(
-        db_session.scalars(select(Job).where(Job.type == "ingest"))
-    )
+    ingest_jobs = list(db_session.scalars(select(Job).where(Job.type == "ingest")))
     assert len(ingest_jobs) == 1
 
 
@@ -254,7 +248,7 @@ def test_handler_fails_honestly_when_live_artifact_appeared(
     )
     job = Job(
         type="compose",
-        payload=_compose_job(int(course.id), node_id=node.id, regenerate=False),
+        payload=_compose_job(str(course.id), node_id=node.id, regenerate=False),
         status="running",
     )
     db_session.add(job)
@@ -274,7 +268,7 @@ def test_handler_honors_cancel_before_persist(
 ) -> None:
     profile = _profile(db_session, owner.id)
     course = _course(db_session, profile.id)
-    job = Job(type="compose", payload=_compose_job(int(course.id)), status="running")
+    job = Job(type="compose", payload=_compose_job(str(course.id)), status="running")
     db_session.add(job)
     db_session.flush()
     request_cancel(job.id)
@@ -319,11 +313,10 @@ def test_stale_cancel_flag_cleared_on_claim(db_session: Session) -> None:
     from app.core.events import EventBus
     from app.jobs.runner import JobRunner
 
-    request_cancel(1)
-    job = Job(type="ingest", payload={"material_id": 1}, status="queued")
+    job = Job(type="ingest", payload={"material_id": "1"}, status="queued")
     db_session.add(job)
     db_session.commit()
-    assert job.id == 1
+    request_cancel(job.id)
     assert is_cancel_requested(job.id)
 
     runner = JobRunner(
@@ -333,5 +326,5 @@ def test_stale_cancel_flag_cleared_on_claim(db_session: Session) -> None:
     )
     claimed = runner._claim_next()
     assert claimed is not None
-    assert claimed.id == 1
+    assert claimed.id == job.id
     assert not is_cancel_requested(claimed.id)

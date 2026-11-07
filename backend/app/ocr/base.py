@@ -20,5 +20,6 @@ class OcrEngine(ABC):
         context: str = "",
         instruction: str | None = None,
         session: Session | None = None,
+        preprocess: str = "auto",
     ) -> OcrPageResult:
         raise NotImplementedError

@@ -18,7 +18,7 @@ vi.mock('@/components/editor/LazyMarkdownEditor', () => ({
     drawingAdapter?: {
       create: (strokes: unknown[], pngBase64: string, ocr: boolean) => Promise<number | null>
     }
-    aiHelper?: { courseId?: number; title: string }
+    aiHelper?: { courseId?: string; title: string }
   }) => (
     <div>
       <input
@@ -45,7 +45,7 @@ vi.mock('@/components/editor/LazyMarkdownEditor', () => ({
 }))
 
 const editState = (overrides: Partial<TextFileEditState> = {}): TextFileEditState => ({
-  materialId: 7,
+  materialId: '7',
   content: '',
   refToReal: {},
   jobId: null,
@@ -57,7 +57,7 @@ describe('NewTextFileDialog', () => {
     render(
       <NewTextFileDialog
         defaultKind="md"
-        courseId={5}
+        courseId="5"
         onCreate={vi.fn().mockResolvedValue(null)}
         onSave={vi.fn()}
         onCancel={() => {}}
@@ -259,7 +259,7 @@ describe('NewTextFileDialog', () => {
         content: 'draft + more',
         description: '',
         drawings: [],
-        state: expect.objectContaining({ materialId: 7 }),
+        state: expect.objectContaining({ materialId: '7' }),
       })
     )
     expect(await screen.findByRole('button', { name: 'Done' })).not.toBeNull()
@@ -268,7 +268,7 @@ describe('NewTextFileDialog', () => {
   test('save remaps committed drawing refs onto the dialog', async () => {
     const onCreate = vi
       .fn()
-      .mockResolvedValue(editState({ content: '![d](ca-drawing://3)' }))
+      .mockResolvedValue(editState({ content: '![d](sa-drawing://3)' }))
     render(
       <NewTextFileDialog
         defaultKind="md"
@@ -284,7 +284,7 @@ describe('NewTextFileDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).not.toBeNull())
     expect(screen.getByLabelText('File content (markdown + LaTeX)')).toHaveValue(
-      '![d](ca-drawing://3)'
+      '![d](sa-drawing://3)'
     )
   })
 

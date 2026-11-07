@@ -25,6 +25,7 @@ def expected_score(player: float, opponent: float) -> float:
     odds: float = math.pow(10.0, (opponent - player) / ELO_SCALE)
     return 1.0 / (1.0 + odds)
 
+
 def k_factor(rating_count: int | None) -> float:
     return max(K_MIN, K_BASE - float(rating_count or 0))
 
@@ -58,8 +59,8 @@ class EloService:
                 flag="ok",
             )
             self._session.add(stat)
-        item_rating = stat.rating if stat.rating is not None else seeded_item_rating(
-            question.difficulty
+        item_rating = (
+            stat.rating if stat.rating is not None else seeded_item_rating(question.difficulty)
         )
         item_count = stat.rating_count or 0
 
@@ -95,9 +96,7 @@ class EloService:
             statement.order_by(ConceptSkillRating.rating_count.desc()).limit(1)
         ).first()
 
-    def _student_cells(
-        self, profile_id: str, question: Question
-    ) -> list[ConceptSkillRating]:
+    def _student_cells(self, profile_id: str, question: Question) -> list[ConceptSkillRating]:
         concepts = [str(tag) for tag in (question.tags or [])][:3]
         skill = question.skill or "procedural"
         cells: list[ConceptSkillRating] = []

@@ -1,18 +1,11 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { FlashcardInfo } from './flashcards'
 
-export interface DueCourseGroup {
-  course_id: number
-  course_title: string
-  course_color: string | null
-  due_count: number
-  cards: FlashcardInfo[]
-}
+type Schemas = components['schemas']
 
-export interface ReviewDue {
-  total_due: number
-  groups: DueCourseGroup[]
-}
+export type DueCourseGroup = Schemas['DueCourseGroupOut']
+export type ReviewDue = Schemas['ReviewDueOut']
 
 export async function getReviewDue(perCourse = 20): Promise<ReviewDue> {
   const response = await apiFetch(`/api/v1/review/due?per_course=${perCourse}`)

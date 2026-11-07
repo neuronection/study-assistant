@@ -51,9 +51,9 @@ export function CourseSettingsTab({
         onChange={(next) => setSubTab(next as SubTab)}
       />
       {subTab === 'general' ? (
-        <GeneralSection courseId={Number(courseId)} course={course} />
+        <GeneralSection courseId={courseId} course={course} />
       ) : (
-        <TasksSection courseId={Number(courseId)} />
+        <TasksSection courseId={courseId} />
       )}
     </div>
   )
@@ -63,7 +63,7 @@ function GeneralSection({
   courseId,
   course,
 }: {
-  courseId: number
+  courseId: string
   course: Course
 }) {
   const { t } = useTranslation()
@@ -130,7 +130,7 @@ function GeneralSection({
   )
 }
 
-function TasksSection({ courseId }: { courseId: number }) {
+function TasksSection({ courseId }: { courseId: string }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const tasks = useQuery({
@@ -154,8 +154,8 @@ function TasksSection({ courseId }: { courseId: number }) {
     }: {
       task: string
       field: 'model' | 'fallback'
-      otherValue: number | null
-      modelId: number | null
+      otherValue: string | null
+      modelId: string | null
     }) =>
       field === 'model'
         ? assignCourseTask(courseId, task, modelId, otherValue)
@@ -167,18 +167,11 @@ function TasksSection({ courseId }: { courseId: number }) {
   const assignDefault = useMutation({
     mutationFn: ({
       requires,
-      field,
-      otherValue,
       modelId,
     }: {
       requires: string
-      field: 'model' | 'fallback'
-      otherValue: number | null
-      modelId: number | null
-    }) =>
-      field === 'model'
-        ? assignCourseTaskDefault(courseId, requires, modelId, otherValue)
-        : assignCourseTaskDefault(courseId, requires, otherValue, modelId),
+      modelId: string | null
+    }) => assignCourseTaskDefault(courseId, requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['course-task-defaults', courseId] })
       await queryClient.invalidateQueries({ queryKey: ['course-tasks', courseId] })
@@ -215,15 +208,15 @@ function TasksSection({ courseId }: { courseId: number }) {
             <div key={requires} className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">
-                  {t('settings.defaultModelLabel', { cap: capLabel })}
+                  {capLabel}
                 </p>
-                <p className="text-muted-foreground text-xs">
-                  {entry?.global_model_label != null
-                    ? t('settings.inheritedFromDefault', {
-                        label: entry.global_model_label,
-                      })
-                    : t('settings.defaultModelHint', { cap: capLabel })}
-                </p>
+                {entry?.global_model_label != null && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('settings.inheritedFromDefault', {
+                      label: entry.global_model_label,
+                    })}
+                  </p>
+                )}
               </div>
               <select
                 className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
@@ -232,33 +225,10 @@ function TasksSection({ courseId }: { courseId: number }) {
                   const value = event.target.value
                   assignDefault.mutate({
                     requires,
-                    field: 'model',
-                    otherValue: entry?.fallback_model_id ?? null,
-                    modelId: value === '' ? null : Number(value),
+                    modelId: value === '' ? null : value,
                   })
                 }}
-                aria-label={t('settings.defaultModelLabel', { cap: capLabel })}
-              >
-                <option value="">{t('settings.unassigned')}</option>
-                {options.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
-                value={entry?.fallback_model_id ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value
-                  assignDefault.mutate({
-                    requires,
-                    field: 'fallback',
-                    otherValue: entry?.model_id ?? null,
-                    modelId: value === '' ? null : Number(value),
-                  })
-                }}
-                aria-label={`${t('settings.defaultModelLabel', { cap: capLabel })} — ${t('settings.defaultFallbackLabel')}`}
+                aria-label={capLabel}
               >
                 <option value="">{t('settings.unassigned')}</option>
                 {options.map((model) => (
@@ -303,7 +273,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                   task: task.task,
                   field: 'model',
                   otherValue: task.fallback_model_id,
-                  modelId: value === '' ? null : Number(value),
+                  modelId: value === '' ? null : value,
                 })
               }}
               aria-label={t('courseSettings.modelAria', { task: task.task })}
@@ -328,7 +298,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                   task: task.task,
                   field: 'fallback',
                   otherValue: task.model_id,
-                  modelId: value === '' ? null : Number(value),
+                  modelId: value === '' ? null : value,
                 })
               }}
               aria-label={t('courseSettings.fallbackAria', { task: task.task })}

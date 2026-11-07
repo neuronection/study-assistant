@@ -1,14 +1,19 @@
-from typing import Any
+import json
+from pathlib import Path
+from typing import Any, cast
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..ai.decide import is_decision_slot, probe_decision_provider
+from ..ai.decide.systemone.probe import DecisionProbeInput, DecisionProbeResult
+from ..ai.decide.types import decision_slot_capability
 from ..ai.providers import (
+    ALL_PRESETS,
     DEFAULT_REQUIRES,
-    PRESETS,
     CrossProviderModelError,
     ProviderError,
     ProvidersService,
@@ -19,6 +24,7 @@ from ..ai.providers import (
     assign_course_task,
     assign_default_task,
     assign_task,
+    decision_probe_model_id,
     fetch_remote_models,
     list_assignments,
     list_course_assignments,
@@ -31,7 +37,8 @@ from ..ai.providers import (
     detect_local_engines as probe_local_engines,
 )
 from ..ai.tasks import TASK_DEFS, TaskDef
-from ..core.secrets import delete_secret, get_secret, set_secret
+from ..core.secrets import get_secret
+from ..core.vocab import DecisionTransport
 from ..domain.models import (
     AiModel,
     Course,
@@ -42,10 +49,16 @@ from ..domain.models import (
     Provider,
     TaskAssignment,
 )
-from ..search import (
-    SEARCH_FLAVORS,
-    SEARCH_KEYRING_REF,
-    search_provider_config,
+from ..domain.payloads import PresetDecisionModel, PresetModelRef, TaskParams
+from ..extensions.search import (
+    SearchError,
+    delete_search_provider,
+    list_search_providers,
+    move_search_provider,
+    probe_provider,
+    provider_key_ref,
+    search_provider_views,
+    upsert_search_provider,
 )
 from .deps import get_session
 from .schemas import (
@@ -67,16 +80,43 @@ router = APIRouter(tags=["ai"])
 
 
 class SearchProviderOut(BaseModel):
-    assigned: bool
+    id: str
+    name: str
+    type: str
+    enabled: bool = True
     base_url: str | None = None
-    flavor: str | None = None
+    google_cx: str | None = None
+    key_hint: str | None = None
+    timeout_ms: int = 8000
+    max_results: int = 5
     key_set: bool = False
 
 
 class SearchProviderIn(BaseModel):
-    base_url: str = Field(min_length=1, max_length=500)
-    flavor: str
+    name: str | None = Field(default=None, max_length=120)
+    type: str | None = None
+    base_url: str | None = Field(default=None, max_length=500)
+    google_cx: str | None = Field(default=None, max_length=120)
+    enabled: bool | None = None
+    max_results: int | None = Field(default=None, ge=1, le=10)
+    timeout_ms: int | None = Field(default=None, ge=500, le=30000)
+    # absent = keep the stored key, "" = clear it, value = store it
     api_key: str | None = Field(default=None, max_length=500)
+
+
+class SearchProvidersOut(BaseModel):
+    providers: list[SearchProviderOut]
+
+
+class SearchProviderProbeOut(BaseModel):
+    status: str
+    latency_ms: int
+    result_count: int | None = None
+    error: str | None = None
+
+
+def _provider_view(view: dict[str, Any]) -> SearchProviderOut:
+    return SearchProviderOut.model_validate(view)
 
 
 def _ensure_profile(session: Session) -> Profile:
@@ -85,62 +125,110 @@ def _ensure_profile(session: Session) -> Profile:
     return ensure_default_profile(session)
 
 
-@router.get("/search-provider", response_model=SearchProviderOut)
-def get_search_provider(
-    session: Session = Depends(get_session),
-) -> SearchProviderOut:
+# Family web-search contract (ADR-0035 / plan 28): ordered multi-provider
+# list; the catalog (labels, key URLs, base-URL rules) is the vendored
+# contracts/search-providers.json copy — data-once, never edited here.
+_CATALOG_PATH = (
+    Path(__file__).resolve().parents[1] / "extensions" / "search" / "providers_catalog.json"
+)
+
+
+@router.get("/search-providers", response_model=SearchProvidersOut)
+def get_search_providers(session: Session = Depends(get_session)) -> SearchProvidersOut:
     profile = _ensure_profile(session)
-    config = search_provider_config(session, profile.id)
-    if config is None:
-        return SearchProviderOut(assigned=False)
-    return SearchProviderOut(
-        assigned=True,
-        base_url=config["base_url"],
-        flavor=config["flavor"],
-        key_set=bool(get_secret(SEARCH_KEYRING_REF)),
+    return SearchProvidersOut(
+        providers=[_provider_view(view) for view in search_provider_views(session, profile.id)]
     )
 
 
-@router.put("/search-provider", response_model=SearchProviderOut)
-def update_search_provider(
+@router.get("/search-providers/catalog", response_model=dict[str, Any])
+def search_provider_catalog() -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(_CATALOG_PATH.read_text(encoding="utf-8")))
+
+
+@router.post("/search-providers", response_model=SearchProviderOut, status_code=201)
+def create_search_provider(
     body: SearchProviderIn, session: Session = Depends(get_session)
 ) -> SearchProviderOut:
     profile = _ensure_profile(session)
-    base_url = body.base_url.strip().rstrip("/")
-    if not base_url.startswith(("http://", "https://")):
-        raise HTTPException(
-            status_code=422, detail="base_url must be an http(s) URL"
+    try:
+        view = upsert_search_provider(
+            session,
+            profile.id,
+            dict(body.model_dump()),
         )
-    if body.flavor not in SEARCH_FLAVORS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"flavor must be one of {list(SEARCH_FLAVORS)}",
-        )
-    prefs = dict(profile.preferences or {})
-    prefs["search_provider"] = {"base_url": base_url, "flavor": body.flavor}
-    profile.preferences = prefs
-    if body.api_key is not None:
-        if body.api_key.strip():
-            set_secret(SEARCH_KEYRING_REF, body.api_key.strip())
-        else:
-            delete_secret(SEARCH_KEYRING_REF)
-    session.commit()
-    return SearchProviderOut(
-        assigned=True,
-        base_url=base_url,
-        flavor=body.flavor,
-        key_set=bool(get_secret(SEARCH_KEYRING_REF)),
-    )
+    except SearchError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return _provider_view(view)
 
 
-@router.delete("/search-provider", status_code=204)
-def clear_search_provider(session: Session = Depends(get_session)) -> None:
+@router.put("/search-providers/{provider_id}", response_model=SearchProviderOut)
+def update_search_provider(
+    provider_id: str, body: SearchProviderIn, session: Session = Depends(get_session)
+) -> SearchProviderOut:
     profile = _ensure_profile(session)
-    prefs = dict(profile.preferences or {})
-    prefs.pop("search_provider", None)
-    profile.preferences = prefs
-    delete_secret(SEARCH_KEYRING_REF)
-    session.commit()
+    try:
+        view = upsert_search_provider(
+            session,
+            profile.id,
+            dict(body.model_dump()),
+            provider_id=provider_id,
+        )
+    except SearchError as error:
+        raise HTTPException(
+            status_code=404 if "not found" in str(error) else 422, detail=str(error)
+        ) from error
+    return _provider_view(view)
+
+
+class SearchProviderMoveIn(BaseModel):
+    direction: str = Field(pattern="^(up|down)$")
+
+
+@router.post("/search-providers/{provider_id}/move", response_model=SearchProvidersOut)
+def reorder_search_provider(
+    provider_id: str,
+    body: SearchProviderMoveIn,
+    session: Session = Depends(get_session),
+) -> SearchProvidersOut:
+    profile = _ensure_profile(session)
+    try:
+        views = move_search_provider(session, profile.id, provider_id, body.direction)
+    except SearchError as error:
+        raise HTTPException(
+            status_code=404 if "not found" in str(error) else 422, detail=str(error)
+        ) from error
+    return SearchProvidersOut(providers=[_provider_view(view) for view in views])
+
+
+@router.delete("/search-providers/{provider_id}", status_code=204)
+def remove_search_provider(provider_id: str, session: Session = Depends(get_session)) -> None:
+    profile = _ensure_profile(session)
+    if not delete_search_provider(session, profile.id, provider_id):
+        raise HTTPException(status_code=404, detail="provider not found")
+
+
+@router.post("/search-providers/{provider_id}/test", response_model=SearchProviderProbeOut)
+def test_search_provider(
+    provider_id: str, request: Request, session: Session = Depends(get_session)
+) -> SearchProviderProbeOut:
+    profile = _ensure_profile(session)
+    provider = next(
+        (
+            entry
+            for entry in list_search_providers(session, profile.id)
+            if entry["id"] == provider_id
+        ),
+        None,
+    )
+    if provider is None:
+        raise HTTPException(status_code=404, detail="provider not found")
+    result = probe_provider(
+        provider,
+        api_key=get_secret(provider_key_ref(provider_id)) or "",
+        transport=getattr(request.app.state, "search_transport", None),
+    )
+    return SearchProviderProbeOut.model_validate(result)
 
 
 def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
@@ -166,9 +254,12 @@ class PresetOut(BaseModel):
     fixed_base: bool
     local: bool
     key_url: str | None = None
-    preferred_model: dict[str, Any] | None = None
+    preferred_model: PresetModelRef | None = None
     curated_models: list[str] | None = None
     stt_model: str | None = None
+    decision_models: list[PresetDecisionModel] | None = None
+    decision_default: str | None = None
+    provisional: bool | None = None
     steps: list[str] | None = None
     free_tier_note: str | None = None
 
@@ -186,10 +277,13 @@ def provider_presets() -> dict[str, PresetOut]:
             preferred_model=preset["preferred_model"],
             curated_models=preset["curated_models"],
             stt_model=preset["stt_model"],
+            decision_models=preset["decision_models"],
+            decision_default=preset["decision_default"],
+            provisional=preset["provisional"],
             steps=preset["steps"],
             free_tier_note=preset["free_tier_note"],
         )
-        for key, preset in PRESETS.items()
+        for key, preset in ALL_PRESETS.items()
     }
 
 
@@ -198,6 +292,8 @@ class SetupOptionsIn(BaseModel):
     bind_chat: bool = True
     bind_vision: bool = True
     bind_stt: bool = True
+    bind_embeddings: bool = True
+    bind_decision: bool = True
 
 
 class ProviderSetupIn(BaseModel):
@@ -214,6 +310,8 @@ class SetupOut(BaseModel):
     assigned_chat_model: str | None = None
     assigned_vision_model: str | None = None
     assigned_stt_model: str | None = None
+    assigned_embeddings_model: str | None = None
+    assigned_decision_slots: dict[str, str] | None = None
 
 
 @router.post("/providers/{preset_key}/setup", response_model=SetupOut)
@@ -230,6 +328,8 @@ def setup_preset_provider(
             bind_chat=body.options.bind_chat,
             bind_vision=body.options.bind_vision,
             bind_stt=body.options.bind_stt,
+            bind_embeddings=body.options.bind_embeddings,
+            bind_decision=body.options.bind_decision,
         )
     try:
         outcome = setup_provider_from_preset(
@@ -265,6 +365,8 @@ def setup_preset_provider(
         assigned_chat_model=outcome.assigned_chat_model,
         assigned_vision_model=outcome.assigned_vision_model,
         assigned_stt_model=outcome.assigned_stt_model,
+        assigned_embeddings_model=outcome.assigned_embeddings_model,
+        assigned_decision_slots=outcome.assigned_decision_slots,
     )
 
 
@@ -275,7 +377,7 @@ class SetDefaultIn(BaseModel):
 
 @router.put("/providers/{provider_id}/set-default", response_model=TaskOut)
 def set_provider_default(
-    provider_id: int,
+    provider_id: str,
     body: SetDefaultIn,
     session: Session = Depends(get_session),
 ) -> TaskOut:
@@ -320,14 +422,12 @@ def list_providers(session: Session = Depends(get_session)) -> list[ProviderOut]
     service = ProvidersService(session)
     return [
         _provider_out(service, provider)
-        for provider in session.scalars(select(Provider).order_by(Provider.id))
+        for provider in session.scalars(select(Provider).order_by(Provider.created_at, Provider.id))
     ]
 
 
 @router.post("/providers", response_model=ProviderOut, status_code=201)
-def create_provider(
-    body: ProviderCreate, session: Session = Depends(get_session)
-) -> ProviderOut:
+def create_provider(body: ProviderCreate, session: Session = Depends(get_session)) -> ProviderOut:
     service = ProvidersService(session)
     provider: Provider | None = None
     try:
@@ -355,7 +455,7 @@ def create_provider(
 
 @router.patch("/providers/{provider_id}", response_model=ProviderOut)
 def update_provider(
-    provider_id: int, body: ProviderUpdate, session: Session = Depends(get_session)
+    provider_id: str, body: ProviderUpdate, session: Session = Depends(get_session)
 ) -> ProviderOut:
     service = ProvidersService(session)
     try:
@@ -380,18 +480,27 @@ def update_provider(
 
 
 @router.delete("/providers/{provider_id}", status_code=204)
-def delete_provider(provider_id: int, session: Session = Depends(get_session)) -> None:
+def delete_provider(provider_id: str, session: Session = Depends(get_session)) -> None:
     if not ProvidersService(session).delete(provider_id):
         raise HTTPException(status_code=404, detail="provider not found")
     session.commit()
 
 
 @router.post("/providers/{provider_id}/test", response_model=ProviderOut)
-def test_provider(provider_id: int, session: Session = Depends(get_session)) -> ProviderOut:
+def test_provider(provider_id: str, session: Session = Depends(get_session)) -> ProviderOut:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
     if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
+    if provider.type == "decision":
+        probe = _probe_provider(session, provider)
+        service.record_status(
+            provider,
+            ok=probe.ok,
+            error=None if probe.ok else (probe.error or "decision probe failed"),
+        )
+        session.commit()
+        return _provider_out(service, provider)
     try:
         remote = fetch_remote_models(provider.type, provider.base_url, service.api_key(provider))
         service.record_status(provider, ok=True, error=None, model_count=len(remote))
@@ -401,9 +510,39 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
     return _provider_out(service, provider)
 
 
-def _remote_error_detail(
-    service: ProvidersService, provider: Provider, error: Exception
-) -> str:
+def _probe_provider(session: Session, provider: Provider) -> DecisionProbeResult:
+    api_key = ProvidersService(session).api_key(provider)
+    model = session.scalars(
+        select(AiModel)
+        .where(AiModel.provider_id == provider.id)
+        .order_by(AiModel.discovered_at, AiModel.id)
+    ).first()
+    if model is None:
+        # §15 single-source: a key-only probe derives its model id from the
+        # provider's preset stamp in the synced canonical data — never a
+        # code literal. A decision provider with neither models nor a
+        # declarable preset gets an actionable failure, not an invented id.
+        preset = ALL_PRESETS.get(provider.preset_key) if provider.preset_key else None
+        if preset is None:
+            return DecisionProbeResult(
+                ok=False,
+                latency_ms=0,
+                error="Add a decision model to this provider, then test again.",
+            )
+        external_id = decision_probe_model_id(preset)
+        model = AiModel(
+            provider_id=provider.id,
+            external_id=external_id,
+            label=external_id,
+            caps=["decision"],
+            decision_transport="systemone",
+        )
+    return probe_decision_provider(
+        DecisionProbeInput(provider=provider, model=model, api_key=api_key or "")
+    )
+
+
+def _remote_error_detail(service: ProvidersService, provider: Provider, error: Exception) -> str:
     if isinstance(error, httpx.HTTPStatusError) and error.response.status_code in (401, 403):
         if service.api_key(provider) is None:
             state = "no API key is stored for this provider"
@@ -417,7 +556,7 @@ def _remote_error_detail(
 
 
 @router.post("/providers/{provider_id}/models", response_model=list[ModelOut])
-def discover_models(provider_id: int, session: Session = Depends(get_session)) -> list[ModelOut]:
+def discover_models(provider_id: str, session: Session = Depends(get_session)) -> list[ModelOut]:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
     if provider is None:
@@ -435,24 +574,19 @@ def discover_models(provider_id: int, session: Session = Depends(get_session)) -
 
 @router.get("/providers/{provider_id}/remote-models", response_model=list[RemoteModelOut])
 def remote_models(
-    provider_id: int, session: Session = Depends(get_session)
+    provider_id: str, session: Session = Depends(get_session)
 ) -> list[RemoteModelOut]:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
     if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
     try:
-        remote = fetch_remote_models(
-            provider.type, provider.base_url, service.api_key(provider)
-        )
+        remote = fetch_remote_models(provider.type, provider.base_url, service.api_key(provider))
     except Exception as error:
         raise HTTPException(
             status_code=502, detail=_remote_error_detail(service, provider, error)
         ) from error
-    return [
-        RemoteModelOut(external_id=item.external_id, caps=list(item.caps))
-        for item in remote
-    ]
+    return [RemoteModelOut(external_id=item.external_id, caps=list(item.caps)) for item in remote]
 
 
 def _model_out(model: AiModel) -> ModelOut:
@@ -462,6 +596,7 @@ def _model_out(model: AiModel) -> ModelOut:
         external_id=model.external_id,
         label=model.label,
         caps=list(model.caps or []),
+        decision_transport=model.decision_transport,
         enabled=model.enabled,
         missing=model.missing,
         reasoning_effort=model.reasoning_effort,
@@ -472,7 +607,7 @@ def _model_out(model: AiModel) -> ModelOut:
 
 @router.get("/models", response_model=list[ModelOut])
 def list_models(
-    provider_id: int | None = None, session: Session = Depends(get_session)
+    provider_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[ModelOut]:
     query = select(AiModel).order_by(AiModel.provider_id, AiModel.external_id)
     if provider_id is not None:
@@ -488,14 +623,28 @@ def create_model(
 ) -> ModelOut:
     from ..ai.providers import infer_caps
 
-    if session.get(Provider, body.provider_id) is None:
+    provider = session.get(Provider, body.provider_id)
+    if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
     external_id = body.external_id.strip()
     if not external_id:
         raise HTTPException(status_code=422, detail="external_id is required")
     caps = body.caps
+    decision_provider = provider.type == "decision"
     if caps is None:
-        caps = infer_caps(external_id)
+        caps = ["decision"] if decision_provider else infer_caps(external_id)
+    # The decision transport seam (D2): decision-only providers imply it;
+    # an explicit decision capability on any provider row stamps the
+    # payload's transport or the one shipping transport; without the
+    # capability there is no transport to carry.
+    if decision_provider or "decision" in caps:
+        decision_transport = (
+            body.decision_transport
+            if body.decision_transport is not None
+            else DecisionTransport.SYSTEMONE.value
+        )
+    else:
+        decision_transport = None
     model = session.scalars(
         select(AiModel).where(
             AiModel.provider_id == body.provider_id,
@@ -508,6 +657,7 @@ def create_model(
             external_id=external_id,
             label=(body.label or external_id).strip() or external_id,
             caps=caps,
+            decision_transport=decision_transport,
             enabled=body.enabled,
             missing=False,
             reasoning_effort=(body.reasoning_effort or "").strip() or None,
@@ -518,6 +668,7 @@ def create_model(
         model.missing = False
         model.caps = caps
         model.enabled = body.enabled
+        model.decision_transport = decision_transport
         if body.label is not None:
             model.label = body.label.strip() or external_id
         if body.reasoning_effort is not None:
@@ -529,7 +680,7 @@ def create_model(
 
 
 @router.delete("/models/{model_id}", status_code=204)
-def delete_model(model_id: int, session: Session = Depends(get_session)) -> None:
+def delete_model(model_id: str, session: Session = Depends(get_session)) -> None:
     model = session.get(AiModel, model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="model not found")
@@ -541,6 +692,8 @@ def delete_model(model_id: int, session: Session = Depends(get_session)) -> None
     for default_assignment in session.scalars(select(DefaultTaskAssignment)):
         if default_assignment.model_id == model_id:
             default_assignment.model_id = None
+        # ADR-0037: only decision kind overrides carry fallbacks, but the
+        # null-out is safe for every row kind.
         if default_assignment.fallback_model_id == model_id:
             default_assignment.fallback_model_id = None
     for course_assignment in session.scalars(select(CourseTaskAssignment)):
@@ -551,15 +704,13 @@ def delete_model(model_id: int, session: Session = Depends(get_session)) -> None
     for course_default in session.scalars(select(CourseDefaultTaskAssignment)):
         if course_default.model_id == model_id:
             course_default.model_id = None
-        if course_default.fallback_model_id == model_id:
-            course_default.fallback_model_id = None
     session.delete(model)
     session.commit()
 
 
 @router.patch("/models/{model_id}", response_model=ModelOut)
 def update_model(
-    model_id: int, body: ModelUpdate, session: Session = Depends(get_session)
+    model_id: str, body: ModelUpdate, session: Session = Depends(get_session)
 ) -> ModelOut:
     model = session.get(AiModel, model_id)
     if model is None:
@@ -576,6 +727,17 @@ def update_model(
         model.temperature = body.temperature
     if "max_tokens" in body.model_fields_set:
         model.max_tokens = body.max_tokens
+    effective_caps = body.caps if body.caps is not None else model.caps
+    provider_row = session.get(Provider, model.provider_id)
+    decision_kept = "decision" in effective_caps or (
+        provider_row is not None and provider_row.type == "decision"
+    )
+    if decision_kept:
+        model.decision_transport = body.decision_transport or DecisionTransport.SYSTEMONE.value
+    elif "decision_transport" in body.model_fields_set or body.caps is not None:
+        # caps changed away from decision (or the transport was set
+        # explicitly) — nothing to carry without the capability.
+        model.decision_transport = body.decision_transport
     session.commit()
     return _model_out(model)
 
@@ -584,11 +746,13 @@ def _task_out(
     task_def: TaskDef,
     assignment: TaskAssignment | None,
     default: DefaultTaskAssignment | None,
-    labels: dict[int, str],
+    labels: dict[str, str],
     monthly_cap: float | None = None,
 ) -> TaskOut:
     model_id = assignment.model_id if assignment else None
     fallback_id = assignment.fallback_model_id if assignment else None
+    # ADR-0037: capability defaults are single-slot — the task row's own
+    # fallback is the only fallback leg left; no inherited-fallback label.
     return TaskOut(
         task=task_def.task,
         description=task_def.description,
@@ -596,18 +760,11 @@ def _task_out(
         model_id=model_id,
         fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
+        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
         inherits_default=model_id is None and default is not None,
         default_model_label=(
             labels.get(default.model_id)
             if default is not None and default.model_id is not None
-            else None
-        ),
-        default_fallback_model_label=(
-            labels.get(default.fallback_model_id)
-            if default is not None and default.fallback_model_id is not None
             else None
         ),
         monthly_cap_usd=monthly_cap,
@@ -650,12 +807,33 @@ def list_task_defaults(session: Session = Depends(get_session)) -> list[DefaultT
                 model_id=model_id,
                 fallback_model_id=fallback_id,
                 model_label=labels.get(model_id) if model_id is not None else None,
-                fallback_model_label=(
-                    labels.get(fallback_id) if fallback_id is not None else None
+                fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
+                resolved_inherit_label=(
+                    _decision_inherit_label(session, requires)
+                    if is_decision_slot(requires)
+                    else None
                 ),
             )
         )
     return result
+
+
+def _decision_inherit_label(session: Session, requires: str) -> str | None:
+    """ADR-0036 §4: what the kind's labeled null option names — the model
+    the `decision` default slot resolves to for this kind, or None when
+    the inherit state honestly resolves to nothing."""
+    from ..ai.decide import OffResolution, SystemOneResolution, resolve_decision_inherit
+
+    capability = decision_slot_capability(requires)
+    if capability is None:
+        return None
+    resolution = resolve_decision_inherit(capability, session)
+    if isinstance(resolution, OffResolution):
+        return None
+    if not isinstance(resolution, SystemOneResolution):
+        return None
+    label = resolution.model.label or resolution.model.external_id
+    return label or None
 
 
 @router.put("/tasks/defaults/{requires}", response_model=DefaultTaskOut)
@@ -663,9 +841,7 @@ def put_task_default(
     requires: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
 ) -> DefaultTaskOut:
     try:
-        assignment = assign_default_task(
-            session, requires, body.model_id, body.fallback_model_id
-        )
+        assignment = assign_default_task(session, requires, body.model_id, body.fallback_model_id)
     except ProviderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -674,13 +850,9 @@ def put_task_default(
         requires=requires,
         model_id=assignment.model_id,
         fallback_model_id=assignment.fallback_model_id,
-        model_label=(
-            labels.get(assignment.model_id) if assignment.model_id else None
-        ),
+        model_label=(labels.get(assignment.model_id) if assignment.model_id else None),
         fallback_model_label=(
-            labels.get(assignment.fallback_model_id)
-            if assignment.fallback_model_id
-            else None
+            labels.get(assignment.fallback_model_id) if assignment.fallback_model_id else None
         ),
     )
 
@@ -690,9 +862,7 @@ class BudgetIn(BaseModel):
 
 
 @router.put("/tasks/{task}/budget", response_model=TaskOut)
-def put_task_budget(
-    task: str, body: BudgetIn, session: Session = Depends(get_session)
-) -> TaskOut:
+def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_session)) -> TaskOut:
     from ..domain.models import TaskAssignment
 
     assignment = session.get(TaskAssignment, task)
@@ -703,7 +873,7 @@ def put_task_budget(
         params.pop("monthly_cap_usd", None)
     else:
         params["monthly_cap_usd"] = body.monthly_cap_usd
-    assignment.params = params
+    assignment.params = cast(TaskParams, params)
     session.commit()
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     task_def = next((entry for entry in TASK_DEFS if entry.task == task), None)
@@ -715,14 +885,12 @@ def put_task_budget(
         assignment,
         default,
         labels,
-        monthly_cap=params.get("monthly_cap_usd"),
+        monthly_cap=cast(float | None, params.get("monthly_cap_usd")),
     )
 
 
 @router.put("/tasks/{task}", response_model=TaskOut)
-def put_task(
-    task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
-) -> TaskOut:
+def put_task(task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)) -> TaskOut:
     try:
         assignment = assign_task(session, task, body.model_id, body.fallback_model_id)
     except ProviderError as error:
@@ -735,7 +903,7 @@ def put_task(
 
 
 def _course_inherited_labels(
-    session: Session, task_def: TaskDef, course_id: int
+    session: Session, task_def: TaskDef, course_id: str
 ) -> tuple[str | None, str | None]:
     """What a task uses when the course sets no per-task override.
 
@@ -743,18 +911,16 @@ def _course_inherited_labels(
     per-course capability default.
     """
     assignment = session.get(TaskAssignment, task_def.task)
-    default: DefaultTaskAssignment | None = session.get(
-        DefaultTaskAssignment, task_def.requires
-    )
+    default: DefaultTaskAssignment | None = session.get(DefaultTaskAssignment, task_def.requires)
     course_default: CourseDefaultTaskAssignment | None = session.get(
         CourseDefaultTaskAssignment, (course_id, task_def.requires)
     )
 
     def slot(
-        task_value: int | None,
-        default_value: int | None,
-        course_default_value: int | None,
-    ) -> int | None:
+        task_value: str | None,
+        default_value: str | None,
+        course_default_value: str | None,
+    ) -> str | None:
         value = default_value
         if assignment is not None and task_value is not None:
             value = task_value
@@ -767,11 +933,9 @@ def _course_inherited_labels(
         default.model_id if default else None,
         course_default.model_id if course_default else None,
     )
-    fallback_id = slot(
-        assignment.fallback_model_id if assignment else None,
-        default.fallback_model_id if default else None,
-        course_default.fallback_model_id if course_default else None,
-    )
+    # ADR-0037: capability defaults are single-slot — the only fallback
+    # leg is the task's own assignment.
+    fallback_id = assignment.fallback_model_id if assignment is not None else None
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     return (
         labels.get(model_id) if model_id is not None else None,
@@ -779,18 +943,21 @@ def _course_inherited_labels(
     )
 
 
-def _global_task_labels(
-    session: Session, task_def: TaskDef
-) -> tuple[str | None, str | None]:
+def _global_task_labels(session: Session, task_def: TaskDef) -> tuple[str | None, str | None]:
     assignment = session.get(TaskAssignment, task_def.task)
     default = session.get(DefaultTaskAssignment, task_def.requires)
     global_model_id = (
-        assignment.model_id if assignment and assignment.model_id is not None
-        else default.model_id if default else None
+        assignment.model_id
+        if assignment and assignment.model_id is not None
+        else default.model_id
+        if default
+        else None
     )
+    # ADR-0037: the fallback leg is the task's own assignment only.
     global_fallback_id = (
-        assignment.fallback_model_id if assignment and assignment.fallback_model_id is not None
-        else default.fallback_model_id if default else None
+        assignment.fallback_model_id
+        if assignment and assignment.fallback_model_id is not None
+        else None
     )
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     return (
@@ -803,7 +970,7 @@ def _course_task_out(
     session: Session,
     task_def: TaskDef,
     override: CourseTaskAssignment | None,
-    course_id: int,
+    course_id: str,
 ) -> CourseTaskOut:
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     inherited_model_label, inherited_fallback_label = _course_inherited_labels(
@@ -818,9 +985,7 @@ def _course_task_out(
         model_id=model_id,
         fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
+        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
         global_model_label=inherited_model_label,
         global_fallback_model_label=inherited_fallback_label,
     )
@@ -832,42 +997,29 @@ def _course_default_out(
     row: CourseDefaultTaskAssignment | None,
 ) -> CourseDefaultTaskOut:
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
+    # ADR-0037: course defaults are single-slot; the inherited view is the
+    # global default's primary.
     default = session.get(DefaultTaskAssignment, requires)
     global_model_id = default.model_id if default is not None else None
-    global_fallback_id = (
-        default.fallback_model_id if default is not None else None
-    )
     model_id = row.model_id if row else None
-    fallback_id = row.fallback_model_id if row else None
     return CourseDefaultTaskOut(
         requires=requires,
         model_id=model_id,
-        fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
-        global_model_label=(
-            labels.get(global_model_id) if global_model_id is not None else None
-        ),
-        global_fallback_model_label=(
-            labels.get(global_fallback_id) if global_fallback_id is not None else None
-        ),
+        global_model_label=(labels.get(global_model_id) if global_model_id is not None else None),
     )
 
 
-def _get_course_or_404(course_id: int, session: Session) -> Course:
+def _get_course_or_404(course_id: str, session: Session) -> Course:
     course = session.get(Course, course_id)
     if course is None:
         raise HTTPException(status_code=404, detail="course not found")
     return course
 
 
-@router.get(
-    "/courses/{course_id}/tasks", response_model=list[CourseTaskOut]
-)
+@router.get("/courses/{course_id}/tasks", response_model=list[CourseTaskOut])
 def list_course_tasks(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> list[CourseTaskOut]:
     _get_course_or_404(course_id, session)
     overrides = list_course_assignments(session, course_id)
@@ -882,13 +1034,12 @@ def list_course_tasks(
     response_model=list[CourseDefaultTaskOut],
 )
 def list_course_task_defaults(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> list[CourseDefaultTaskOut]:
     _get_course_or_404(course_id, session)
     rows = list_course_default_assignments(session, course_id)
     return [
-        _course_default_out(session, requires, rows.get(requires))
-        for requires in DEFAULT_REQUIRES
+        _course_default_out(session, requires, rows.get(requires)) for requires in DEFAULT_REQUIRES
     ]
 
 
@@ -897,27 +1048,33 @@ def list_course_task_defaults(
     response_model=CourseDefaultTaskOut,
 )
 def put_course_task_default(
-    course_id: int,
+    course_id: str,
     requires: str,
     body: TaskAssignmentIn,
     session: Session = Depends(get_session),
 ) -> CourseDefaultTaskOut:
+    # ADR-0037: course capability defaults are single-slot — face the
+    # same actionable rejection as the global defaults endpoint.
+    if body.fallback_model_id is not None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"capability defaults are single-slot: '{requires}' carries no fallback — "
+                "only decision:<kind> overrides do"
+            ),
+        )
     _get_course_or_404(course_id, session)
     try:
-        row = assign_course_default_task(
-            session, course_id, requires, body.model_id, body.fallback_model_id
-        )
+        row = assign_course_default_task(session, course_id, requires, body.model_id)
     except ProviderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
     return _course_default_out(session, requires, row)
 
 
-@router.put(
-    "/courses/{course_id}/tasks/{task}", response_model=CourseTaskOut
-)
+@router.put("/courses/{course_id}/tasks/{task}", response_model=CourseTaskOut)
 def put_course_task(
-    course_id: int, task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
+    course_id: str, task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
 ) -> CourseTaskOut:
     _get_course_or_404(course_id, session)
     try:

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy import select
@@ -21,9 +22,7 @@ class PatternError(ValueError):
     pass
 
 
-def _detection_matches(
-    detection: dict[str, Any] | None, response: str, expected: str
-) -> bool:
+def _detection_matches(detection: Mapping[str, Any] | None, response: str, expected: str) -> bool:
     if not detection or not response or not expected:
         return False
     kind = detection.get("type")
@@ -44,11 +43,11 @@ class ErrorPatternService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def course_type_id(self, course_id: int) -> int | None:
+    def course_type_id(self, course_id: str) -> str | None:
         course = self._session.get(Course, course_id)
         return course.course_type_id if course is not None else None
 
-    def resolve(self, course_id: int) -> list[ErrorPattern]:
+    def resolve(self, course_id: str) -> list[ErrorPattern]:
         course_type_id = self.course_type_id(course_id)
         stmt = select(ErrorPattern).where(ErrorPattern.is_active.is_(True))
         if course_type_id is None:
@@ -58,16 +57,12 @@ class ErrorPatternService:
                 (ErrorPattern.course_type_id == course_type_id)
                 | (ErrorPattern.course_type_id.is_(None))
             )
-        return list(
-            self._session.scalars(stmt.order_by(ErrorPattern.order_idx, ErrorPattern.id))
-        )
+        return list(self._session.scalars(stmt.order_by(ErrorPattern.order_idx, ErrorPattern.id)))
 
     def get(self, key: str) -> ErrorPattern | None:
-        return self._session.scalars(
-            select(ErrorPattern).where(ErrorPattern.key == key)
-        ).first()
+        return self._session.scalars(select(ErrorPattern).where(ErrorPattern.key == key)).first()
 
-    def counts(self, course_id: int) -> dict[str, int]:
+    def counts(self, course_id: str) -> dict[str, int]:
         rows = self._session.execute(
             select(Mistake.error_tags)
             .join(Question, Question.id == Mistake.question_id)
@@ -82,14 +77,14 @@ class ErrorPatternService:
                     counts[tag] = counts.get(tag, 0) + 1
         return counts
 
-    def detect(self, course_id: int, response: str, expected: str) -> list[str]:
+    def detect(self, course_id: str, response: str, expected: str) -> list[str]:
         return [
             pattern.key
             for pattern in self.resolve(course_id)
             if _detection_matches(pattern.detection, response, expected)
         ]
 
-    def spotted_counts(self, course_id: int) -> dict[str, int]:
+    def spotted_counts(self, course_id: str) -> dict[str, int]:
         rows = self._session.execute(
             select(Exercise.created_from, StepAttempt.correct)
             .join(ExerciseSession, ExerciseSession.exercise_id == Exercise.id)
@@ -107,7 +102,7 @@ class ErrorPatternService:
 
     def create_discovered(
         self,
-        course_id: int,
+        course_id: str,
         *,
         key: str,
         name: str,

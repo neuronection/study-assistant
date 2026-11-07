@@ -144,7 +144,7 @@ describe('MarkdownEditor', () => {
           }}
           ariaLabel="Note body"
           apiRef={api}
-          drawings={[{ id: 7, png_sha: 'abc', ocr_markdown: null }]}
+          drawings={[{ id: '7', png_sha: 'abc', ocr_markdown: null }]}
         />
       )
     }
@@ -152,8 +152,8 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('b'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
-    await waitFor(() => expect(emitted).toContain('ca-drawing://7'))
+    api.current?.insertDrawing('7')
+    await waitFor(() => expect(emitted).toContain('sa-drawing://7'))
     expect(emitted).toContain('a\n\n\nb')
     expect(emitted).not.toContain('&nbsp;')
     expect(emitted).not.toContain('\u00A0')
@@ -255,8 +255,8 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('hello'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
-    await waitFor(() => expect(emitted).toContain('ca-drawing://7'))
+    api.current?.insertDrawing('7')
+    await waitFor(() => expect(emitted).toContain('sa-drawing://7'))
     const paragraphBefore = proseRoot().firstElementChild
     onChange.mockClear()
 
@@ -272,10 +272,10 @@ describe('MarkdownEditor', () => {
     const onChange = vi.fn()
     render(
       <MarkdownEditor
-        value={'before\n\n![drawing](ca-drawing://3)\n\nafter'}
+        value={'before\n\n![drawing](sa-drawing://3)\n\nafter'}
         onChange={onChange}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
       />
     )
     await waitFor(() =>
@@ -292,10 +292,10 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
         drawingAdapter={adapter}
       />
     )
@@ -316,7 +316,7 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(menuButton)
     expect(await screen.findByRole('menu')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run OCR again' }))
-    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith('3'))
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit drawing' }))
@@ -332,10 +332,10 @@ describe('MarkdownEditor', () => {
     }
     const { rerender } = render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: null }]}
         drawingAdapter={adapter}
       />
     )
@@ -347,26 +347,26 @@ describe('MarkdownEditor', () => {
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run OCR again' }))
-    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith('3'))
 
     rerender(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 3, png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: 77 },
+          { id: '3', png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: '77' },
         ]}
         drawingAdapter={adapter}
       />
     )
     rerender(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 3, png_sha: 'abc', ocr_markdown: 'second text', ocr_job_id: null },
+          { id: '3', png_sha: 'abc', ocr_markdown: 'second text', ocr_job_id: null },
         ]}
         drawingAdapter={adapter}
       />
@@ -391,12 +391,12 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={(next) => {
           emitted = next
         }}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
         drawingAdapter={adapter}
       />
     )
@@ -410,11 +410,11 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
-    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith('3'))
     await waitFor(() =>
       expect(proseRoot().querySelector('img[src="/api/v1/blobs/abc"]')).toBeNull()
     )
-    await waitFor(() => expect(emitted).not.toContain('ca-drawing://3'))
+    await waitFor(() => expect(emitted).not.toContain('sa-drawing://3'))
   })
 
   test('unreferenced drawing menu delete calls the adapter', async () => {
@@ -426,12 +426,12 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://4)\n\nafter'}
+        value={'text\n\n![drawing](sa-drawing://4)\n\nafter'}
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 4, png_sha: 'abc', ocr_markdown: null, strokes: [] },
-          { id: 7, png_sha: 'orphan', ocr_markdown: null, strokes: [] },
+          { id: '4', png_sha: 'abc', ocr_markdown: null, strokes: [] },
+          { id: '7', png_sha: 'orphan', ocr_markdown: null, strokes: [] },
         ]}
         drawingAdapter={adapter}
       />
@@ -444,7 +444,7 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More drawing actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
-    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith('7'))
   })
 
   test('drawing delete asks for confirmation before removing', async () => {
@@ -456,10 +456,10 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
         drawingAdapter={adapter}
       />
     )
@@ -481,10 +481,10 @@ describe('MarkdownEditor', () => {
   test('clicking away deselects the drawing and hides its menu', async () => {
     render(
       <MarkdownEditor
-        value={'text before\n\n![drawing](ca-drawing://3)\n\ntext after'}
+        value={'text before\n\n![drawing](sa-drawing://3)\n\ntext after'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
       />
     )
     const image = await waitFor(() => {
@@ -509,10 +509,10 @@ describe('MarkdownEditor', () => {
   test('drawing node is marked draggable with a drag handle on the image', async () => {
     render(
       <MarkdownEditor
-        value={'one\n\n![drawing](ca-drawing://3)\n\ntwo'}
+        value={'one\n\n![drawing](sa-drawing://3)\n\ntwo'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
       />
     )
     const image = await waitFor(() => {
@@ -531,20 +531,20 @@ describe('MarkdownEditor', () => {
   test('inline drawing refreshes its OCR text when the drawing prop changes', async () => {
     const { rerender } = render(
       <MarkdownEditor
-        value={'![drawing](ca-drawing://3)'}
+        value={'![drawing](sa-drawing://3)'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'first text' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'first text' }]}
       />
     )
     await waitFor(() => expect(proseRoot().textContent).toContain('first text'))
 
     rerender(
       <MarkdownEditor
-        value={'![drawing](ca-drawing://3)'}
+        value={'![drawing](sa-drawing://3)'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'second text' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'second text' }]}
       />
     )
     await waitFor(() => expect(proseRoot().textContent).toContain('second text'))
@@ -560,10 +560,10 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('hello'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
+    api.current?.insertDrawing('7')
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
-        expect.stringContaining('ca-drawing://7')
+        expect.stringContaining('sa-drawing://7')
       )
     )
   })
@@ -591,7 +591,7 @@ describe('MarkdownEditor', () => {
           onChange={setValue}
           ariaLabel="Note body"
           apiRef={api}
-          drawings={[{ id: 7, png_sha: 'abc', ocr_markdown: null }]}
+          drawings={[{ id: '7', png_sha: 'abc', ocr_markdown: null }]}
         />
       )
     }
@@ -605,7 +605,7 @@ describe('MarkdownEditor', () => {
     expect(redo).toBeDisabled()
 
     await act(async () => {
-      api.current?.insertDrawing(7)
+      api.current?.insertDrawing('7')
     })
     await waitFor(() => expect(proseRoot().querySelector('img')).not.toBeNull())
 
@@ -630,7 +630,7 @@ describe('MarkdownEditor', () => {
 
     api.current?.insertQuote('line one\nline two', {
       title: 'Worksheet',
-      materialId: 5,
+      materialId: '5',
     })
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
@@ -639,7 +639,7 @@ describe('MarkdownEditor', () => {
     )
     const markdown = onChange.mock.calls[0][0] as string
     expect(markdown).toContain('> line two')
-    expect(markdown).toContain('[Worksheet](ca-material://5)')
+    expect(markdown).toContain('[Worksheet](sa-material://5)')
   })
 
   test('extraction markdown round-trips byte-identically', async () => {
@@ -650,7 +650,7 @@ describe('MarkdownEditor', () => {
       'inline $\\frac{1}{2}$ and $\\alpha$ values',
       '$$\\int_0^1 f(x)\\,dx = F(1) - F(0)$$',
       '$$\n\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}\n$$',
-      'see [@M1](mention:M1 "Lecture 1") and [Worksheet](ca-material://5)',
+      'see [@M1](mention:M1 "Lecture 1") and [Worksheet](sa-material://5)',
       '```mermaid\ngraph TD\n  A-->B\n```',
       'text with `code $x$ span` intact',
       'mixed | pipe | outside math stays',
@@ -672,12 +672,12 @@ describe('MarkdownEditor', () => {
     }
   }, 20000)
 
-  test('a saved ca-material link survives reopening the editor', async () => {
+  test('a saved sa-material link survives reopening the editor', async () => {
     let emitted = ''
     const api: { current: MarkdownEditorApi | null } = { current: null }
     const { rerender } = render(
       <MarkdownEditor
-        value={'quote from [Worksheet](ca-material://5) here'}
+        value={'quote from [Worksheet](sa-material://5) here'}
         onChange={(next) => {
           emitted = next
         }}
@@ -689,8 +689,8 @@ describe('MarkdownEditor', () => {
     await act(async () => {
       api.current?.insertQuote('probe', null)
     })
-    await waitFor(() => expect(emitted).toContain('ca-material://5'))
-    expect(emitted).toBe('> probe\n\nquote from [Worksheet](ca-material://5) here')
+    await waitFor(() => expect(emitted).toContain('sa-material://5'))
+    expect(emitted).toBe('> probe\n\nquote from [Worksheet](sa-material://5) here')
     rerender(
       <MarkdownEditor
         value={emitted}
@@ -705,7 +705,7 @@ describe('MarkdownEditor', () => {
       api.current?.insertQuote('again', null)
     })
     await waitFor(() => expect(emitted).toContain('> again'))
-    expect(emitted).toContain('[Worksheet](ca-material://5)')
+    expect(emitted).toContain('[Worksheet](sa-material://5)')
   })
 
   test('inline math renders with KaTeX instead of raw latex source', async () => {
@@ -717,7 +717,7 @@ describe('MarkdownEditor', () => {
       />
     )
     await waitFor(() =>
-      expect(document.querySelector('.ca-math .katex')).not.toBeNull()
+      expect(document.querySelector('.sa-math .katex')).not.toBeNull()
     )
     expect(proseRoot().textContent).not.toContain('$f(x,y)')
   })
@@ -743,7 +743,7 @@ describe('MarkdownEditor', () => {
       />
     )
     await waitFor(() =>
-      expect(document.querySelector('.ca-math .katex')).not.toBeNull()
+      expect(document.querySelector('.sa-math .katex')).not.toBeNull()
     )
     expect(screen.queryByRole('button', { name: 'Fix with AI' })).toBeNull()
   })
@@ -757,7 +757,7 @@ describe('MarkdownEditor', () => {
       />
     )
     await waitFor(() =>
-      expect(document.querySelector('.ca-math .katex-display')).not.toBeNull()
+      expect(document.querySelector('.sa-math .katex-display')).not.toBeNull()
     )
   })
 
@@ -773,7 +773,7 @@ describe('MarkdownEditor', () => {
       />
     )
     const mathChip = await waitFor(() => {
-      const node = document.querySelector('[data-ca-math-view]') as HTMLElement
+      const node = document.querySelector('[data-sa-math-view]') as HTMLElement
       expect(node).not.toBeNull()
       return node
     })
@@ -812,7 +812,7 @@ describe('MarkdownEditor', () => {
       />
     )
     await waitFor(() =>
-      expect(document.querySelector('.ca-math .katex')).not.toBeNull()
+      expect(document.querySelector('.sa-math .katex')).not.toBeNull()
     )
     await waitFor(() => expect(api.current).not.toBeNull())
     await act(async () => {
@@ -907,7 +907,7 @@ describe('MarkdownEditor', () => {
       />
     )
     const mathChip = await waitFor(() => {
-      const node = document.querySelector('[data-ca-math-view]') as HTMLElement
+      const node = document.querySelector('[data-sa-math-view]') as HTMLElement
       expect(node).not.toBeNull()
       return node
     })
@@ -939,7 +939,7 @@ describe('MarkdownEditor', () => {
     await waitFor(() =>
       expect(screen.getByRole('dialog', { name: 'Edit equation' })).toBeInTheDocument()
     )
-    expect(document.querySelector('[data-ca-math-view]')).not.toBeNull()
+    expect(document.querySelector('[data-sa-math-view]')).not.toBeNull()
 
     const field = document.querySelector('math-field') as HTMLElement & {
       value: string
@@ -987,7 +987,7 @@ describe('MarkdownEditor', () => {
   test('pen button opens the canvas; saving calls create and inserts the ref', async () => {
     let emitted = ''
     const adapter = {
-      create: vi.fn(async () => 11),
+      create: vi.fn(async () => '11'),
       update: vi.fn(async () => undefined),
       reocr: vi.fn(async () => undefined),
       remove: vi.fn(async () => undefined),
@@ -1019,7 +1019,7 @@ describe('MarkdownEditor', () => {
         { x: -4, y: -4, width: 8, height: 8 }
       )
     )
-    await waitFor(() => expect(emitted).toContain('ca-drawing://11'))
+    await waitFor(() => expect(emitted).toContain('sa-drawing://11'))
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Handwriting canvas' })).toBeNull()
     )
@@ -1027,7 +1027,7 @@ describe('MarkdownEditor', () => {
 
   test('turning the OCR toggle off saves the drawing without extraction', async () => {
     const adapter = {
-      create: vi.fn(async () => 12),
+      create: vi.fn(async () => '12'),
       update: vi.fn(async () => undefined),
       reocr: vi.fn(async () => undefined),
       remove: vi.fn(async () => undefined),
@@ -1061,12 +1061,12 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'plain\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'plain\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
           {
-            id: 3,
+            id: '3',
             png_sha: 'abc',
             ocr_markdown: 'old',
             strokes: [{ points: [[1, 1]], color: '#1a1a1a', width: 2 }],
@@ -1089,7 +1089,7 @@ describe('MarkdownEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save drawing' }))
     await waitFor(() =>
       expect(adapter.update).toHaveBeenCalledWith(
-        3,
+        '3',
         [{ points: [[0, 0]], color: '#1a1a1a', width: 2 }],
         'AAA',
         true,
@@ -1110,12 +1110,12 @@ describe('MarkdownEditor', () => {
     }
     render(
       <MarkdownEditor
-        value={'text\n\n![drawing](ca-drawing://3)\n\nmore text'}
+        value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
           {
-            id: 3,
+            id: '3',
             png_sha: 'abc',
             ocr_markdown: null,
             strokes: [{ points: [[1, 1]], color: '#1a1a1a', width: 2 }],
@@ -1143,14 +1143,14 @@ describe('MarkdownEditor', () => {
     let emitted = ''
     render(
       <MarkdownEditor
-        value={'before\n\n![drawing](ca-drawing://4)\n\nafter'}
+        value={'before\n\n![drawing](sa-drawing://4)\n\nafter'}
         onChange={(next) => {
           emitted = next
         }}
         ariaLabel="Note body"
         drawings={[
-          { id: 4, png_sha: 'abc123', ocr_markdown: '$2x$', strokes: [] },
-          { id: 7, png_sha: 'orphan', ocr_markdown: null, strokes: [] },
+          { id: '4', png_sha: 'abc123', ocr_markdown: '$2x$', strokes: [] },
+          { id: '7', png_sha: 'orphan', ocr_markdown: null, strokes: [] },
         ]}
       />
     )
@@ -1161,6 +1161,6 @@ describe('MarkdownEditor', () => {
     expect(screen.getAllByRole('img', { name: /handwritten/i })).toHaveLength(2)
 
     fireEvent.click(screen.getByRole('button', { name: 'Insert inline' }))
-    await waitFor(() => expect(emitted).toContain('ca-drawing://7'))
+    await waitFor(() => expect(emitted).toContain('sa-drawing://7'))
   })
 })

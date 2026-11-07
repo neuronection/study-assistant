@@ -11,14 +11,12 @@ from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway
 from app.core.config import Settings
 from app.domain.models import ChatSession
 from app.main import create_app
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 from app.services.platform.profiles import ensure_default_profile
 
 
 class Harness:
-    def __init__(
-        self, client: TestClient, gateway: ScriptedGateway, session_id: int
-    ) -> None:
+    def __init__(self, client: TestClient, gateway: ScriptedGateway, session_id: str) -> None:
         self.client = client
         self.gateway = gateway
         self.session_id = session_id
@@ -34,7 +32,7 @@ def harness(tmp_path: Path, responses: list[str]) -> Iterator[Harness]:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         yield Harness(client, gateway, session_id)
 
 
@@ -46,7 +44,8 @@ def get_messages(harness: Harness) -> list[dict[str, Any]]:
 
 
 def wait_until(
-    harness: Harness, predicate: Callable[[list[dict[str, Any]]], bool],
+    harness: Harness,
+    predicate: Callable[[list[dict[str, Any]]], bool],
     timeout: float = 30.0,
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
@@ -56,9 +55,7 @@ def wait_until(
         if messages and predicate(messages):
             return messages
         time.sleep(0.05)
-    raise AssertionError(
-        f"condition never met within {timeout}s; last messages: {messages!r}"
-    )
+    raise AssertionError(f"condition never met within {timeout}s; last messages: {messages!r}")
 
 
 def wait_for_assistant(harness: Harness, timeout: float = 30.0) -> list[dict[str, Any]]:
@@ -73,8 +70,8 @@ def send(harness: Harness, content: str) -> None:
     assert response.status_code == 200
 
 
-def first_user_id(messages: list[dict[str, Any]]) -> int:
-    return int(next(m["id"] for m in messages if m["role"] == "user"))
+def first_user_id(messages: list[dict[str, Any]]) -> str:
+    return str(next(m["id"] for m in messages if m["role"] == "user"))
 
 
 def test_send_chains_messages_to_active_tip(tmp_path: Path) -> None:
@@ -138,8 +135,11 @@ def test_regenerate_adds_assistant_variant(tmp_path: Path) -> None:
         assert response.status_code == 200
         regenerated = wait_until(
             h,
-            lambda ms: ms[-1]["role"] == "assistant"
-            and ms[-1]["variant_count"] == 2,
+            lambda ms: (
+                ms[-1]["role"] == "assistant"
+                and ms[-1]["variant_count"] == 2
+                and ms[-1]["markdown"] == "v2"
+            ),
         )
 
         assert regenerated[-1]["markdown"] == "v2"
@@ -180,9 +180,7 @@ def test_select_hidden_subtree_restores_later_turns(tmp_path: Path) -> None:
         under_branch = wait_until(h, lambda ms: len(ms) == 4)
         assert under_branch[3]["markdown"] == "deep"
 
-        selection = h.client.post(
-            f"/api/v1/chat/messages/{original_user_id}/select"
-        )
+        selection = h.client.post(f"/api/v1/chat/messages/{original_user_id}/select")
         assert selection.status_code == 200
         restored = get_messages(h)
         assert len(restored) == 2
@@ -230,9 +228,7 @@ def test_branch_tree_endpoint_exposes_full_tree(tmp_path: Path) -> None:
         assert len(nodes[branched_root_id]["children"]) == 1
 
         assert nodes[original_user_id]["parent_id"] is None
-        root_ids = sorted(
-            node["id"] for node in payload["nodes"] if node["parent_id"] is None
-        )
+        root_ids = sorted(node["id"] for node in payload["nodes"] if node["parent_id"] is None)
         assert root_ids == sorted([original_user_id, branched_root_id])
 
         original_answer = nodes[original[1]["id"]]
@@ -254,9 +250,7 @@ def test_pending_message_chains_under_later_assistant_reply(
     a1 = service.add_message(session_row.id, "assistant", "a1")
     a1.parent_id = root.id
     branched = service.branch_message(root, "branch q")
-    under = service.add_message(
-        session_row.id, "user", "under branch", parent_id=branched.id
-    )
+    under = service.add_message(session_row.id, "user", "under branch", parent_id=branched.id)
     a2 = service.add_message(session_row.id, "assistant", "a2-edited")
     a2.parent_id = branched.id
     branched.active_child_id = a2.id

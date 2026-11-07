@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from conftest import uid
 from pytest import fixture
 from sqlalchemy.orm import Session
 from test_chat_api import ScriptedGateway
@@ -41,17 +42,15 @@ LONG_DOC = (
     "below, and finally skim the recap list to confirm nothing was missed."
 )
 
-SPEC = ContextSpec(course_id=1, node_id=2, scope=ContextScope.node)
+SPEC = ContextSpec(course_id=uid(1), node_id=uid(2), scope=ContextScope.node)
 
 
-def bundle_with(
-    materials: list[dict[str, Any]], chunks: list[dict[str, Any]]
-) -> ContextBundle:
+def bundle_with(materials: list[dict[str, Any]], chunks: list[dict[str, Any]]) -> ContextBundle:
     return ContextBundle(
         SPEC,
         node=None,
         breadcrumb=[],
-        material_ids=[int(entry["id"]) for entry in materials],
+        material_ids=[str(entry["id"]) for entry in materials],
         materials=materials,
         chunks=chunks,
         notes=[],
@@ -60,18 +59,20 @@ def bundle_with(
     )
 
 
-def chunk(material_id: int, chunk_id: int) -> dict[str, Any]:
+def chunk(material_id: str, chunk_id: str) -> dict[str, Any]:
     return {"chunk_id": chunk_id, "material_id": material_id, "title": "t", "text": "x"}
 
 
 def test_coverage_report_splits_covered_and_missing() -> None:
-    materials = [{"id": 1}, {"id": 2}, {"id": 3}]
-    report = coverage_report(materials, [chunk(1, 10), chunk(1, 11), chunk(3, 12)])
-    assert report == {"total": 3, "covered": 2, "missing_ids": [2]}
+    materials = [{"id": uid(1)}, {"id": uid(2)}, {"id": uid(3)}]
+    report = coverage_report(
+        materials, [chunk(uid(1), uid(10)), chunk(uid(1), uid(11)), chunk(uid(3), uid(12))]
+    )
+    assert report == {"total": 3, "covered": 2, "missing_ids": [uid(2)]}
 
 
 def test_coverage_report_empty_scope() -> None:
-    assert coverage_report([], [chunk(1, 10)]) == {
+    assert coverage_report([], [chunk(uid(1), uid(10))]) == {
         "total": 0,
         "covered": 0,
         "missing_ids": [],
@@ -80,9 +81,9 @@ def test_coverage_report_empty_scope() -> None:
 
 def test_bundle_coverage_property_and_stats() -> None:
     bundle = bundle_with(
-        [{"id": 5, "title": "a"}, {"id": 6, "title": "b"}], [chunk(5, 1)]
+        [{"id": uid(5), "title": "a"}, {"id": uid(6), "title": "b"}], [chunk(uid(5), uid(1))]
     )
-    assert bundle.coverage == {"total": 2, "covered": 1, "missing_ids": [6]}
+    assert bundle.coverage == {"total": 2, "covered": 1, "missing_ids": [uid(6)]}
     assert bundle.stats()["coverage"] == bundle.coverage
 
 
@@ -97,16 +98,14 @@ def test_resolver_second_round_fires_below_gate(
     ) -> list[dict[str, Any]]:
         queries.append(query)
         if len(queries) == 1:
-            return [chunk(material_ids[0], 1), chunk(material_ids[1], 2)]
+            return [chunk(material_ids[0], uid(1)), chunk(material_ids[1], uid(2))]
         return [
-            chunk(material_ids[2], 3),
-            chunk(material_ids[0], 1),
-            chunk(material_ids[3], 4),
+            chunk(material_ids[2], uid(3)),
+            chunk(material_ids[0], uid(1)),
+            chunk(material_ids[3], uid(4)),
         ]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -136,13 +135,10 @@ def test_resolver_second_round_skipped_at_exact_gate(
     ) -> list[dict[str, Any]]:
         calls.append(query)
         return [
-            chunk(material_id, index)
-            for index, material_id in enumerate(material_ids[:4])
+            chunk(material_id, uid(index)) for index, material_id in enumerate(material_ids[:4])
         ]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -168,11 +164,9 @@ def test_resolver_second_round_skipped_below_material_floor(
         session: Session, query: str, embed_query: Any, **kwargs: Any
     ) -> list[dict[str, Any]]:
         calls.append(query)
-        return [chunk(material_ids[0], 1)]
+        return [chunk(material_ids[0], uid(1))]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -191,12 +185,11 @@ def test_compose_records_coverage_and_flags_needs_review(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     bundle = bundle_with(
         materials,
-        [chunk(material_id, index) for index, material_id in enumerate(material_ids[:2])],
+        [chunk(material_id, uid(index)) for index, material_id in enumerate(material_ids[:2])],
     )
     gateway = ScriptedGateway([LONG_DOC])
     service = ComposeService(db_session, gateway)
@@ -224,12 +217,11 @@ def test_compose_at_gate_records_coverage_without_flag(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     bundle = bundle_with(
         materials,
-        [chunk(material_id, index) for index, material_id in enumerate(material_ids[:4])],
+        [chunk(material_id, uid(index)) for index, material_id in enumerate(material_ids[:4])],
     )
     gateway = ScriptedGateway([LONG_DOC])
     service = ComposeService(db_session, gateway)
@@ -253,12 +245,11 @@ def test_compose_regenerate_replaces_stale_flag(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     low = bundle_with(
         materials,
-        [chunk(material_id, index) for index, material_id in enumerate(material_ids[:2])],
+        [chunk(material_id, uid(index)) for index, material_id in enumerate(material_ids[:2])],
     )
     gateway = ScriptedGateway([LONG_DOC])
     service = ComposeService(db_session, gateway)
@@ -275,7 +266,7 @@ def test_compose_regenerate_replaces_stale_flag(
     assert existing.provenance["needs_review"] is True
     covered = bundle_with(
         materials,
-        [chunk(material_id, index) for index, material_id in enumerate(material_ids[:5])],
+        [chunk(material_id, uid(index)) for index, material_id in enumerate(material_ids[:5])],
     )
     gateway.responses.append(LONG_DOC)
     updated = service.compose(
@@ -313,7 +304,7 @@ def test_include_unassigned_merges_ready_orphans(
             )
         )
     db_session.flush()
-    orphan_ids: list[int] = []
+    orphan_ids: list[str] = []
     for index in range(3):
         material = Material(
             profile_id=profile_id,
@@ -325,7 +316,7 @@ def test_include_unassigned_merges_ready_orphans(
         )
         db_session.add(material)
         db_session.flush()
-        orphan_ids.append(int(material.id))
+        orphan_ids.append(str(material.id))
     db_session.add(
         Material(
             profile_id=profile_id,
@@ -345,9 +336,7 @@ def test_include_unassigned_merges_ready_orphans(
         captured["material_ids"] = kwargs.get("material_ids")
         return []
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -370,7 +359,7 @@ def test_include_unassigned_merges_ready_orphans(
             scope=ContextScope.node,
         )
     )
-    assert captured["material_ids"] == material_ids
+    assert sorted(captured["material_ids"]) == sorted(material_ids)
     assert len(bundle_off.materials) == 2
 
 
@@ -379,9 +368,7 @@ def gateway() -> ScriptedGateway:
     return ScriptedGateway([LONG_DOC])
 
 
-def _scoped_course(
-    session: Session, count: int, user_id: str
-) -> tuple[str, int, int, list[int]]:
+def _scoped_course(session: Session, count: int, user_id: str) -> tuple[str, str, str, list[str]]:
     profile = Profile(user_id=user_id, name="p")
     session.add(profile)
     session.flush()
@@ -397,7 +384,7 @@ def _scoped_course(
     )
     session.add(node)
     session.flush()
-    ids: list[int] = []
+    ids: list[str] = []
     for index in range(count):
         material = Material(
             profile_id=profile.id,
@@ -409,8 +396,8 @@ def _scoped_course(
         )
         session.add(material)
         session.flush()
-        ids.append(int(material.id))
-    return str(profile.id), int(course.id), int(node.id), ids
+        ids.append(str(material.id))
+    return str(profile.id), str(course.id), str(node.id), ids
 
 
 def _practice_json() -> str:
@@ -481,9 +468,7 @@ def test_validate_practice_draft_rejects_bad_items() -> None:
 
 def test_validate_practice_draft_requires_items_and_caps_count() -> None:
     assert _validate_practice_draft({}, []) == ["response missing items list"]
-    assert _validate_practice_draft({"items": []}, []) == [
-        "response missing items list"
-    ]
+    assert _validate_practice_draft({"items": []}, []) == ["response missing items list"]
     oversized = {
         "items": [
             {

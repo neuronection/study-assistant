@@ -1,3 +1,5 @@
+import type { UnsupportedTypeDetail } from './hand-types'
+
 export class ApiError extends Error {
   status: number
   detail: unknown
@@ -9,11 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface UnsupportedTypeDetail {
-  reason: 'unsupported_type'
-  suffix: string
-  accepted: string[]
-}
+export type { UnsupportedTypeDetail } from './hand-types'
 
 export function unsupportedTypeDetail(detail: unknown): UnsupportedTypeDetail | null {
   if (
@@ -47,6 +45,12 @@ export function apiDetailMessage(detail: unknown): string | null {
       })
       .filter((part) => part.length > 0)
     return parts.length > 0 ? parts.join('; ') : null
+  }
+  if (detail !== null && typeof detail === 'object') {
+    const record = detail as { message?: unknown }
+    if (typeof record.message === 'string' && record.message.trim()) {
+      return record.message
+    }
   }
   if (detail !== null && detail !== undefined) {
     return String(detail)

@@ -39,11 +39,11 @@ import { useCloseFloatings } from '@/lib/ui-overlays'
 
 type PickerLocation =
   | { kind: 'all' }
-  | { kind: 'folder'; folderId: number | null }
-  | { kind: 'link'; folderId: number; sourceId: number; subdir: string }
+  | { kind: 'folder'; folderId: string | null }
+  | { kind: 'link'; folderId: string; sourceId: string; subdir: string }
 
 type PickableMaterial = {
-  id: number
+  id: string
   title: string
   kind: string
   status: string
@@ -100,7 +100,7 @@ function FolderAssignButton({
   selected,
   onToggle,
 }: {
-  folder: { id: number; name: string }
+  folder: { id: string; name: string }
   assigned: boolean
   selected: boolean
   onToggle: () => void
@@ -146,25 +146,25 @@ export function MaterialPickerDialog({
   confirmLabel,
   lockedLabel,
 }: {
-  courseId: number
-  nodeId?: number | null
+  courseId: string
+  nodeId?: string | null
   nodeTitle?: string
-  assignedIds: Set<number>
-  assignedFolderIds?: Set<number>
+  assignedIds: Set<string>
+  assignedFolderIds?: Set<string>
   onClose: () => void
   mode?: 'allocate' | 'select'
-  onSelect?: (ids: number[]) => void
+  onSelect?: (ids: string[]) => void
   confirmLabel?: string
   lockedLabel?: string
 }) {
   useCloseFloatings()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<Map<number, string>>(new Map())
-  const [selectedFolders, setSelectedFolders] = useState<Map<number, string>>(new Map())
+  const [selected, setSelected] = useState<Map<string, string>>(new Map())
+  const [selectedFolders, setSelectedFolders] = useState<Map<string, string>>(new Map())
   const [location, setLocation] = useState<PickerLocation>({ kind: 'folder', folderId: null })
   const [query, setQuery] = useState('')
-  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({})
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [ingesting, setIngesting] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -195,23 +195,23 @@ export function MaterialPickerDialog({
       ? { folderId: location.folderId, sourceId: location.sourceId, subdir: location.subdir }
       : null
   const browse = useQuery({
-    queryKey: ['source-browse', linkState?.sourceId ?? 0, linkState?.subdir ?? ''],
-    queryFn: () => browseSource(linkState?.sourceId as number, linkState?.subdir ?? ''),
+    queryKey: ['source-browse', linkState?.sourceId ?? '', linkState?.subdir ?? ''],
+    queryFn: () => browseSource(linkState!.sourceId, linkState?.subdir ?? ''),
     enabled: linkState !== null,
   })
 
   const canAssignFolders = mode === 'allocate' && nodeId != null
-  const lockedFolderIds = assignedFolderIds ?? new Set<number>()
+  const lockedFolderIds = assignedFolderIds ?? new Set<string>()
 
   const allocate = useMutation({
     mutationFn: async () => {
       await Promise.all(
         Array.from(selected.keys()).map((materialId) =>
-          allocateMaterial(nodeId as number, materialId)
+          allocateMaterial(nodeId!, materialId)
         )
       )
       for (const folderId of selectedFolders.keys()) {
-        await allocateNodeFolder(nodeId as number, folderId)
+        await allocateNodeFolder(nodeId!, folderId)
       }
     },
     onSuccess: async () => {
@@ -227,13 +227,13 @@ export function MaterialPickerDialog({
     courseId,
     getFolderId: () =>
       location.kind === 'folder' && location.folderId !== null ? location.folderId : null,
-    getTargetNodeId: () => (canAssignFolders ? (nodeId as number | null) : null),
+    getTargetNodeId: () => (canAssignFolders ? (nodeId ?? null) : null),
     onUploaded: (result) =>
       setSelected((current) => new Map(current).set(result.material.id, result.material.title)),
   })
 
   const childrenOf = useMemo(() => {
-    const map = new Map<number | null, Folder[]>()
+    const map = new Map<string | null, Folder[]>()
     for (const folder of folders.data ?? []) {
       const list = map.get(folder.parent_id) ?? []
       list.push(folder)
@@ -246,7 +246,7 @@ export function MaterialPickerDialog({
   }, [folders.data])
 
   const materialsByFolder = useMemo(() => {
-    const map = new Map<number, Material[]>()
+    const map = new Map<string, Material[]>()
     for (const material of allMaterials.data ?? []) {
       if (material.folder_id !== null) {
         const list = map.get(material.folder_id) ?? []
@@ -257,11 +257,11 @@ export function MaterialPickerDialog({
     return map
   }, [allMaterials.data])
 
-  const subtreeMaterialIds = (folderId: number): number[] => {
-    const ids: number[] = []
+  const subtreeMaterialIds = (folderId: string): string[] => {
+    const ids: string[] = []
     const stack = [folderId]
     while (stack.length > 0) {
-      const current = stack.pop() as number
+      const current = stack.pop() as string
       for (const material of materialsByFolder.get(current) ?? []) {
         ids.push(material.id)
       }
@@ -272,9 +272,9 @@ export function MaterialPickerDialog({
     return ids
   }
 
-  const folderCount = (folderId: number): number => subtreeMaterialIds(folderId).length
+  const folderCount = (folderId: string): number => subtreeMaterialIds(folderId).length
 
-  const toggleIds = (entries: { id: number; title: string }[]) => {
+  const toggleIds = (entries: { id: string; title: string }[]) => {
     setSelected((current) => {
       const next = new Map(current)
       const allSelected = entries.every((entry) => next.has(entry.id))
@@ -329,7 +329,7 @@ export function MaterialPickerDialog({
     }
   }
 
-  const folderChain = (folderId: number | null): Folder[] => {
+  const folderChain = (folderId: string | null): Folder[] => {
     const chain: Folder[] = []
     let walker: Folder | undefined =
       folderId === null
@@ -348,7 +348,7 @@ export function MaterialPickerDialog({
       : null
 
   const visibleMaterials: PickableMaterial[] = useMemo(() => {
-    const toPickable = (entry: { id: number; title: string; kind: string; status: string }) => ({
+    const toPickable = (entry: { id: string; title: string; kind: string; status: string }) => ({
       id: entry.id,
       title: entry.title,
       kind: entry.kind,
@@ -440,7 +440,7 @@ export function MaterialPickerDialog({
   }
 
   const openFolder = (entry: Folder) => {
-    if (entry.source_id !== null) {
+    if (entry.source_id != null) {
       setLocation({ kind: 'link', folderId: entry.id, sourceId: entry.source_id, subdir: '' })
     } else {
       setLocation({ kind: 'folder', folderId: entry.id })

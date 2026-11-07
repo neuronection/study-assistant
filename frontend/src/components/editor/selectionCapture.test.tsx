@@ -9,7 +9,7 @@ import { act, render } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import type { Editor as TiptapEditor } from '@tiptap/react'
 
-import { CaMath } from './CaMath'
+import { SaMath } from './SaMath'
 import { CaMermaid } from './CaMermaid'
 import { MarkdownTable } from './MarkdownTable'
 import {
@@ -46,7 +46,7 @@ function setup(): Promise<HeldEditor> {
       extensions: [
         StarterKit.configure({ paragraph: false }),
         BlankLineParagraph,
-        CaMath,
+        SaMath,
         CaMermaid,
         MarkdownTable,
         TableRow,
@@ -265,7 +265,7 @@ describe('selectionCapture', () => {
       schema.nodes.caMermaid.create({ source: MERMAID_SOURCE }),
       schema.nodes.caMath.create({ latex: 'x', display: false }),
       schema.nodes.codeBlock.create(null, schema.text('code')),
-      schema.nodes.image.create({ src: 'ca-drawing://1', alt: '' }),
+      schema.nodes.image.create({ src: 'sa-drawing://1', alt: '' }),
       paragraph,
       bulletList,
       quote,
@@ -331,7 +331,7 @@ describe('selectionCapture', () => {
           content: [
             {
               type: 'image',
-              attrs: { src: 'ca-drawing://7', alt: 'handwritten drawing' },
+              attrs: { src: 'sa-drawing://7', alt: 'handwritten drawing' },
             },
           ],
         },
@@ -339,7 +339,7 @@ describe('selectionCapture', () => {
     })
     selectText(held, 1, held.state.doc.content.size - 1)
     const capture = captureSelection(held)
-    expect(capture?.markdown).toContain('![handwritten drawing](ca-drawing://7)')
+    expect(capture?.markdown).toContain('![handwritten drawing](sa-drawing://7)')
     expect(capture?.summary.imagesDrawings).toBe(1)
     expect(capture?.summary.textBlocks).toBe(2)
   })

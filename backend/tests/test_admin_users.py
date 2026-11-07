@@ -83,12 +83,8 @@ def test_admin_users_list_merges_activity_counts(client: TestClient) -> None:
         course = Course(profile_id=admin_profile, title="Alpha course")
         session.add(course)
         session.flush()
-        session.add(
-            Note(profile_id=admin_profile, course_id=course.id, title="n", body=[])
-        )
-        session.add(
-            Course(profile_id=admin_profile, title="Second course")
-        )
+        session.add(Note(profile_id=admin_profile, course_id=course.id, title="n", body=[]))
+        session.add(Course(profile_id=admin_profile, title="Second course"))
         session.add(Course(profile_id=other_profile, title="Beta course"))
         session.commit()
     listed = client.get("/api/v1/admin/users")
@@ -124,9 +120,7 @@ def test_admin_promote_demote_and_guard_rails(client: TestClient) -> None:
     assert unknown.status_code == 404
     # no self-demotion, no self-deactivation (§12)
     for payload in ({"is_admin": False}, {"is_active": False}):
-        denied = client.patch(
-            f"/api/v1/admin/users/{admin_id}", json=payload, headers=echo(client)
-        )
+        denied = client.patch(f"/api/v1/admin/users/{admin_id}", json=payload, headers=echo(client))
         assert denied.status_code == 403
     # promote a plain user — effective change kills their tokens (`ver`)
     promoted = client.patch(
@@ -148,9 +142,7 @@ def test_admin_promote_demote_and_guard_rails(client: TestClient) -> None:
     assert demoted.json()["is_admin"] is False
     # the caller is now the last admin: never removable (§12 guard rails)
     for payload in ({"is_admin": False}, {"is_active": False}):
-        denied = client.patch(
-            f"/api/v1/admin/users/{admin_id}", json=payload, headers=echo(client)
-        )
+        denied = client.patch(f"/api/v1/admin/users/{admin_id}", json=payload, headers=echo(client))
         assert denied.status_code == 403
     row = {r["id"]: r for r in client.get("/api/v1/admin/users").json()}[admin_id]
     assert row["is_admin"] is True and row["is_active"] is True
@@ -223,13 +215,9 @@ def test_admin_force_logout_kills_target_session(client: TestClient) -> None:
     second = AnonymousTestClient(app, headers={"Cookie": cookie, "X-CSRF-Token": csrf})
     assert second.get("/api/v1/auth/me").status_code == 200
     second_id = user_id_by_email(client, SECOND_EMAIL)
-    unknown = client.post(
-        f"/api/v1/admin/users/{uuid4()}/force-logout", headers=echo(client)
-    )
+    unknown = client.post(f"/api/v1/admin/users/{uuid4()}/force-logout", headers=echo(client))
     assert unknown.status_code == 404
-    done = client.post(
-        f"/api/v1/admin/users/{second_id}/force-logout", headers=echo(client)
-    )
+    done = client.post(f"/api/v1/admin/users/{second_id}/force-logout", headers=echo(client))
     assert done.status_code == 204
     assert second.get("/api/v1/auth/me").status_code == 401
     assert "admin.force_logout" in audit_actions(app)
@@ -390,13 +378,8 @@ def test_delete_me_cascades_profiles_and_content(client: TestClient) -> None:
     assert deleter.cookies.get("nx_access") is None
     with factory() as session:
         assert session.get(User, goner_id) is None
-        assert (
-            session.scalars(select(Profile).where(Profile.user_id == goner_id)).all() == []
-        )
-        assert (
-            session.scalars(select(Course).where(Course.profile_id == profile_id)).all()
-            == []
-        )
+        assert session.scalars(select(Profile).where(Profile.user_id == goner_id)).all() == []
+        assert session.scalars(select(Course).where(Course.profile_id == profile_id)).all() == []
     # the admin account is untouched
     assert client.get("/api/v1/auth/me").status_code == 200
     assert "auth.account_delete" in audit_actions(app)

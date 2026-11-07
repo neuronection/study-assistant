@@ -17,8 +17,8 @@ router = APIRouter(prefix="/study-sessions", tags=["study-sessions"])
 class StudySessionStartIn(BaseModel):
     kind: StudySessionKind
     source: StudySessionSource = StudySessionSource.AUTO
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
     entity_ref: str | None = Field(default=None, max_length=120)
 
 
@@ -27,11 +27,11 @@ class StudySessionBeatIn(BaseModel):
 
 
 class StudySessionOut(BaseModel):
-    id: int
+    id: str
     kind: StudySessionKind
     source: StudySessionSource
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     entity_ref: str | None
     started_at: str
     ended_at: str | None
@@ -72,7 +72,7 @@ def _session_out(row: StudySession) -> StudySessionOut:
     )
 
 
-def _load_session(db: Session, session_id: int, profile_id: str) -> StudySession:
+def _load_session(db: Session, session_id: str, profile_id: str) -> StudySession:
     row = db.get(StudySession, session_id)
     if row is None or row.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="study session not found")
@@ -99,7 +99,7 @@ def start_study_session(
 
 @router.patch("/{session_id}", response_model=StudySessionOut)
 def beat_study_session(
-    session_id: int,
+    session_id: str,
     body: StudySessionBeatIn,
     session: Session = Depends(get_session),
 ) -> StudySessionOut:
@@ -111,8 +111,6 @@ def beat_study_session(
 
 
 @router.get("/summary", response_model=StudySessionSummaryOut)
-def study_session_summary(
-    days: int = 7, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def study_session_summary(days: int = 7, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     return sessions_service.session_summary(session, profile.id, days)

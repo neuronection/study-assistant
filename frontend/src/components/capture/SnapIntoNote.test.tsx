@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { SnapIntoNote } from './SnapIntoNote'
@@ -19,7 +19,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     createNote: (body: Parameters<typeof actual.createNote>[0]) => createNote(body),
     addDrawing: (...args: unknown[]) => addDrawing(...(args as [number, unknown[], string])),
     updateNote: (...args: unknown[]) => updateNote(...(args as [number, object])),
-    deleteDrawing: (noteId: number, drawingId: number) => deleteDrawing(noteId, drawingId),
+    deleteDrawing: (noteId: string, drawingId: string) => deleteDrawing(noteId, drawingId),
     getScratchpad: () => getScratchpad(),
   }
 })
@@ -63,7 +63,9 @@ function renderFlow() {
 }
 
 async function captureShot() {
-  useCaptureStore.getState().openSnap()
+  act(() => {
+    useCaptureStore.getState().openSnap()
+  })
   fireEvent.click(await screen.findByRole('button', { name: 'region-crop-capture' }))
   await screen.findByRole('dialog', { name: 'Review capture' })
 }
@@ -71,24 +73,26 @@ async function captureShot() {
 describe('SnapIntoNote', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useCaptureStore.getState().closeSnap()
-    useCaptureStore.getState().setSnapTarget(null)
-    useWorkspaceStore.getState().setCourse(null)
+    act(() => {
+      useCaptureStore.getState().closeSnap()
+      useCaptureStore.getState().setSnapTarget(null)
+      useWorkspaceStore.getState().setCourse(null)
+    })
     getScratchpad.mockResolvedValue({
-      course: { id: 77, title: 'Scratchpad' },
+      course: { id: '77', title: 'Scratchpad' },
       content_count: 0,
     })
   })
 
   test('with no open note it creates a note containing the shot (plan 67 C)', async () => {
-    useWorkspaceStore.getState().setCourse(3)
-    createNote.mockResolvedValue({ id: 12, title: 'Screenshot' })
+    useWorkspaceStore.getState().setCourse('3')
+    createNote.mockResolvedValue({ id: '12', title: 'Screenshot' })
     addDrawing.mockResolvedValue({
-      id: 12,
+      id: '12',
       title: 'Screenshot',
-      drawings: [{ id: 9, strokes: [] }],
+      drawings: [{ id: '9', strokes: [] }],
     })
-    updateNote.mockResolvedValue({ id: 12, title: 'Screenshot', drawings: [{ id: 9 }] })
+    updateNote.mockResolvedValue({ id: '12', title: 'Screenshot', drawings: [{ id: '9' }] })
 
     renderFlow()
     await captureShot()
@@ -96,13 +100,13 @@ describe('SnapIntoNote', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Insert into note' }))
     await waitFor(() =>
       expect(createNote).toHaveBeenCalledWith(
-        expect.objectContaining({ course_id: 3, title: 'Screenshot' })
+        expect.objectContaining({ course_id: '3', title: 'Screenshot' })
       )
     )
-    await waitFor(() => expect(addDrawing).toHaveBeenCalledWith(12, [], 'AQID', false, null))
+    await waitFor(() => expect(addDrawing).toHaveBeenCalledWith('12', [], 'AQID', false, null))
     await waitFor(() =>
-      expect(updateNote).toHaveBeenCalledWith(12, {
-        body_md: '![screenshot](ca-drawing://9)',
+      expect(updateNote).toHaveBeenCalledWith('12', {
+        body_md: '![screenshot](sa-drawing://9)',
       })
     )
     await waitFor(() => expect(useCaptureStore.getState().snapOpen).toBe(false))
@@ -110,13 +114,13 @@ describe('SnapIntoNote', () => {
   })
 
   test('falls back to the scratchpad course when no course is active', async () => {
-    createNote.mockResolvedValue({ id: 13, title: 'Screenshot' })
+    createNote.mockResolvedValue({ id: '13', title: 'Screenshot' })
     addDrawing.mockResolvedValue({
-      id: 13,
+      id: '13',
       title: 'Screenshot',
-      drawings: [{ id: 10, strokes: [] }],
+      drawings: [{ id: '10', strokes: [] }],
     })
-    updateNote.mockResolvedValue({ id: 13, title: 'Screenshot', drawings: [{ id: 10 }] })
+    updateNote.mockResolvedValue({ id: '13', title: 'Screenshot', drawings: [{ id: '10' }] })
 
     renderFlow()
     await captureShot()
@@ -124,7 +128,7 @@ describe('SnapIntoNote', () => {
 
     await waitFor(() =>
       expect(createNote).toHaveBeenCalledWith(
-        expect.objectContaining({ course_id: 77 })
+        expect.objectContaining({ course_id: '77' })
       )
     )
   })
@@ -132,7 +136,7 @@ describe('SnapIntoNote', () => {
   test('with an open note editor it inserts through the registered target and undo removes (plan 67 C)', async () => {
     const insert = vi.fn().mockResolvedValue(11)
     const remove = vi.fn().mockResolvedValue(undefined)
-    const target: SnapTarget = { noteId: 5, title: 'Chain rule', insert, remove }
+    const target: SnapTarget = { noteId: '5', title: 'Chain rule', insert, remove }
     useCaptureStore.getState().setSnapTarget(target)
 
     renderFlow()
@@ -162,7 +166,7 @@ describe('SnapIntoNote', () => {
   test('a failed insert shows the inline failure hint and keeps the review open', async () => {
     const insert = vi.fn().mockResolvedValue(null)
     useCaptureStore.getState().setSnapTarget({
-      noteId: 5,
+      noteId: '5',
       title: 'Chain rule',
       insert,
       remove: vi.fn(),

@@ -4,7 +4,7 @@
 # a single Ctrl+C stops both, and if either dies honcho exits loud with the
 # traceback in the foreground. Ports come from the environment (honcho expands
 # ${VAR:-default}) and default to SA_PORT=8200 / VITE_PORT=3200 (family dev-port
-# bands, slot 2 — dev/guidelines/dev-ports.md).
+# bands, slot 2 — the family dev-ports.md standard).
 #
 # Start everything:   ./scripts/run-dev.sh
 # Start one process:  uv run --directory backend honcho start backend -f Procfile.dev

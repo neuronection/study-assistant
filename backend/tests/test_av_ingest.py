@@ -25,10 +25,10 @@ class AudioGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="whisper-small",
@@ -46,7 +46,7 @@ class AudioGateway(LLMGateway):
         instruction: str | None = None,
         task: str = "transcribe",
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         del language, instruction, task, model, course_id
         if self.error is not None:
@@ -64,7 +64,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -82,11 +82,11 @@ def av_client(tmp_path: Path) -> Iterator[tuple[TestClient, AudioGateway]]:
         yield test_client, gateway
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Lectures"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Lectures"}).json()["id"])
 
 
-def upload(client: TestClient, course_id: int, filename: str, data: bytes) -> dict[str, Any]:
+def upload(client: TestClient, course_id: str, filename: str, data: bytes) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
@@ -97,7 +97,7 @@ def upload(client: TestClient, course_id: int, filename: str, data: bytes) -> di
     return body
 
 
-def wait_terminal(client: TestClient, material_id: int) -> dict[str, Any]:
+def wait_terminal(client: TestClient, material_id: str) -> dict[str, Any]:
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         detail = client.get(f"/api/v1/materials/{material_id}").json()

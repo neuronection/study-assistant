@@ -38,47 +38,42 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, ScriptedGatewa
         yield test_client, app, gateway
 
 
-def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 30.0
-) -> None:
+def wait_for_assistant(client: TestClient, session_id: str, timeout: float = 30.0) -> None:
     deadline = time.monotonic() + timeout
     messages: list[dict[str, Any]] = []
     while time.monotonic() < deadline:
-        messages = client.get(
-            f"/api/v1/chat/sessions/{session_id}/messages"
-        ).json()
+        messages = client.get(f"/api/v1/chat/sessions/{session_id}/messages").json()
         if messages and messages[-1]["role"] == "assistant":
             return
         time.sleep(0.05)
     jobs = client.get("/api/v1/jobs").json()
-    raise AssertionError(
-        f"assistant never replied; last messages: {messages}; jobs: {jobs}"
-    )
+    raise AssertionError(f"assistant never replied; last messages: {messages}; jobs: {jobs}")
 
 
 def make_chat_with_messages(
-    client: TestClient, app: FastAPI, gateway: ScriptedGateway, course_id: int
-) -> int:
+    client: TestClient, app: FastAPI, gateway: ScriptedGateway, course_id: str
+) -> str:
     session = client.post(
         "/api/v1/chat/sessions", json={"course_id": course_id, "title": "Old title"}
     ).json()
-    client.post(
-        f"/api/v1/chat/sessions/{session['id']}/messages", json={"content": "hello"}
-    )
+    client.post(f"/api/v1/chat/sessions/{session['id']}/messages", json={"content": "hello"})
     wait_for_assistant(client, session["id"])
     db = app.state.session_factory()
     message = db.query(ChatMessage).filter(ChatMessage.role == "assistant").first()
     db.add(
         ChatProposal(
-            message_id=message.id, action="create_note", payload={}, status="dismissed"
+            message_id=message.id,
+            action="create_note",
+            payload={"title": "Old note", "body_md": "body"},
+            status="dismissed",
         )
     )
     db.commit()
     db.close()
-    return int(session["id"])
+    return str(session["id"])
 
 
-def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
+def make_quiz_with_history(app: FastAPI, course_id: str) -> str:
     from conftest import mint_session
 
     _, _, profile_id = mint_session(app)
@@ -90,7 +85,7 @@ def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
     db.flush()
     question = Question(
         activity_id=activity.id,
-        type="choice",
+        type="single",
         stem=[{"type": "text", "md": "1+1?"}],
         options=[{"type": "text", "md": "2"}, {"type": "text", "md": "3"}],
         answer={"index": 0},
@@ -109,7 +104,7 @@ def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
     return activity_id
 
 
-def make_exercise_with_reviews(app: FastAPI, course_id: int) -> int:
+def make_exercise_with_reviews(app: FastAPI, course_id: str) -> str:
     from conftest import mint_session
 
     _, _, profile_id = mint_session(app)
@@ -130,9 +125,7 @@ def make_exercise_with_reviews(app: FastAPI, course_id: int) -> int:
             expected={"answer": "1"},
         )
     )
-    db.add(
-        ReviewLog(card_id=exercise.id, rating=3, interval_days=1, elapsed_days=0)
-    )
+    db.add(ReviewLog(card_id=exercise.id, rating=3, interval_days=1, elapsed_days=0))
     db.commit()
     exercise_id = exercise.id
     db.close()
@@ -164,14 +157,14 @@ def test_chat_session_rename_and_delete_cascades(
         )
         assert renamed.status_code == 200, renamed.text
         assert renamed.json()["title"] == "Renamed chat"
-        assert test_client.patch(
-            "/api/v1/chat/sessions/999", json={"title": "x"}
-        ).status_code == 404
+        assert (
+            test_client.patch("/api/v1/chat/sessions/999", json={"title": "x"}).status_code == 404
+        )
         assert table_count(app, ChatMessage, session_id=session_id) == 2
         assert table_count(app, ChatProposal) == 1
         deleted = test_client.delete(f"/api/v1/chat/sessions/{session_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, ChatMessage, session_id=session_id) == 0
         assert table_count(app, ChatProposal) == 0
         assert test_client.delete(f"/api/v1/chat/sessions/{session_id}").status_code == 404
@@ -190,16 +183,16 @@ def test_quiz_rename_and_delete_cleans_history(
         assert renamed.status_code == 200, renamed.text
         assert renamed.json()["title"] == "Renamed quiz"
         assert renamed.json()["question_count"] == 1
-        assert test_client.patch(
-            "/api/v1/quiz/activities/999", json={"title": "x"}
-        ).status_code == 404
+        assert (
+            test_client.patch("/api/v1/quiz/activities/999", json={"title": "x"}).status_code == 404
+        )
         assert table_count(app, Question, activity_id=activity_id) == 1
         assert table_count(app, Attempt, activity_id=activity_id) == 1
         assert table_count(app, Mistake) == 1
         assert table_count(app, ItemStat) == 1
         deleted = test_client.delete(f"/api/v1/quiz/activities/{activity_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, Question, activity_id=activity_id) == 0
         assert table_count(app, Attempt, activity_id=activity_id) == 0
         assert table_count(app, Mistake) == 0
@@ -220,14 +213,12 @@ def test_exercise_rename_and_delete_cleans_reviews(
         assert renamed.status_code == 200, renamed.text
         assert renamed.json()["title"] == "Renamed exercise"
         assert renamed.json()["step_count"] == 1
-        assert test_client.patch(
-            "/api/v1/exercises/999", json={"title": "x"}
-        ).status_code == 404
+        assert test_client.patch("/api/v1/exercises/999", json={"title": "x"}).status_code == 404
         assert table_count(app, ExerciseStep, exercise_id=exercise_id) == 1
         assert table_count(app, ReviewLog, card_id=exercise_id) == 1
         deleted = test_client.delete(f"/api/v1/exercises/{exercise_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, ExerciseStep, exercise_id=exercise_id) == 0
         assert table_count(app, ReviewLog, card_id=exercise_id) == 0
         assert test_client.delete(f"/api/v1/exercises/{exercise_id}").status_code == 404

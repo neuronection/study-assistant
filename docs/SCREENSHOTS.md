@@ -16,7 +16,7 @@ Welcome to the visual tour of Study Assistant. These reproducible screenshots sh
 
 _Sign-in overlay — cookie-session auth over the Today screen._
 
-![login desktop](images/login-desktop.png)
+![login — Sign-in overlay — cookie-session auth over the Today screen.](images/login-desktop.png)
 
 ## Study loop
 
@@ -24,43 +24,43 @@ _Sign-in overlay — cookie-session auth over the Today screen._
 
 _Today screen — the daily study dashboard._
 
-![today desktop](images/today-desktop.png)
+![today — Today screen — the daily study dashboard.](images/today-desktop.png)
 
 ### courses
 
 _Courses — the student's course list._
 
-![courses desktop](images/courses-desktop.png)
+![courses — Courses — the student's course list.](images/courses-desktop.png)
 
 ### course-detail
 
 _Course detail — chapters, materials and study actions._
 
-![course-detail desktop](images/course-detail-desktop.png)
+![course-detail — Course detail — chapters, materials and study actions.](images/course-detail-desktop.png)
 
 ### node-workspace
 
 _Node workspace — the rich-text editor with notes and materials for a chapter._
 
-![node-workspace desktop](images/node-workspace-desktop.png)
+![node-workspace — Node workspace — the rich-text editor with notes and materials for a chapter.](images/node-workspace-desktop.png)
 
 ### study-session
 
 _Guided study session — the focused flow across review and practice._
 
-![study-session desktop](images/study-session-desktop.png)
+![study-session — Guided study session — the focused flow across review and practice.](images/study-session-desktop.png)
 
 ### review
 
 _Review — FSRS-scheduled flashcards due today._
 
-![review desktop](images/review-desktop.png)
+![review — Review — FSRS-scheduled flashcards due today.](images/review-desktop.png)
 
 ### review-revealed
 
 _Review — a flashcard with the answer revealed and FSRS ratings._
 
-![review-revealed desktop](images/review-revealed-desktop.png)
+![review-revealed — Review — a flashcard with the answer revealed and FSRS ratings.](images/review-revealed-desktop.png)
 
 ## Material
 
@@ -68,19 +68,19 @@ _Review — a flashcard with the answer revealed and FSRS ratings._
 
 _Library — every ingested material, searchable._
 
-![library desktop](images/library-desktop.png)
+![library — Library — every ingested material, searchable.](images/library-desktop.png)
 
 ### material-detail
 
 _Material detail — the extraction view over an ingested document._
 
-![material-detail desktop](images/material-detail-desktop.png)
+![material-detail — Material detail — the extraction view over an ingested document.](images/material-detail-desktop.png)
 
 ### chat
 
 _Tutor chat — a demo study answer with math, a recall chart and a flashcard-deck proposal card._
 
-![chat desktop](images/chat-desktop.png)
+![chat — Tutor chat — a demo study answer with math, a recall chart and a flashcard-deck proposal card.](images/chat-desktop.png)
 
 ## Progress
 
@@ -88,10 +88,10 @@ _Tutor chat — a demo study answer with math, a recall chart and a flashcard-de
 
 _Scores — performance across quizzes, exercises and reviews._
 
-![scores desktop](images/scores-desktop.png)
+![scores — Scores — performance across quizzes, exercises and reviews.](images/scores-desktop.png)
 
 ### settings
 
 _Settings — profiles, AI providers and preferences._
 
-![settings desktop](images/settings-desktop.png)
+![settings — Settings — profiles, AI providers and preferences.](images/settings-desktop.png)

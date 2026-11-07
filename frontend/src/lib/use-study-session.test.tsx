@@ -12,7 +12,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     startStudySession: (body: unknown) => startStudySession(body),
-    beatStudySession: (id: number, action: string) => beatStudySession(id, action),
+    beatStudySession: (id: string, action: string) => beatStudySession(id, action),
   }
 })
 
@@ -33,8 +33,8 @@ describe('useStudySession', () => {
     vi.useFakeTimers()
     startStudySession.mockReset()
     beatStudySession.mockReset()
-    startStudySession.mockResolvedValue({ id: 7 })
-    beatStudySession.mockResolvedValue({ id: 7 })
+    startStudySession.mockResolvedValue({ id: '7' })
+    beatStudySession.mockResolvedValue({ id: '7' })
   })
 
   afterEach(() => {
@@ -46,8 +46,8 @@ describe('useStudySession', () => {
       <Probe
         kind="quiz"
         entityRef="activity:42"
-        courseId={3}
-        nodeId={9}
+        courseId="3"
+        nodeId="9"
         enabled={true}
       />,
       { wrapper: makeWrapper() }
@@ -57,18 +57,18 @@ describe('useStudySession', () => {
       kind: 'quiz',
       source: 'auto',
       entity_ref: 'activity:42',
-      course_id: 3,
-      node_id: 9,
+      course_id: '3',
+      node_id: '9',
     })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000)
     })
     expect(beatStudySession).toHaveBeenCalledTimes(1)
-    expect(beatStudySession).toHaveBeenCalledWith(7, 'heartbeat')
+    expect(beatStudySession).toHaveBeenCalledWith('7', 'heartbeat')
 
     view.unmount()
     await act(async () => {})
-    expect(beatStudySession).toHaveBeenLastCalledWith(7, 'end')
+    expect(beatStudySession).toHaveBeenLastCalledWith('7', 'end')
   })
 
   test('disabled hook never contacts the API', async () => {
@@ -94,7 +94,7 @@ describe('useStudySession', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000)
     })
-    expect(beatStudySession).toHaveBeenCalledWith(7, 'heartbeat')
+    expect(beatStudySession).toHaveBeenCalledWith('7', 'heartbeat')
   })
 
   test('unstable course context does not restart the session', async () => {
@@ -104,8 +104,8 @@ describe('useStudySession', () => {
     )
     await act(async () => {})
     expect(startStudySession).toHaveBeenCalledTimes(1)
-    view.rerender(<Probe kind="quiz" courseId={5} enabled={true} />)
-    view.rerender(<Probe kind="quiz" courseId={5} nodeId={2} enabled={true} />)
+    view.rerender(<Probe kind="quiz" courseId="5" enabled={true} />)
+    view.rerender(<Probe kind="quiz" courseId="5" nodeId="2" enabled={true} />)
     await act(async () => {})
     expect(startStudySession).toHaveBeenCalledTimes(1)
     expect(startStudySession).toHaveBeenLastCalledWith(

@@ -29,6 +29,7 @@ background work.
 | Materials | `materials`, `blobs_router` | Upload, detail, extraction versions, drawings, blob serving |
 | Search | `search` | Hybrid search hits with node placements |
 | Discovery | `discovery`, `external_sources`, `mcp_servers` | Provider search, external sources, MCP connectors |
+| Extensions | `extensions` (`/extensions/{id}/documentation`) | Per-extension docs surface: the bundle's docs tree + markdown pages (plan 34 wave 8) |
 | Library | `folders`, `sources`, `fs` | Folders, linked sources, filesystem browsing |
 | Courses | `courses` | Courses, tree nodes, tree operations |
 | Chat | `chat` | Sessions, turns, proposals, tools |
@@ -41,6 +42,22 @@ background work.
 
 DTOs are Pydantic models; shared schemas live in `api/schemas.py` and
 `api/courses_schemas.py`, area-specific shapes in their router module.
+
+### Connected-source surface (plan 86)
+
+`/external-sources` keeps the original CRUD and adds the provider seam:
+`GET /external-sources/providers` returns the catalog (labels, kinds,
+auth kind, fields, secret slots, the verbatim secret-slot disclosure);
+`PUT|DELETE /{id}/secret` set/clear one keyring slot; OAuth providers use
+`POST /{id}/oauth/start` (authorize URL + state), `POST /{id}/oauth/complete`
+(code + state), `POST /{id}/oauth/connect` (one-shot loopback flow) and
+`POST /{id}/oauth/disconnect`; `POST /{id}/accept` imports a suggestion
+through the adapter fetch; `POST /{id}/backup`, `GET /{id}/backups`,
+`GET /{id}/backups/{name}` and `POST /{id}/backups/{name}/restore` are the
+backup-destination verbs. Scan responses carry provider-specific integer
+stats (`new`, `updated`, `missing`, plus Anki's `merged`/`recomputed`/
+`unmatched`); provider failures are typed `ExtensionError`s projected to
+422 (configuration) or 502 (remote/network), never a 500.
 
 ## Profile scoping
 
@@ -90,8 +107,10 @@ a bounded `limit` for any new list endpoint and document the ordering.
 backend `EventBus` bridges worker threads to subscribers via
 `publish_threadsafe`, and topics are built by `WsTopic` factories in
 `core/vocab.py` (`jobs:{id}`, `chat:{id}`, `source:{id}`, `externalsource:{id}`,
-`note:{id}`). The frontend mirrors these builders in `lib/constants.ts`. Job and
-chat progress stream over these topics.
+`note:{id}`). The frontend mirrors these builders in `lib/constants.ts`. Job
+progress streams over `jobs:{id}`; chat turns stream the **family event
+vocabulary** over `chat:{id}` (see [ai.md](ai.md) — event name in the `type`
+field, `FlowEvent` StrEnum, frozen §5 payload fields).
 
 ## OpenAPI and generated types
 
@@ -105,6 +124,28 @@ This runs `scripts/export-openapi.py` (which boots the app against a temp data
 dir and writes `frontend/openapi.json`) and then `openapi-typescript` to produce
 `frontend/src/lib/api-schema.d.ts`. Commit both; CI drift-guards them. Never
 hand-edit either file — change the Pydantic model instead.
+
+Entity id fields are plain `string` in the schema (no `format: uuid`), matching
+the UUID-string response models and how identity ids already surfaced. Clients
+treat them as opaque: no parsing, validation or numeric coercion. The generated
+schema is the wire truth — hand-written client types may narrow optionality but
+must not redeclare entity ids as numbers.
+
+**Generated-types-only rule (plan 82 B, ADR-203).** Every module in
+`frontend/src/lib/api/` imports `@/lib/api-schema`; a wire shape is a
+`components['schemas'][…]` alias, never a hand-redeclared interface. Where a
+DTO is genuinely open (block documents, widget input maps, `provenance`
+metadata, the per-action proposal payload) the generated open map is the wire
+type and the app narrows it once at the read boundary. The narrowed views and
+the few shapes the schema cannot express (the `nx_auth` kit's admin/me/sessions
+routes publish no response models; the desktop-only folder routes are not in
+the web export) live in `frontend/src/lib/api/hand-types.ts`, whose
+`HAND_TYPE_REGISTER` is the exhaustive exception list. `pnpm check:api-types`
+(CI) fails any hand declaration that is not registered, any register entry with
+no declaration, and any `lib/api` module that stops importing the schema.
+Service-layer payload types (`app/domain/payloads.py` TypedDicts) are now the
+wire shape too where the map is closed: the chat `trace`, `provider.status`,
+and the proposal `result` document are typed objects in the generated schema.
 
 ## Adding an endpoint
 

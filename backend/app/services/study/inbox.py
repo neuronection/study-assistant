@@ -9,14 +9,14 @@ from ...pipelines.qpkg import read_qpkg
 from ...pipelines.quizgen import validate_question
 
 INBOX_SUFFIXES = (".caq.json", ".json", ".qpkg")
-SCHEMA_CARD = """# Study Assistant quiz authoring (caq/v1)
+SCHEMA_CARD = """# Study Assistant quiz authoring (saq/v1)
 
 Drop a `.caq.json` file in this directory and the app will pick it up on the next
 inbox scan. The minimal schema:
 
 ```json
 {
-  "$schema": "caq/v1",
+  "$schema": "saq/v1",
   "title": "Your quiz title",
   "questions": [
     {
@@ -40,8 +40,11 @@ inbox scan. The minimal schema:
 Required per question: type, stem_md, answer, explanation_md, concepts (1-3),
 skill (conceptual|procedural|applied|notation), bloom (remember|understand|apply|
 analyze|evaluate|create), difficulty 1-5, expected_time_sec. Types: single, multi,
-truefalse, text, numeric, equation. Math MUST be LaTeX in $...$; for equation
-questions the answer value must parse (sympy-compatible). Files are validated with
+truefalse, text, numeric, equation, matching, ordering, cloze, essay. Matching
+takes {"pairs":[{"left","right"}]}; ordering {"items":[str]}; cloze
+{"prompt_md":"... {{1}} ...","answers":[[accepted]]}; essay
+{"prompt_md":str,"rubric":[{"id","text"}]}. Math MUST be LaTeX in $...$; for
+equation questions the answer value must parse (sympy-compatible). Files are validated with
 the same rules the app applies to its own generated quizzes — invalid files are
 renamed `.rejected` with a report next to them.
 """
@@ -58,6 +61,7 @@ class InboxEntry:
     ok: bool
     problems: list[str] = field(default_factory=list)
     question_count: int = 0
+    modified_at: int = 0
 
 
 def _validate_document(document: dict[str, Any]) -> tuple[list[str], int, str]:
@@ -118,34 +122,54 @@ class InboxService:
         return entries
 
     def _validate_caq(self, path: Path) -> InboxEntry:
+        modified_at = path.stat().st_mtime_ns
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(document, dict):
                 raise ValueError("top level must be an object")
         except ValueError as error:
             return InboxEntry(
-                filename=path.name, kind="caq", title="", ok=False,
+                filename=path.name,
+                kind="caq",
+                title="",
+                ok=False,
                 problems=[f"invalid JSON: {error}"],
+                modified_at=modified_at,
             )
         problems, count, title = _validate_document(document)
         return InboxEntry(
-            filename=path.name, kind="caq", title=title, ok=not problems,
-            problems=problems, question_count=count,
+            filename=path.name,
+            kind="caq",
+            title=title,
+            ok=not problems,
+            problems=problems,
+            question_count=count,
+            modified_at=modified_at,
         )
 
     def _validate_qpkg(self, path: Path) -> InboxEntry:
+        modified_at = path.stat().st_mtime_ns
         try:
             content = read_qpkg(path.read_bytes())
         except Exception as error:
             detail = getattr(error, "detail", str(error))
             return InboxEntry(
-                filename=path.name, kind="qpkg", title="", ok=False,
+                filename=path.name,
+                kind="qpkg",
+                title="",
+                ok=False,
                 problems=[f"package error: {detail}"],
+                modified_at=modified_at,
             )
         problems, count, title = _validate_document(content.document)
         return InboxEntry(
-            filename=path.name, kind="qpkg", title=title, ok=not problems,
-            problems=problems, question_count=count,
+            filename=path.name,
+            kind="qpkg",
+            title=title,
+            ok=not problems,
+            problems=problems,
+            question_count=count,
+            modified_at=modified_at,
         )
 
     def load_document(self, filename: str) -> dict[str, Any]:

@@ -23,14 +23,27 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from app.ai.wire_params import (
+    CompatibleChatOpenAI,
+    is_openai_endpoint,
+    is_openai_wire,
+    resolve_chat_transport,
+)
+
 from .types import ImagePart, Message, ResolvedModel, TextPart, Usage
+
+__all__ = [
+    "CompatibleChatOpenAI",
+    "is_openai_endpoint",
+    "is_openai_wire",
+]
 
 ANTHROPIC_BASE_URL = "https://api.anthropic.com"
 GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com"
 _KEYLESS_API_KEY = "EMPTY"
 _ANTHROPIC_REASONING_EFFORT_LEVELS = frozenset({"max", "xhigh", "high", "medium", "low"})
 _GOOGLE_REASONING_EFFORT_LEVELS = frozenset({"minimal", "low", "medium", "high"})
-_NATIVE_TOOLS_DEGRADED: set[tuple[int, str]] = set()
+_NATIVE_TOOLS_DEGRADED: set[tuple[str, str]] = set()
 
 
 def degrade_native_tools(resolved: ResolvedModel) -> None:
@@ -49,7 +62,7 @@ def structured_output_supported(model: BaseChatModel) -> bool:
 
 
 def chat_native_schemas() -> list[dict[Any, Any]]:
-    from ..mcp_resources import resource_native_schemas
+    from .mcp_resources import resource_native_schemas
     from .tools import CHAT_TOOL_CATALOG, QUIZ_NATIVE_SCHEMA, native_tool_schemas
 
     return [
@@ -81,6 +94,16 @@ class CaChatOpenAI(ChatOpenAI):
         return generation
 
 
+class CompatibleCaChatOpenAI(CaChatOpenAI, CompatibleChatOpenAI):
+    """Compatible-wire variant of ``CaChatOpenAI``.
+
+    Method resolution keeps both overrides: ``_default_params`` from
+    ``CompatibleChatOpenAI`` (``max_tokens`` stays on the wire) and
+    ``_convert_chunk_to_generation_chunk`` from ``CaChatOpenAI``
+    (reasoning deltas from local reasoning models still surface).
+    """
+
+
 def _content_blocks(content: list[TextPart | ImagePart]) -> list[str | dict[Any, Any]]:
     blocks: list[str | dict[Any, Any]] = []
     for part in content:
@@ -97,9 +120,7 @@ def _content_blocks(content: list[TextPart | ImagePart]) -> list[str | dict[Any,
     return blocks
 
 
-def to_langchain_messages(
-    messages: list[Message], cache_prefix: bool = False
-) -> list[BaseMessage]:
+def to_langchain_messages(messages: list[Message], cache_prefix: bool = False) -> list[BaseMessage]:
     mapped: list[BaseMessage] = []
     for index, message in enumerate(messages):
         content: str | list[str | dict[Any, Any]] = (
@@ -185,7 +206,12 @@ def _http_client(transport: httpx.BaseTransport, timeout: float) -> httpx.Client
 
 def _openai_model(
     resolved: ResolvedModel, transport: httpx.BaseTransport | None, timeout: float
-) -> CaChatOpenAI:
+) -> ChatOpenAI:
+    """The OpenAI-family constructor. The Options wire is honored only on
+    OpenAI's endpoint and rides the stock ``ChatOpenAI``; compatible
+    endpoints construct ``CompatibleCaChatOpenAI`` (the completion-wire
+    delta handling) — both satisfy the chat-model return contract."""
+    openai_wire = is_openai_wire(resolved.provider_type, resolved.base_url)
     kwargs: dict[str, Any] = {
         "model": resolved.external_id,
         "api_key": resolved.api_key or _KEYLESS_API_KEY,
@@ -198,12 +224,29 @@ def _openai_model(
     if resolved.temperature is not None:
         kwargs["temperature"] = resolved.temperature
     if resolved.max_tokens is not None:
-        kwargs["max_tokens"] = resolved.max_tokens
+        # ADR-0038 endpoint split: OpenAI's own API accepts the modern
+        # parameter on every model, while compatible endpoints standardized
+        # on the classic name — the id alone cannot decide this.
+        if openai_wire:
+            kwargs["max_completion_tokens"] = resolved.max_tokens
+        else:
+            kwargs["max_tokens"] = resolved.max_tokens
+    # ADR-0039: a row opted into the Responses API rides /responses
+    # (honored only on OpenAI's endpoint) store-less — reasoning_effort
+    # passes through, so gpt-6-family models keep reasoning on tool tasks.
+    wire_transport = resolve_chat_transport(
+        resolved.provider_type, resolved.base_url, resolved.chat_transport
+    )
+    if wire_transport == "responses":
+        kwargs["use_responses_api"] = True
+        kwargs["store"] = False
     if resolved.base_url:
         kwargs["base_url"] = resolved.base_url
     if transport is not None:
         kwargs["http_client"] = _http_client(transport, timeout)
-    return CaChatOpenAI(**kwargs)
+    if openai_wire:
+        return ChatOpenAI(**kwargs)
+    return CompatibleCaChatOpenAI(**kwargs)
 
 
 def _anthropic_model(

@@ -1,0 +1,13 @@
+# Gitleaks config — default rules plus an allowlist for deliberate fixture
+# content. The contracts and backend fixtures are negative/shape tests:
+# they carry placeholder tokens and high-entropy hashes (tokenizer cache
+# keys, vector space keys) that the generic rules otherwise flag.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic credentials and hashes in contract/test fixtures"
+paths = [
+  '''^backend/tests/fixtures/.*\.json$''',
+  '''^contracts/.*\.fixtures\.json$''',
+]

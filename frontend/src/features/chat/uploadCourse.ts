@@ -25,10 +25,10 @@ export function sanitizeFolderTitle(title: string): string {
   return cleaned.length > 0 ? cleaned : 'Chat'
 }
 
-export function chatUploadFolderName(title: string, sessionId: number): string {
+export function chatUploadFolderName(title: string, sessionId: string): string {
   return `${sanitizeFolderTitle(title)} (#${sessionId})`
 }
 
-export function chatUploadFolderPattern(sessionId: number): RegExp {
+export function chatUploadFolderPattern(sessionId: string): RegExp {
   return new RegExp(` \\(#${sessionId}\\)$`)
 }

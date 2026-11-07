@@ -84,9 +84,7 @@ def test_parse_equations_and_systems() -> None:
     parsed = parse_math(r"A=1/2")
     assert parsed == sympy.sympify("A - 1/2")
     system = parse_math(r"A=1/2,\;B=-1/2")
-    assert system == sympy.FiniteSet(
-        sympy.sympify("A - 1/2"), sympy.sympify("B + 1/2")
-    )
+    assert system == sympy.FiniteSet(sympy.sympify("A - 1/2"), sympy.sympify("B + 1/2"))
 
 
 def test_equation_system_equivalence_is_order_insensitive() -> None:

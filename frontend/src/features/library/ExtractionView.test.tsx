@@ -28,9 +28,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getMaterial: (id: number) => getMaterial(id),
-    editExtraction: (id: number, markdown: string) => editExtraction(id, markdown),
-    setMaterialDescription: (id: number, description: string) =>
+    getMaterial: (id: string) => getMaterial(id),
+    editExtraction: (id: string, markdown: string) => editExtraction(id, markdown),
+    setMaterialDescription: (id: string, description: string) =>
       setMaterialDescription(id, description),
     addMaterialDrawing: (...args: unknown[]) =>
       addMaterialDrawing(...(args as [number, unknown[], string])),
@@ -54,7 +54,7 @@ vi.mock('@/components/editor/LazyMarkdownEditor', () => ({
     drawingAdapter?: {
       create: (strokes: unknown[], pngBase64: string, ocr: boolean) => Promise<number | null>
     }
-    aiHelper?: { courseId?: number; title: string }
+    aiHelper?: { courseId?: string; title: string }
   }) => (
     <div>
       <input
@@ -89,7 +89,7 @@ vi.mock('./MindmapViewer', () => ({
 }))
 
 function renderView(
-  scopeNodeId?: number,
+  scopeNodeId?: string,
   probes?: React.ReactNode,
   onQuoteSelection?: (text: string) => void
 ) {
@@ -101,7 +101,7 @@ function renderView(
     component: () => (
       <QueryClientProvider client={client}>
         <ExtractionView
-          materialId={7}
+          materialId="7"
           scopeNodeId={scopeNodeId}
           onQuoteSelection={onQuoteSelection}
         />
@@ -123,10 +123,10 @@ function renderView(
 }
 
 const ordinaryMaterial = {
-  material: { id: 7, title: 'Notes', provenance: null, status: 'ready', course_id: 3 },
+  material: { id: '7', title: 'Notes', provenance: null, status: 'ready', course_id: '3' },
   extraction: {
-    id: 1,
-    material_id: 7,
+    id: '1',
+    material_id: '7',
     version: 2,
     extractor: 'ocr',
     markdown: 'hello $x^2$',
@@ -138,14 +138,14 @@ const ordinaryMaterial = {
 
 const textMaterial = {
   material: {
-    id: 7,
+    id: '7',
     title: 'My notes',
     kind: 'md',
     mime: 'text/markdown',
     description: 'seeded description',
     provenance: null,
     status: 'ready',
-    course_id: 3,
+    course_id: '3',
   },
   extraction: ordinaryMaterial.extraction,
   index_card: null,
@@ -156,14 +156,14 @@ describe('ExtractionView', () => {
   test('renders the interactive mindmap for mindmap materials', async () => {
     getMaterial.mockResolvedValue({
       material: {
-        id: 7,
+        id: '7',
         title: 'Limits map',
         provenance: { source: 'ai-composed', kind: 'mindmap' },
         status: 'ready',
       },
       extraction: {
-        id: 1,
-        material_id: 7,
+        id: '1',
+        material_id: '7',
         version: 1,
         extractor: 'compose',
         markdown: '# Limits\n- definition',
@@ -187,7 +187,7 @@ describe('ExtractionView', () => {
 
   test('reading row keeps Edit as an icon action; the overflow moved to the material header (plan 62-E)', async () => {
     getMaterial.mockResolvedValue(ordinaryMaterial)
-    renderView(8)
+    renderView('8')
     await screen.findByText('hello')
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(
@@ -202,13 +202,13 @@ describe('ExtractionView', () => {
 
   test('selecting a passage offers Ask AI about this which prefills the pinned chat (plan 61-D)', async () => {
     createChatSession.mockResolvedValue({
-      id: 21,
+      id: '21',
       public_id: 'uuid-21',
-      course_id: 3,
+      course_id: '3',
       title: 'Notes',
     })
     getMaterial.mockResolvedValue(ordinaryMaterial)
-    renderView(8)
+    renderView('8')
     expect(await screen.findByText('hello')).toBeInTheDocument()
 
     const target = screen.getByText('hello')
@@ -225,11 +225,11 @@ describe('ExtractionView', () => {
     await waitFor(() =>
       expect(useChatStore.getState().pendingSend).toEqual({
         content: '> hello\n\n',
-        attachments: [{ kind: 'material', id: 7, title: 'Notes' }],
+        attachments: [{ kind: 'material', id: '7', title: 'Notes' }],
         mode: 'prefill',
       }),
     )
-    expect(createChatSession).toHaveBeenCalledWith(3, 8, 'Notes')
+    expect(createChatSession).toHaveBeenCalledWith('3', '8', 'Notes')
   })
 
   test('the selection toolbar quotes into the note when a handler is provided (plan 61-D)', async () => {
@@ -266,7 +266,7 @@ describe('ExtractionView', () => {
 
     fireEvent.change(editor, { target: { value: 'fixed $x^2$' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith(7, 'fixed $x^2$'))
+    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith('7', 'fixed $x^2$'))
   })
 
   test('save is disabled for an empty draft', async () => {
@@ -295,7 +295,7 @@ describe('ExtractionView', () => {
       ...ordinaryMaterial,
       drawings: [
         {
-          id: 11,
+          id: '11',
           png_sha: 'sha11',
           strokes: [],
           ocr_version: 1,
@@ -310,7 +310,7 @@ describe('ExtractionView', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
     await screen.findByLabelText('Extraction markdown editor')
     fireEvent.click(screen.getByRole('button', { name: 'editor-create-drawing' }))
-    await waitFor(() => expect(addMaterialDrawing).toHaveBeenCalledWith(7, [], 'AAA', true, undefined))
+    await waitFor(() => expect(addMaterialDrawing).toHaveBeenCalledWith('7', [], 'AAA', true, undefined))
   })
 
   test('text materials edit through Content and Description tabs', async () => {
@@ -330,9 +330,9 @@ describe('ExtractionView', () => {
     fireEvent.change(description, { target: { value: 'updated description' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith(7, 'hello $x^2$'))
+    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith('7', 'hello $x^2$'))
     await waitFor(() =>
-      expect(setMaterialDescription).toHaveBeenCalledWith(7, 'updated description')
+      expect(setMaterialDescription).toHaveBeenCalledWith('7', 'updated description')
     )
   })
 
@@ -347,7 +347,7 @@ describe('ExtractionView', () => {
       target: { value: 'changed body' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith(7, 'changed body'))
+    await waitFor(() => expect(editExtraction).toHaveBeenCalledWith('7', 'changed body'))
     expect(setMaterialDescription).not.toHaveBeenCalled()
   })
 

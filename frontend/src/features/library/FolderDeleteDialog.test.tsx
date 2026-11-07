@@ -5,13 +5,14 @@ import { FolderDeleteDialog } from './FolderDeleteDialog'
 import type { Folder, FolderDeleteInfo } from '@/lib/api'
 
 const FOLDER: Folder = {
-  id: 11,
+  id: '11',
   name: 'Lectures',
   path: 'Lectures',
-  course_id: 3,
+  course_id: '3',
   parent_id: null,
   source_id: null,
   created_at: '2026-08-22T00:00:00Z',
+  node_link_count: 0,
 }
 
 const INFO: FolderDeleteInfo = {
@@ -19,11 +20,11 @@ const INFO: FolderDeleteInfo = {
   materials: 2,
   node_links: [
     {
-      node_id: 14,
+      node_id: '14',
       owner_title: 'Limits',
       breadcrumb: [
-        { id: 2, title: 'Calculus' },
-        { id: 14, title: 'Limits' },
+        { id: '2', title: 'Calculus' },
+        { id: '14', title: 'Limits' },
       ],
       is_course_level: false,
       course_title: 'Calculus',
@@ -31,11 +32,11 @@ const INFO: FolderDeleteInfo = {
       material_count: 0,
     },
     {
-      node_id: 15,
+      node_id: '15',
       owner_title: 'Exercises',
       breadcrumb: [
-        { id: 2, title: 'Calculus' },
-        { id: 15, title: 'Exercises' },
+        { id: '2', title: 'Calculus' },
+        { id: '15', title: 'Exercises' },
       ],
       is_course_level: false,
       course_title: 'Calculus',

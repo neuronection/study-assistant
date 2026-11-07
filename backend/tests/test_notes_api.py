@@ -25,10 +25,10 @@ class NotesGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="notes-model",
@@ -42,7 +42,7 @@ class NotesGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -56,18 +56,16 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
 
-def make_client(
-    responses: list[str], gateway: LLMGateway | None = None
-) -> TestClient:
+def make_client(responses: list[str], gateway: LLMGateway | None = None) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-notes-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-notes-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway or NotesGateway(responses),
@@ -77,11 +75,11 @@ def make_client(
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
-def create_note(client: TestClient, title: str = "Derivatives", body: str = "") -> int:
+def create_note(client: TestClient, title: str = "Derivatives", body: str = "") -> str:
     created = client.post(
         "/api/v1/notes",
         json={
@@ -91,12 +89,10 @@ def create_note(client: TestClient, title: str = "Derivatives", body: str = "") 
         },
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def wait_drawing_ocr(
-    client: TestClient, note_id: int, min_version: int = 1
-) -> dict[str, Any]:
+def wait_drawing_ocr(client: TestClient, note_id: str, min_version: int = 1) -> dict[str, Any]:
     deadline = time.monotonic() + 8.0
     while time.monotonic() < deadline:
         detail: dict[str, Any] = client.get(f"/api/v1/notes/{note_id}").json()
@@ -120,8 +116,8 @@ def wait_failed_drawing_job(client: TestClient) -> dict[str, Any]:
     raise AssertionError("drawing OCR job never failed")
 
 
-def add_drawing(client: TestClient, note_id: int, ocr: bool = True) -> Any:
-    return client.post(
+def add_drawing(client: TestClient, note_id: str, ocr: bool = True) -> Any:
+    response = client.post(
         f"/api/v1/notes/{note_id}/drawings",
         json={
             "strokes": [{"points": [[0, 0], [10, 10]], "width": 2}],
@@ -129,6 +125,7 @@ def add_drawing(client: TestClient, note_id: int, ocr: bool = True) -> Any:
             "ocr": ocr,
         },
     )
+    return response
 
 
 def test_note_crud_and_search() -> None:
@@ -186,13 +183,9 @@ def test_update_note_base_updated_at_guard() -> None:
         )
         assert replay.status_code == 200
 
-        unguarded = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "force body"}
-        )
+        unguarded = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "force body"})
         assert unguarded.status_code == 200
-        assert client.get(f"/api/v1/notes/{note_id}").json()["body"][0]["md"] == (
-            "force body"
-        )
+        assert client.get(f"/api/v1/notes/{note_id}").json()["body"][0]["md"] == ("force body")
 
         bad = client.patch(
             f"/api/v1/notes/{note_id}",
@@ -201,7 +194,7 @@ def test_update_note_base_updated_at_guard() -> None:
         assert bad.status_code == 422
 
 
-def _backdate_latest_version(client: TestClient, note_id: int, minutes: int) -> None:
+def _backdate_latest_version(client: TestClient, note_id: str, minutes: int) -> None:
     from datetime import datetime, timedelta
 
     from app.domain.models import NoteVersion
@@ -224,9 +217,7 @@ def test_note_versions_coalesce_and_force() -> None:
     with client:
         note_id = create_note(client, "Limits", "v0 body")
 
-        first_patch = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "v1 body"}
-        )
+        first_patch = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "v1 body"})
         assert first_patch.status_code == 200
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 1
@@ -241,9 +232,7 @@ def test_note_versions_coalesce_and_force() -> None:
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 2
 
-        client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "v4 body", "force_version": True}
-        )
+        client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "v4 body", "force_version": True})
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 3
         assert versions[0]["cause"] == "manual"
@@ -282,9 +271,7 @@ def test_note_version_restore_round_trip() -> None:
         assert len(versions) == 2
         assert versions[0]["cause"] == "restore"
 
-        bad_restore = client.post(
-            f"/api/v1/notes/{note_id}/restore", json={"version_id": 99999}
-        )
+        bad_restore = client.post(f"/api/v1/notes/{note_id}/restore", json={"version_id": "99999"})
         assert bad_restore.status_code == 404
 
 
@@ -310,9 +297,7 @@ def test_note_versions_capped_at_50_and_cascade_on_delete() -> None:
             from app.domain.models import NoteVersion
 
             remaining = list(
-                session.scalars(
-                    select(NoteVersion).where(NoteVersion.note_id == note_id)
-                )
+                session.scalars(select(NoteVersion).where(NoteVersion.note_id == note_id))
             )
         assert remaining == []
 
@@ -329,7 +314,7 @@ def test_drawing_save_is_immediate_and_pending_state_serialized() -> None:
             task: str,
             messages: list[Message],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             self.started.set()
             if not self.release.wait(timeout=10.0):
@@ -340,7 +325,7 @@ def test_drawing_save_is_immediate_and_pending_state_serialized() -> None:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-block-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-block-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -385,10 +370,10 @@ def test_drawing_ocr_failure_is_a_retriable_job_not_a_502() -> None:
             task: str,
             messages: list[Message],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             resolved = ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="openai_compatible",
                 base_url="http://localhost/v1",
                 external_id="m",
@@ -445,10 +430,10 @@ def test_reocr_bumps_version() -> None:
     client = make_client([OCR_MARKDOWN, "Second pass $3x$"])
     with client:
         note_id = create_note(client, "Board")
-        add_drawing(client, note_id)
+        drawing_id = add_drawing(client, note_id).json()["drawings"][-1]["id"]
         wait_drawing_ocr(client, note_id, 1)
 
-        reocr = client.post(f"/api/v1/notes/{note_id}/drawings/1/reocr")
+        reocr = client.post(f"/api/v1/notes/{note_id}/drawings/{drawing_id}/reocr")
         assert reocr.status_code == 200, reocr.text
         drawing = wait_drawing_ocr(client, note_id, 2)
         assert "3x" in drawing["ocr_markdown"]
@@ -458,12 +443,12 @@ def test_update_drawing_replaces_strokes_and_reruns_ocr() -> None:
     client = make_client([OCR_MARKDOWN, "Edited pass $5x$"])
     with client:
         note_id = create_note(client, "Board")
-        add_drawing(client, note_id)
+        drawing_id = add_drawing(client, note_id).json()["drawings"][-1]["id"]
         wait_drawing_ocr(client, note_id, 1)
 
         edited_png = PNG_BYTES + b"-edited"
         updated = client.put(
-            f"/api/v1/notes/{note_id}/drawings/1",
+            f"/api/v1/notes/{note_id}/drawings/{drawing_id}",
             json={
                 "strokes": [{"points": [[1, 1], [9, 9]], "width": 4}],
                 "png_base64": base64.b64encode(edited_png).decode(),
@@ -487,11 +472,11 @@ def test_update_drawing_without_ocr_clears_stale_text() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
         note_id = create_note(client, "Board")
-        add_drawing(client, note_id)
+        drawing_id = add_drawing(client, note_id).json()["drawings"][-1]["id"]
         wait_drawing_ocr(client, note_id, 1)
 
         updated = client.put(
-            f"/api/v1/notes/{note_id}/drawings/1",
+            f"/api/v1/notes/{note_id}/drawings/{drawing_id}",
             json={
                 "strokes": [{"points": [[2, 2]], "width": 2}],
                 "png_base64": base64.b64encode(PNG_BYTES).decode(),
@@ -529,7 +514,7 @@ def test_drawing_view_box_round_trip() -> None:
         }
 
         cleared = client.put(
-            f"/api/v1/notes/{note_id}/drawings/1",
+            f"/api/v1/notes/{note_id}/drawings/{created.json()['drawings'][0]['id']}",
             json={
                 "strokes": [{"points": [[0, 0]], "width": 2}],
                 "png_base64": base64.b64encode(PNG_BYTES).decode(),
@@ -560,27 +545,25 @@ def test_update_drawing_unknown_ids_rejected() -> None:
     client = make_client([])
     with client:
         note_id = create_note(client, "Board")
-        client.post(
+        drawing_id = client.post(
             f"/api/v1/notes/{note_id}/drawings",
             json={
                 "strokes": [{"points": [[0, 0]], "width": 2}],
                 "png_base64": base64.b64encode(PNG_BYTES).decode(),
                 "ocr": False,
             },
-        )
+        ).json()["drawings"][0]["id"]
         payload = {
             "strokes": [{"points": [[0, 0]], "width": 2}],
             "png_base64": base64.b64encode(PNG_BYTES).decode(),
             "ocr": False,
         }
-        missing_drawing = client.put(
-            f"/api/v1/notes/{note_id}/drawings/99", json=payload
-        )
+        missing_drawing = client.put(f"/api/v1/notes/{note_id}/drawings/99", json=payload)
         assert missing_drawing.status_code == 404
         missing_note = client.put("/api/v1/notes/99/drawings/1", json=payload)
         assert missing_note.status_code == 404
         bad_png = client.put(
-            f"/api/v1/notes/{note_id}/drawings/1",
+            f"/api/v1/notes/{note_id}/drawings/{drawing_id}",
             json={
                 "strokes": [{"points": [[0, 0]], "width": 2}],
                 "png_base64": "!!!not-base64!!!",
@@ -630,12 +613,10 @@ def test_strokeless_snapshot_drawing_skips_ocr() -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"![screenshot](ca-drawing://{drawing['id']})"},
+            json={"body_md": f"![screenshot](sa-drawing://{drawing['id']})"},
         )
         assert patched.status_code == 200
-        assert patched.json()["body"] == [
-            {"type": "drawing", "drawing_id": drawing["id"]}
-        ]
+        assert patched.json()["body"] == [{"type": "drawing", "drawing_id": drawing["id"]}]
 
         updated = client.put(
             f"/api/v1/notes/{note_id}/drawings/{drawing['id']}",
@@ -677,7 +658,7 @@ def test_delete_drawing_removes_drawing_and_strips_inline_refs() -> None:
         ).json()["drawings"][0]["id"]
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"before\n\n![drawing](ca-drawing://{drawing_id})\n\nafter"},
+            json={"body_md": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200
 
@@ -693,9 +674,7 @@ def test_delete_drawing_removes_drawing_and_strips_inline_refs() -> None:
         hits = client.get("/api/v1/notes", params={"q": "2x"})
         assert hits.json()["items"] == []
 
-        re_save = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "before\n\nafter"}
-        )
+        re_save = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "before\n\nafter"})
         assert re_save.status_code == 200
 
 
@@ -713,13 +692,13 @@ def test_delete_drawing_unreferenced_drawing_dropped_from_search() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
         note_id = create_note(client, "Scratch")
-        add_drawing(client, note_id)
+        drawing_id = add_drawing(client, note_id).json()["drawings"][-1]["id"]
         wait_drawing_ocr(client, note_id, 1)
 
         before = client.get("/api/v1/notes", params={"q": "2x"}).json()["items"]
         assert [note["id"] for note in before] == [note_id]
 
-        deleted = client.delete(f"/api/v1/notes/{note_id}/drawings/1")
+        deleted = client.delete(f"/api/v1/notes/{note_id}/drawings/{drawing_id}")
         assert deleted.status_code == 200
         assert deleted.json()["drawings"] == []
 
@@ -734,7 +713,7 @@ def test_flashcards_from_note_share_search_text() -> None:
                 {
                     "cards": [
                         {
-                            "kind": "basic",
+                            "kind": "card_basic",
                             "front_md": "State the chain rule.",
                             "back_md": "$(fg)' = f'g + fg'$",
                         }
@@ -757,7 +736,7 @@ def test_flashcards_from_note_share_search_text() -> None:
         assert generated.status_code == 201, generated.text
         cards = generated.json()
         assert len(cards) == 1
-        assert cards[0]["kind"] == "basic"
+        assert cards[0]["kind"] == "card_basic"
         assert cards[0]["source"] == "note"
         assert cards[0]["source_ref"] == f"note:{note_id}"
 
@@ -807,7 +786,5 @@ def test_compose_note_creates_placed_note() -> None:
 def test_compose_note_rejects_missing_course() -> None:
     client = make_client([])
     with client:
-        composed = client.post(
-            "/api/v1/notes/compose", json={"course_id": 9999, "title": "X"}
-        )
+        composed = client.post("/api/v1/notes/compose", json={"course_id": 9999, "title": "X"})
         assert composed.status_code == 422

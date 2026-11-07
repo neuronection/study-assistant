@@ -95,7 +95,7 @@ vi.mock('@/lib/ws-client', () => ({
 }))
 
 const fakeEditor = { getText: () => 'hello world' } as unknown as Editor
-const context: AiHelperContext = { courseId: 1, nodeId: 2, title: 'Note' }
+const context: AiHelperContext = { courseId: '1', nodeId: '2', title: 'Note' }
 
 function textCapture(from = 1, to = 12, markdown = 'hello world'): CapturedSelection {
   return {
@@ -188,7 +188,7 @@ afterEach(() => {
 })
 
 function mockRunningJob() {
-  startEditorTransform.mockResolvedValue({ job_id: 7 })
+  startEditorTransform.mockResolvedValue({ job_id: '7' })
   getEditorTransformJob.mockResolvedValue({
     status: 'running',
     result_md: '',
@@ -300,8 +300,8 @@ describe('AiHelperPopover', () => {
           text: 'hello world',
           preset: 'explain',
           mode: 'transform',
-          course_id: 1,
-          node_id: 2,
+          course_id: '1',
+          node_id: '2',
           ground_in_material: true,
         })
       )
@@ -450,7 +450,7 @@ describe('AiHelperPopover', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Answer the question' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).not.toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    await waitFor(() => expect(cancelEditorTransformJob).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(cancelEditorTransformJob).toHaveBeenCalledWith('7'))
     await waitFor(() =>
       expect(screen.getByPlaceholderText(/Ask the AI/)).not.toBeNull()
     )

@@ -3,11 +3,7 @@ import { Loader2, Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import {
-  runCodeTests,
-  type CodeRunPayload,
-  type CodeTestCase,
-} from '@/lib/pyodideRunner'
+import type { CodeRunPayload, CodeTestCase } from '@/lib/pyodideRunner'
 
 export type { CodeRunPayload } from '@/lib/pyodideRunner'
 import { cn } from '@/lib/utils'
@@ -48,7 +44,12 @@ export function CodeAnswer({
   const [pending, setPending] = useState(false)
   const interactive = onChange !== undefined && disabled !== true
   const code = response?.code ?? input.starter_code ?? ''
-  const runner = onRun ?? (() => runCodeTests(code, input.tests))
+  const runner =
+    onRun ??
+    (async () => {
+      const { runCodeTests } = await import('@/lib/pyodideRunner')
+      return runCodeTests(code, input.tests)
+    })
   const hasRun = codeResponseComplete(response, input)
 
   return (

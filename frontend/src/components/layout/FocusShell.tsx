@@ -28,7 +28,7 @@ export interface FocusContextInfo {
   isRoot: boolean
 }
 
-function findNode(nodes: NodeInfo[], targetId: number): NodeInfo | null {
+function findNode(nodes: NodeInfo[], targetId: string): NodeInfo | null {
   for (const node of nodes) {
     if (node.id === targetId) {
       return node
@@ -42,8 +42,8 @@ function findNode(nodes: NodeInfo[], targetId: number): NodeInfo | null {
 }
 
 export function useFocusContext(
-  courseId: number | null | undefined,
-  nodeId: number | null | undefined
+  courseId: string | null | undefined,
+  nodeId: string | null | undefined
 ): FocusContextInfo | null {
   const tree = useQuery({
     queryKey: ['tree', String(courseId)],

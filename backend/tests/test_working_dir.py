@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from settings_factory import settings_from_env_file
 
 from app.core.config import Settings, default_data_dir
 from app.core.working_dir import POINTER_FILENAME, read_override, write_override
@@ -58,9 +59,7 @@ def test_validate_accepts_empty_and_existing_sa_dirs(tmp_path: Path) -> None:
     junk.mkdir()
     (junk / "random.txt").write_text("x")
     with make_client(tmp_path) as client:
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(empty)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(empty)}).json()
         assert body["valid"] is True
         assert body["empty"] is True
 
@@ -70,9 +69,7 @@ def test_validate_accepts_empty_and_existing_sa_dirs(tmp_path: Path) -> None:
         assert body["valid"] is True
         assert body["has_app_db"] is True
 
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(junk)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(junk)}).json()
         assert body["valid"] is False
         assert body["reason"] == "not_empty"
 
@@ -92,9 +89,7 @@ def test_validate_rejects_unwritable_and_accepts_creatable(tmp_path: Path) -> No
         finally:
             unwritable.chmod(0o755)
 
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(deep)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(deep)}).json()
         assert body["valid"] is True
 
 
@@ -149,13 +144,16 @@ def test_boot_resolution_pointer_then_env_wins(
     monkeypatch.setenv("SA_CONFIG_DIR", str(config_dir))
     monkeypatch.delenv("SA_DATA_DIR", raising=False)
 
-    settings = Settings()
+    # `_env_file=None` pins the resolution source: the walk-up `.env` is
+    # resolved once per process (ADR-0028) and must not leak into this
+    # pointer-resolution case.
+    settings = settings_from_env_file(None)
     assert settings.data_dir == target
 
     env_dir = tmp_path / "env-wins"
     monkeypatch.setenv("SA_DATA_DIR", str(env_dir))
-    assert Settings().data_dir == env_dir
+    assert settings_from_env_file(None).data_dir == env_dir
 
     monkeypatch.delenv("SA_DATA_DIR")
     (config_dir / POINTER_FILENAME).write_text("relative/path\n", encoding="utf-8")
-    assert Settings().data_dir == default_data_dir()
+    assert settings_from_env_file(None).data_dir == default_data_dir()

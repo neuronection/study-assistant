@@ -18,7 +18,7 @@ export function LazyNoteEditor({
   onExpand,
   docked = false,
 }: {
-  noteId: number
+  noteId: string
   onClose?: () => void
   onRequestClose?: () => void
   closeLabel?: string

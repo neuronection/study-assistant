@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 describe('exportMarkdownWithDrawings', () => {
-  test('resolves ca-drawing refs to embedded data URIs', async () => {
+  test('resolves sa-drawing refs to embedded data URIs', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -22,10 +22,10 @@ describe('exportMarkdownWithDrawings', () => {
       }))
     )
     const out = await exportMarkdownWithDrawings(
-      'a ![drawing](ca-drawing://3) b ![drawing](ca-drawing://7)',
+      'a ![drawing](sa-drawing://3) b ![drawing](sa-drawing://7)',
       [
-        { id: 3, png_sha: 'sha3' },
-        { id: 7, png_sha: 'sha7' },
+        { id: '3', png_sha: 'sha3' },
+        { id: '7', png_sha: 'sha7' },
       ]
     )
     expect(out).toBe(
@@ -39,12 +39,12 @@ describe('exportMarkdownWithDrawings', () => {
       vi.fn(async () => ({ ok: false }))
     )
     const out = await exportMarkdownWithDrawings(
-      'x ![drawing](ca-drawing://1) ![drawing](ca-drawing://2)',
+      'x ![drawing](sa-drawing://1) ![drawing](sa-drawing://2)',
       [
-        { id: 1, png_sha: null },
-        { id: 2, png_sha: 'missing-blob' },
+        { id: '1', png_sha: null },
+        { id: '2', png_sha: 'missing-blob' },
       ]
     )
-    expect(out).toBe('x ![drawing](ca-drawing://1) ![drawing](ca-drawing://2)')
+    expect(out).toBe('x ![drawing](sa-drawing://1) ![drawing](sa-drawing://2)')
   })
 })

@@ -1,0 +1,34 @@
+name: Data-model convergence
+
+# Family data-model gate (guidelines/data-model.md) — vendored copy of
+# dev's check-data-model.sh (must stay byte-identical; drift is caught by
+# dev's verify-wiring.sh).
+# MODE: strict (plan 81 F — the round's schema work landed; findings block).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'contracts/**'
+      - 'scripts/check-data-model*'
+      - '.github/workflows/data-model.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'contracts/**'
+      - 'scripts/check-data-model*'
+      - '.github/workflows/data-model.yml'
+  workflow_dispatch:
+
+jobs:
+  data-model:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run data-model gate self-test
+        run: bash scripts/check-data-model.selftest.sh
+      - name: Run data-model gate
+        run: bash scripts/check-data-model.sh --self --mode strict

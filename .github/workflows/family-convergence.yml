@@ -1,0 +1,64 @@
+name: Family convergence
+
+# Family-convergence gate (plan 20 D9 / reference-architecture.md) — tool
+# config parity, prefixed-only env, migrations home, no legacy markers,
+# packaging shape, contract gates. Script must stay byte-identical across
+# family repos (sha-checked by the family wiring verifier).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/src/**'
+      - 'scripts/**'
+      - 'docker/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'scripts/check-family-convergence.sh'
+      - '.github/workflows/family-convergence.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/src/**'
+      - 'scripts/**'
+      - 'docker/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'scripts/check-family-convergence.sh'
+      - '.github/workflows/family-convergence.yml'
+  workflow_dispatch:
+
+jobs:
+  converge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate self-test (plan 23 D4)
+        run: bash scripts/check-family-convergence.selftest.sh
+      - name: Extension structure probe (blocking, plan 32 Phase 9)
+        run: bash scripts/check-extensions-structure.sh --strict
+      - name: Run family-convergence gate
+        run: bash scripts/check-family-convergence.sh --self
+
+  extension-conformance:
+    name: Extension conformance wall (ADR-0040)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install GTK build dependencies
+        # pygobject/pycairo build from source in uv sync (desktop shell deps);
+        # the same headers the main backend job installs.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
+      - name: Install backend dependencies
+        run: uv sync --frozen
+      - name: Run the vendored contract fixtures + semantics
+        working-directory: backend
+        run: uv run --frozen pytest tests/test_extensions_contract.py -q
