@@ -102,7 +102,9 @@ def test_release_workflow_covers_tag_and_artifacts() -> None:
         "*.deb",
         "*.AppImage",
         "-windows-x64.exe",
-        "generate_release_notes",
+        "body_path",
+        "prerelease",
+        "docs/releases",
         "xvfb-run",
         "WEBKIT_DISABLE_COMPOSITING_MODE",
     ):

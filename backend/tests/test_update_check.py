@@ -59,7 +59,10 @@ def test_newer_release_is_an_available_update(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_same_or_older_release_is_not_an_update(monkeypatch: pytest.MonkeyPatch) -> None:
-    for version in (__version__, "0.0.1"):
+    # Pin a stable client: the disk version is an rc during a release cut, and
+    # a beta client legitimately follows the beta channel.
+    monkeypatch.setattr(instance, "__version__", "0.12.1")
+    for version in ("0.12.1", "0.0.1"):
         instance._UPDATE_CACHE = None
         instance._UPDATE_CACHE_AT = None
         monkeypatch.setattr(
@@ -71,8 +74,9 @@ def test_same_or_older_release_is_not_an_update(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_stable_channel_ignores_a_newer_prerelease(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(instance, "__version__", "0.12.1")
     monkeypatch.setattr(
-        version_check, "_default_fetch_json", lambda url: make_doc(__version__, "99.0.0-rc.1")
+        version_check, "_default_fetch_json", lambda url: make_doc("0.12.1", "99.0.0-rc.1")
     )
     payload = instance.update_check()
     assert payload["update_available"] is False
