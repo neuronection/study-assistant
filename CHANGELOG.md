@@ -11,11 +11,11 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
-## [v0.13.0-rc.2] - 2026-11-07
+## [v0.13.0-rc.3] - 2026-11-07
 
 ### 0.13 highlights
 
-_rc.2 supersedes rc.1: the release CI now pins the PostgreSQL 16 client; no product change._
+_rc.3 supersedes rc.2: the release CI now prepares the e2e datastore; no product change._
 - **Token-aware retrieval** — offline tokenizer with real token accounting; a v2 token-window
   chunker that builds beside the v1 space, backfills, passes coverage/quality and cuts over;
   bounded live indexing progress, retrieval operations/alerts and a read-only observation surface.

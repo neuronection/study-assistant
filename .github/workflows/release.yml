@@ -100,7 +100,14 @@ jobs:
           # Exit 5 = no tests matched the postgres selection (the gated
           # modules are still landing) — tolerate that and nothing else.
           if [ "$code" -ne 0 ] && [ "$code" -ne 5 ]; then exit "$code"; fi
+      - name: Prepare e2e datastore (migrations)
+        env:
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
+        run: uv run --directory backend alembic upgrade head
       - name: E2E smoke (Playwright, mock provider)
+        env:
+          SA_APP_ENV: test
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
         run: |
           pnpm --filter frontend exec playwright install --with-deps chromium
           pnpm --filter frontend e2e
