@@ -84,6 +84,15 @@ jobs:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
           SA_TEST_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:postgres@localhost:5432/neuronection_study_test
         run: |
+          # Match the pg16 service: the runner's newer pg_dump preamble carries
+          # settings pg16 cannot parse ("transaction_timeout"). Use the image's
+          # own client binaries.
+          mkdir -p "$RUNNER_TEMP/pg16-bin"
+          for tool in pg_dump pg_restore psql; do
+            printf '#!/usr/bin/env bash\nexec docker run --rm -i --network host -e PGPASSWORD="$PGPASSWORD" -v /tmp:/tmp pgvector/pgvector:pg16 %s "$@"\n' "$tool" > "$RUNNER_TEMP/pg16-bin/$tool"
+            chmod +x "$RUNNER_TEMP/pg16-bin/$tool"
+          done
+          export PATH="$RUNNER_TEMP/pg16-bin:$PATH"
           set +e
           uv run --directory backend pytest tests/ -k postgres
           code=$?
