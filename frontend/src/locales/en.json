@@ -3253,5 +3253,14 @@
     "dismiss": "Dismiss update notice",
     "releaseNotes": "Release notes",
     "allReleases": "All releases"
+  },
+  "quarantine": {
+    "title": "Your previous data was kept",
+    "body": "This version uses a new database format. The data from the earlier release was moved aside; nothing was deleted.",
+    "pathLabel": "Kept at",
+    "hint": "To go back to 0.12.1, reinstall it and restore this folder as the data directory.",
+    "copy": "Copy path",
+    "copied": "Copied",
+    "dismiss": "Got it"
   }
 }

@@ -11,11 +11,11 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
-## [v0.13.0-rc.4] - 2026-11-07
+## [v0.13.0-rc.5] - 2026-11-09
 
 ### 0.13 highlights
 
-_rc.4 supersedes rc.3: auth-kit 0.5.1 fixes the Windows launch (no `os.fchmod`); no other product change._
+_rc.5 supersedes rc.4: a 0.12.x datastore is moved aside automatically on first launch (nothing deleted) with a one-time notice; PostgreSQL volumes are preflighted. No other product change._
 - **Token-aware retrieval** — offline tokenizer with real token accounting; a v2 token-window
   chunker that builds beside the v1 space, backfills, passes coverage/quality and cuts over;
   bounded live indexing progress, retrieval operations/alerts and a read-only observation surface.

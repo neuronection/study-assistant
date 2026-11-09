@@ -48,6 +48,12 @@ Desktop mode keeps SQLite (`<data_dir>/study.sqlite3` +
 `SA_DATA_DIR=/data` (named `data` volume). Migrations run automatically on
 start (owner role) and are verified on both dialects in CI.
 
+**0.13 is a one-way datastore break.** A PostgreSQL volume from 0.12.x cannot be
+upgraded: the `migrate` service preflights `alembic_version` and exits with
+guidance (`docker compose down -v` destroys the volume; or stay on 0.12.1). It
+never drops data automatically. Desktop SQLite quarantines the old datastore and
+shows a one-time notice (the family datastore-break policy).
+
 Legacy installs adopt the amended ADR-0022 names automatically: both deploy
 scripts run `migrate_legacy_db_names()` (`scripts/lib-docker.sh`) before the
 stack boots — a guarded, idempotent `ALTER DATABASE` / `ALTER ROLE` rename of

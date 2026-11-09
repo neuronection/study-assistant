@@ -6330,6 +6330,16 @@
             "title": "Auth Mode",
             "type": "string"
           },
+          "datastore_quarantine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuarantineOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "demo_mode": {
             "title": "Demo Mode",
             "type": "boolean"
@@ -12047,6 +12057,51 @@
           }
         },
         "title": "ProviderUpdate",
+        "type": "object"
+      },
+      "QuarantineOut": {
+        "properties": {
+          "from_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Version"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "quarantined_at": {
+            "title": "Quarantined At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Revision"
+          }
+        },
+        "required": [
+          "path",
+          "reason",
+          "quarantined_at"
+        ],
+        "title": "QuarantineOut",
         "type": "object"
       },
       "QuestionCheckOut": {

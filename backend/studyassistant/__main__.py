@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 MODES = ("app", "web", "mcp", "reset")
 
@@ -17,32 +18,39 @@ def _reset_flags(argv: list[str]) -> tuple[bool, bool]:
     return "--all" in args or "-a" in args, "--yes" in args or "-y" in args
 
 
+def _report_startup_error(data_dir: Path, error: Exception) -> None:
+    error_path = data_dir / "STARTUP-ERROR.txt"
+    try:
+        error_path.write_text(str(error) + "\n", encoding="utf-8")
+        written = True
+    except OSError:
+        written = False
+    sys.stderr.write(f"\n{error}\n")
+    if written:
+        sys.stderr.write(f"\nThis message was written to {error_path}\n")
+
+
 def _bootstrap() -> None:
     """Desktop profile bootstrap (app/local.py; plan 20 Phase 4): data
     dir + env defaults, then migrations — before any `Settings` is built.
     Migrations are an entrypoint responsibility (D6), never `create_app`'s.
     """
+    from app.core.config import get_settings
     from app.local import (
         DatabaseVersionError,
         bootstrap_environment,
         default_data_dir,
         run_migrations,
     )
+    from app.storage.datastore_guard import DatastoreQuarantineError, guard_datastore
 
     data_dir = default_data_dir()
     bootstrap_environment(data_dir)
     try:
+        guard_datastore(get_settings())
         run_migrations()
-    except DatabaseVersionError as error:
-        error_path = data_dir / "STARTUP-ERROR.txt"
-        try:
-            error_path.write_text(str(error) + "\n", encoding="utf-8")
-            written = True
-        except OSError:
-            written = False
-        sys.stderr.write(f"\n{error}\n")
-        if written:
-            sys.stderr.write(f"\nThis message was written to {error_path}\n")
+    except (DatabaseVersionError, DatastoreQuarantineError) as error:
+        _report_startup_error(data_dir, error)
         raise
 
 

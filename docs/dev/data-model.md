@@ -602,10 +602,14 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   the family migration rules (§3)). **Pre-baseline databases are rebuilt, not migrated**:
   delete the SQLite file and reseed demo data (`scripts/seed-demo.py`); no
   data-migration path exists by design. Runtime behavior for a stamped
-  pre-baseline database: `run_migrations` compares `alembic_version` with this
-  chain and raises `DatabaseVersionError` with a reset instruction (the
-  entrypoint writes it to `STARTUP-ERROR.txt`) instead of letting Alembic fail
-  with "Can't locate revision". Backups record the schema revision in
+  pre-baseline database: the entrypoint runs `storage/datastore_guard.py`
+  first — it moves the old database, blobs and old backups into
+  `previous-datastore-<timestamp>/`, writes the one-time marker and starts a
+  fresh database (family policy: `dev/guidelines/datastore-breaks.md`); if the
+  move fails it refuses to start with `STARTUP-ERROR.txt`. `run_migrations`
+  still compares `alembic_version` with this chain for every other caller and
+  raises `DatabaseVersionError` instead of letting Alembic fail with
+  "Can't locate revision". Backups record the schema revision in
   `manifest.json`; `POST /backup/restore` refuses a mismatch before swapping
   the datastore — no legacy reader exists. Every revision-pinned test was
   reworked to baseline round-trips/shape tests and all head assertions read

@@ -35,6 +35,7 @@ import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
 import { loadUpdateCheck } from './UpdateBadge'
 import { ShortcutsDialog } from './ShortcutsDialog'
+import { DatastoreQuarantineDialog } from './DatastoreQuarantineDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
 import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
@@ -752,6 +753,7 @@ export function AppShell() {
       ) : null}
       <CommandPalette open={palette.open} onClose={palette.close} />
       {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
+      <DatastoreQuarantineDialog />
       <FocusTimer />
       <QuickCapture />
       <SnapIntoNote />

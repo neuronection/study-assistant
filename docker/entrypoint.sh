@@ -41,12 +41,38 @@ sys.exit(f"database not reachable at {host}:{port}")
 '
 }
 
+preflight_datastore() {
+    # A pre-0.13 volume cannot be upgraded (deliberate schema break). Refuse
+    # with guidance instead of an Alembic traceback; never auto-drop a volume.
+    PYTHONPATH=/app/backend /app/.venv/bin/python - "$1" <<'PY'
+import sys
+
+from sqlalchemy import create_engine, text
+
+from app.local import known_revisions
+
+url = sys.argv[1]
+try:
+    with create_engine(url).connect() as connection:
+        row = connection.execute(text("SELECT version_num FROM alembic_version")).first()
+except Exception:
+    raise SystemExit(0)
+if row and row[0] not in known_revisions():
+    raise SystemExit(
+        "This PostgreSQL volume predates the 0.13 schema and cannot be upgraded.\n"
+        "Recreate it with `docker compose down -v` (this deletes the volume), or\n"
+        "keep running Study Assistant 0.12.1 against it. No data was changed."
+    )
+PY
+}
+
 run_migrations() {
     echo "Running database migrations (owner role)..."
     cd /app/backend
     if [ -n "${SA_MIGRATIONS_DATABASE_URL:-}" ]; then
         # Two-role split (deployment.md): migrations run as the owner role, the
         # app process connects as the least-privilege app role (SA_DATABASE_URL).
+        preflight_datastore "$SA_MIGRATIONS_DATABASE_URL"
         SA_DATABASE_URL="$SA_MIGRATIONS_DATABASE_URL" PYTHONPATH=/app/backend \
             /app/.venv/bin/alembic upgrade head
         # langgraph's checkpoint schema is DDL too — provision it as the owner
@@ -63,6 +89,7 @@ async def main() -> None:
 asyncio.run(main())
 '
     else
+        preflight_datastore "$SA_DATABASE_URL"
         PYTHONPATH=/app/backend /app/.venv/bin/alembic upgrade head
     fi
 }

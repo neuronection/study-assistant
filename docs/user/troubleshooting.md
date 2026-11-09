@@ -6,15 +6,24 @@ If something here does not match what you see, check the
 [known-issues section of STATUS.md](../STATUS.md) and open an issue on
 [GitHub](https://github.com/neuronection/study-assistant/issues).
 
-## The app will not start after upgrading from 0.12.x
+## Upgrading from 0.12.x — your old data is kept automatically
 
-0.13 rebuilds the datastore schema; a 0.12.x database cannot be migrated. The
-app refuses it with a message and writes the same text to
-`STARTUP-ERROR.txt` in your data directory (also
-`%TEMP%/studyassistant.log` on Windows). Move the old data directory aside —
-or run `StudyAssistant reset --all` / `python -m studyassistant reset --all` —
-and start fresh. Backups made by 0.12.x are refused for the same reason; only
-backups made by 0.13 restore.
+0.13 uses a new datastore format and cannot read a 0.12.x database. On first
+launch the app **moves** the old database, blobs and 0.12.x backups into a
+folder named `previous-datastore-<timestamp>` inside your data directory, starts
+with a fresh database, and shows a one-time notice with the exact path.
+**Nothing is deleted.**
+
+- **To go back to 0.12.1:** reinstall it, quit the app, and restore that folder
+  in place of the new data directory (its `study.sqlite3` and `blobs/`).
+- **0.12.x backups are not restorable by 0.13** (the manifest records the schema
+  revision). The quarantined `backups/` folder is the copy to keep.
+- **If the app cannot move the old data** (another instance is running, or the
+  folder is not writable), it refuses to start and writes the reason to
+  `STARTUP-ERROR.txt` in the data directory. Close the other instance and
+  relaunch — it will not create a second database beside the old one.
+- **Manual reset** is still available: `StudyAssistant reset --all`
+  (`python -m studyassistant reset --all`), which deletes the current data.
 
 ## AI features do nothing / "no model assigned"
 

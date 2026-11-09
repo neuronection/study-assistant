@@ -79,7 +79,8 @@ override them and are stored in `backup-settings.json` in the data dir):
   0.12.x backup) is refused before anything is replaced, with a message naming
   the mismatch.
 - Upgrading from 0.12.x is a clean break: the 0.13 datastore cannot read a
-  0.12.x database (see the release notes). Move the old data directory aside
-  before launching 0.13.
+  0.12.x database. On first launch the app moves the old database, blobs and
+  0.12.x backups into a `previous-datastore-<timestamp>` folder and starts fresh
+  (nothing is deleted; see the troubleshooting guide to roll back).
 - The archive format is `sa-backup/v1`: `manifest.json`, `database.sqlite`
   (portable, no WAL sidecars) and `blobs/…` originals.

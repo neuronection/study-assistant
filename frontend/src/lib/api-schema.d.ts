@@ -7661,6 +7661,7 @@ export interface components {
         InstanceConfigOut: {
             /** Auth Mode */
             auth_mode: string;
+            datastore_quarantine?: components["schemas"]["QuarantineOut"] | null;
             /** Demo Mode */
             demo_mode: boolean;
             /** Identity Mode */
@@ -9408,6 +9409,19 @@ export interface components {
             is_local?: boolean | null;
             /** Name */
             name?: string | null;
+        };
+        /** QuarantineOut */
+        QuarantineOut: {
+            /** From Version */
+            from_version?: string | null;
+            /** Path */
+            path: string;
+            /** Quarantined At */
+            quarantined_at: string;
+            /** Reason */
+            reason: string;
+            /** Schema Revision */
+            schema_revision?: string | null;
         };
         /** QuestionCheckOut */
         QuestionCheckOut: {

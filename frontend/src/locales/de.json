@@ -3253,5 +3253,14 @@
     "dismiss": "Update-Hinweis ausblenden",
     "releaseNotes": "Versionshinweise",
     "allReleases": "Alle Versionen"
+  },
+  "quarantine": {
+    "title": "Ihre bisherigen Daten wurden aufbewahrt",
+    "body": "Diese Version verwendet ein neues Datenbankformat. Die Daten der früheren Version wurden beiseitegelegt; nichts wurde gelöscht.",
+    "pathLabel": "Aufbewahrt unter",
+    "hint": "Um zu 0.12.1 zurückzukehren, installieren Sie es erneut und stellen Sie diesen Ordner als Datenverzeichnis wieder her.",
+    "copy": "Pfad kopieren",
+    "copied": "Kopiert",
+    "dismiss": "Verstanden"
   }
 }

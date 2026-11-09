@@ -206,6 +206,7 @@ def test_instance_config_is_public_and_profile_exempt(raw_client: TestClient) ->
         # §4 entrypoint mode is public fact — the §4.5 control blocks
         # "Remove login" on server instances (S14).
         "identity_mode": "server",
+        "datastore_quarantine": None,
     }
 
 

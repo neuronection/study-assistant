@@ -20,17 +20,40 @@ from ..services.platform import version_check
 router = APIRouter(prefix="/instance", tags=["instance"])
 
 
+class QuarantineOut(BaseModel):
+    path: str
+    reason: str
+    quarantined_at: str
+    schema_revision: str | None = None
+    from_version: str | None = None
+
+
 class InstanceConfigOut(BaseModel):
     demo_mode: bool
     auth_mode: str
     registration_enabled: bool
     identity_mode: str
+    datastore_quarantine: QuarantineOut | None = None
 
 
 @router.get("/config", response_model=InstanceConfigOut)
 def get_instance_config(request: Request) -> dict[str, object]:
     kit = request.app.state.auth
     state = kit.state
+    from ..storage.datastore_guard import read_marker
+
+    marker = read_marker(request.app.state.settings.data_dir)
+    quarantine = (
+        QuarantineOut(
+            path=str(marker["path"]),
+            reason=str(marker["reason"]),
+            quarantined_at=str(marker["quarantined_at"]),
+            schema_revision=marker.get("schema_revision"),
+            from_version=marker.get("from_version"),
+        )
+        if marker and kit.config.identity_mode == "desktop"
+        else None
+    )
     return {
         "demo_mode": state.demo_mode,
         "auth_mode": effective_auth_mode(state).value,
@@ -39,6 +62,7 @@ def get_instance_config(request: Request) -> dict[str, object]:
         # §4.5 control needs it to mark server instances as permanently
         # authenticated ("Remove login" is never offered there).
         "identity_mode": kit.config.identity_mode,
+        "datastore_quarantine": quarantine,
     }
 
 
