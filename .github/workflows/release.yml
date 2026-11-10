@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v4
@@ -128,7 +128,7 @@ jobs:
               || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
           fi
       - uses: astral-sh/setup-uv@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v4
@@ -214,7 +214,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v4
