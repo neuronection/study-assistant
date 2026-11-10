@@ -17,13 +17,18 @@ typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 2026-10-22 · 84 structure, test gates & eval corpus — COMPLETE 2026-10-22 ·
 85 academic ingest integrations — COMPLETE 2026-10-22 · 86 modular source
 providers & connected accounts — COMPLETE 2026-10-22 · 87 product gap
-closure — COMPLETE 2026-10-22. ADRs 196–218 recorded.
+closure — COMPLETE 2026-10-22 · 88 release hardening — COMPLETE 2026-11-06 ·
+89 v0.13 release execution — IN PROGRESS (rc.5). ADRs 196–220 recorded.
 
-**Current round:** family plan 89 — v0.13 release execution (2026-11-07,
-in progress) — the audit's S1/S2 hardening is implemented in the working tree
-(plan 88 as-built); remaining: stage + verify it, consolidate the 17-commit
-unpublished tail into one fast-forward commit, the D7 family-contract rename
-(ADR-219), the version-API deploy, then rc.1 → soak → 0.13.0 (ADR-220).
+**Current round:** family plan 89 — v0.13 release execution (2026-11-07 →
+2026-11-10) — the audit's S1/S2 hardening (plan 88), the one-commit history
+rewrite at the `v0.12.1` boundary, the D7 family-contract rename (ADR-219), and
+the **pre-0.13 datastore quarantine** (ADR-220): on first launch the old SQLite
+database, checkpointer, blobs and old backups move to
+`previous-datastore-<timestamp>/` with a one-time notice before onboarding —
+nothing is deleted; PostgreSQL volumes are preflighted and refused with volume
+guidance. `0.13.0-rc.5` is published (prerelease); the website version feed is
+live (beta `0.13.0-rc.5`). Remaining: soak rc.5 → promote `0.13.0`.
 Release notes carry the deliberate schema break.
 
 **Recent round:** family plan 40 W1 — chat service split (2026-10-24,
