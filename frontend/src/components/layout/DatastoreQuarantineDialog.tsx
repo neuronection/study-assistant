@@ -1,5 +1,5 @@
 import { Copy } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,14 @@ const SEEN_KEY = 'sa.datastore-quarantine-seen'
 
 type Quarantine = NonNullable<InstanceConfig['datastore_quarantine']>
 
-/** One-time notice for the deliberate 0.13 datastore break: the entrypoint
- * moved the old data aside and started fresh. Dismissal is local. */
-export function DatastoreQuarantineDialog() {
-  const { t } = useTranslation()
+/** The pending notice, if this boot quarantined a pre-0.13 datastore.
+ * The first-run wizard is suppressed while it is pending (a fresh database
+ * would otherwise open both surfaces at once). */
+export function useQuarantineNotice(): {
+  notice: Quarantine | null
+  dismiss: () => void
+} {
   const [notice, setNotice] = useState<Quarantine | null>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -36,28 +38,39 @@ export function DatastoreQuarantineDialog() {
     }
   }, [])
 
+  const dismiss = useCallback(() => {
+    setNotice((current) => {
+      if (current) {
+        localStorage.setItem(SEEN_KEY, current.quarantined_at)
+      }
+      return null
+    })
+  }, [])
+
+  return { notice, dismiss }
+}
+
+/** One-time notice for the deliberate 0.13 datastore break: the entrypoint
+ * moved the old data aside and started fresh. Dismissal is local. */
+export function DatastoreQuarantineDialog({
+  notice,
+  onDismiss,
+}: {
+  notice: Quarantine
+  onDismiss: () => void
+}) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+
   useEffect(() => {
-    if (!notice) {
-      return
-    }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        localStorage.setItem(SEEN_KEY, notice.quarantined_at)
-        setNotice(null)
+        onDismiss()
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [notice])
-
-  if (!notice) {
-    return null
-  }
-
-  const dismiss = () => {
-    localStorage.setItem(SEEN_KEY, notice.quarantined_at)
-    setNotice(null)
-  }
+  }, [onDismiss])
 
   const copyPath = async () => {
     try {
@@ -74,7 +87,7 @@ export function DatastoreQuarantineDialog() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
-          dismiss()
+          onDismiss()
         }
       }}
     >
@@ -103,7 +116,7 @@ export function DatastoreQuarantineDialog() {
               <Copy className="size-3.5" aria-hidden />
               {copied ? t('quarantine.copied') : t('quarantine.copy')}
             </Button>
-            <Button size="sm" autoFocus onClick={dismiss}>
+            <Button size="sm" autoFocus onClick={onDismiss}>
               {t('quarantine.dismiss')}
             </Button>
           </div>

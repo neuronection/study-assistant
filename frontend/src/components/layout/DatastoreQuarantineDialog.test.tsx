@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { clearDemoModeCache } from './DemoBanner'
-import { DatastoreQuarantineDialog } from './DatastoreQuarantineDialog'
+import { DatastoreQuarantineDialog, useQuarantineNotice } from './DatastoreQuarantineDialog'
 
 const getInstanceConfig = vi.fn()
 
@@ -27,6 +27,11 @@ const CONFIG = {
   datastore_quarantine: NOTICE,
 }
 
+function Harness() {
+  const { notice, dismiss } = useQuarantineNotice()
+  return notice ? <DatastoreQuarantineDialog notice={notice} onDismiss={dismiss} /> : null
+}
+
 describe('DatastoreQuarantineDialog', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -35,7 +40,7 @@ describe('DatastoreQuarantineDialog', () => {
   })
 
   test('shows the kept-data notice and dismisses locally', async () => {
-    render(<DatastoreQuarantineDialog />)
+    render(<Harness />)
     expect(await screen.findByText('Your previous data was kept')).toBeInTheDocument()
     expect(screen.getByText(NOTICE.path)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -45,14 +50,14 @@ describe('DatastoreQuarantineDialog', () => {
 
   test('stays hidden when this notice was dismissed before', async () => {
     localStorage.setItem('sa.datastore-quarantine-seen', NOTICE.quarantined_at)
-    render(<DatastoreQuarantineDialog />)
+    render(<Harness />)
     await waitFor(() => expect(getInstanceConfig).toHaveBeenCalled())
     expect(screen.queryByText('Your previous data was kept')).not.toBeInTheDocument()
   })
 
   test('renders nothing without a quarantine marker', async () => {
     getInstanceConfig.mockResolvedValue({ ...CONFIG, datastore_quarantine: null })
-    render(<DatastoreQuarantineDialog />)
+    render(<Harness />)
     await waitFor(() => expect(getInstanceConfig).toHaveBeenCalled())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

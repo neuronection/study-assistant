@@ -35,7 +35,7 @@ import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
 import { loadUpdateCheck } from './UpdateBadge'
 import { ShortcutsDialog } from './ShortcutsDialog'
-import { DatastoreQuarantineDialog } from './DatastoreQuarantineDialog'
+import { DatastoreQuarantineDialog, useQuarantineNotice } from './DatastoreQuarantineDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
 import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
@@ -378,6 +378,7 @@ export function AppShell() {
   const user = getCurrentUser()
   const [theme, setTheme] = useThemePreference()
   const [demoMode, setDemoMode] = useState(false)
+  const quarantine = useQuarantineNotice()
   const [updateCheck, setUpdateCheck] = useState<Awaited<
     ReturnType<typeof loadUpdateCheck>
   >>(null)
@@ -753,13 +754,19 @@ export function AppShell() {
       ) : null}
       <CommandPalette open={palette.open} onClose={palette.close} />
       {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
-      <DatastoreQuarantineDialog />
       <FocusTimer />
       <QuickCapture />
       <SnapIntoNote />
       <UrlImportDialog />
       <WindowDropOverlay />
-      <OnboardingWizard />
+      {quarantine.notice ? (
+        <DatastoreQuarantineDialog
+          notice={quarantine.notice}
+          onDismiss={quarantine.dismiss}
+        />
+      ) : (
+        <OnboardingWizard />
+      )}
     </div>
   )
 }
