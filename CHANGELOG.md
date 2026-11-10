@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.13.0-rc.6] - 2026-11-10
+
+### Fixed
+- **One startup flow for the datastore break.** The kept-data notice is now the first screen and
+  the first-run wizard is suppressed until it is acknowledged, so an upgrade no longer opens two
+  modals at once (rc.5 had the quarantine and notice, but not the sequencing). No backend or data
+  change.
+
 ## [v0.13.0-rc.5] - 2026-11-09
 
 ### 0.13 highlights
