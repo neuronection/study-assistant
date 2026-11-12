@@ -35,7 +35,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Gate self-test (plan 23 D4)
         run: bash scripts/check-family-convergence.selftest.sh
       - name: Extension structure probe (blocking, plan 32 Phase 9)
@@ -49,7 +49,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
       - name: Install GTK build dependencies
         # pygobject/pycairo build from source in uv sync (desktop shell deps);
