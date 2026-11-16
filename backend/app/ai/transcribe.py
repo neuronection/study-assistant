@@ -79,7 +79,7 @@ def _transcribe_openai(
     data: bytes,
     mime: str,
     language: str | None,
- ) -> tuple[str, list[TranscriptionSegment], Usage | None]:
+) -> tuple[str, list[TranscriptionSegment], Usage | None]:
     form: list[
         tuple[
             str,

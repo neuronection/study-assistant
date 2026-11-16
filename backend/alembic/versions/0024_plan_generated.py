@@ -33,9 +33,7 @@ def _recreate_mode() -> Literal["auto", "always"]:
 def upgrade() -> None:
     with op.batch_alter_table("plan_items", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("origin_allowed", type_="check")
-        batch.create_check_constraint(
-            "origin_allowed", f"origin IN ({_values(ORIGINS)})"
-        )
+        batch.create_check_constraint("origin_allowed", f"origin IN ({_values(ORIGINS)})")
 
 
 def downgrade() -> None:

@@ -28,14 +28,18 @@ import httpx
 from sqlalchemy.orm import Session
 
 from ....core.urls import normalize_url
-from ....core.vocab import DiscoveryKind, ExternalSourceKind
+from ....core.vocab import DiscoveryKind, ExternalSourceKind, MaterialKind
 from ....domain.models import ExternalSource, utcnow
 from ...errors import ExtensionError
 from ...polite_http import NetGuardConfig, PoliteHttpError, check_url
 from ...registry import extension_registry
 from ...search.provider import search_with_fallback
 from . import providers as provider_catalog
-from .adapters.base import MEDIA_EXTENSIONS, MEDIA_MIME_ALLOWLIST
+from .adapters.base import (
+    AUDIO_EXTENSIONS,
+    MEDIA_EXTENSIONS,
+    MEDIA_MIME_ALLOWLIST,
+)
 from .engine import fetch_entry, reconcile
 
 MIN_SCAN_INTERVAL_SEC = 900
@@ -209,18 +213,9 @@ def _media_meta(entry: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
         if size is not None and size > MEDIA_SIZE_CAP:
             return {"enclosure_type": mime or None, "enclosure_oversize": True}, None
         material_kind = (
-            "audio"
-            if mime.startswith("audio")
-            or extension
-            in {
-                ".mp3",
-                ".m4a",
-                ".wav",
-                ".ogg",
-                ".opus",
-                ".mpga",
-            }
-            else "video"
+            MaterialKind.AUDIO.value
+            if mime.startswith(f"{MaterialKind.AUDIO.value}/") or extension in AUDIO_EXTENSIONS
+            else MaterialKind.VIDEO.value
         )
         return (
             {
@@ -302,7 +297,7 @@ def _entry_kind(entry: dict[str, Any]) -> str:
         return DiscoveryKind.COURSE.value
     if any(word in blob for word in ("exercise", "problem", "quiz", "practice")):
         return DiscoveryKind.EXERCISE.value
-    if "audio" in media_types or "podcast" in blob:
+    if f"{MaterialKind.AUDIO.value}/" in media_types or "podcast" in blob:
         return DiscoveryKind.OTHER.value
     return DiscoveryKind.ARTICLE.value
 

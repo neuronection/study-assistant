@@ -4,7 +4,7 @@ Two roles, two credentials: the owner DSN (`SA_MIGRATIONS_DATABASE_URL`,
 `SA_DB_OWNER_PASSWORD`) lives **only** in the one-shot `migrate` service;
 the `app` service carries the app DSN alone and the entrypoint refuses a
 serving env that gains the owner DSN. Migrate mode resolves the ADR-0064
-§4 tri-state (split / legacy warning / broken refusal).
+§4 tri-state (split / unsplit warning / broken refusal).
 """
 
 from __future__ import annotations
@@ -160,9 +160,9 @@ def test_broken_state_refuses_to_boot() -> None:
         resolve_plan({"SA_DB_SPLIT": "1", "SA_DATABASE_URL": "postgresql://app@db/study"})
 
 
-def test_legacy_state_warns_loud() -> None:
+def test_unsplit_state_warns_loud() -> None:
     plan = resolve_plan({"SA_DATABASE_URL": "postgresql://app@db/study"})
-    assert plan.state == "legacy"
+    assert plan.state == "unsplit"
     assert plan.warning is not None
     assert "NOT managed-ready" in plan.warning
     assert plan.owner_url == "postgresql://app@db/study"

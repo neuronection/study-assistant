@@ -159,14 +159,20 @@ def put_chunk(
         if existing.sha256 == digest:
             return existing
         raise LectureConflict(f"chunk {seq} already exists with different content")
-    count = session.scalar(
-        select(func.count()).select_from(LectureChunk).where(LectureChunk.session_id == row.id)
-    ) or 0
-    total = session.scalar(
-        select(func.coalesce(func.sum(LectureChunk.size), 0)).where(
-            LectureChunk.session_id == row.id
+    count = (
+        session.scalar(
+            select(func.count()).select_from(LectureChunk).where(LectureChunk.session_id == row.id)
         )
-    ) or 0
+        or 0
+    )
+    total = (
+        session.scalar(
+            select(func.coalesce(func.sum(LectureChunk.size), 0)).where(
+                LectureChunk.session_id == row.id
+            )
+        )
+        or 0
+    )
     if count >= MAX_PARTS or int(total) + len(data) > MAX_TOTAL_BYTES:
         raise LectureError("lecture recording exceeds the session quota")
     blobs.put(data, mime=row.mime, session=session)
@@ -179,9 +185,7 @@ def put_chunk(
 def chunks(session: Session, row: LectureSession) -> list[LectureChunk]:
     return list(
         session.scalars(
-            select(LectureChunk)
-            .where(LectureChunk.session_id == row.id)
-            .order_by(LectureChunk.seq)
+            select(LectureChunk).where(LectureChunk.session_id == row.id).order_by(LectureChunk.seq)
         )
     )
 
@@ -215,9 +219,7 @@ def finalize(
     if any(part is None for part in parts):
         raise LectureError("chunk content is missing from the blob store")
     try:
-        data, mime = concat_and_validate(
-            [part for part in parts if part is not None], row.mime
-        )
+        data, mime = concat_and_validate([part for part in parts if part is not None], row.mime)
     except LectureContainerError as error:
         row.status = LectureStatus.FAILED.value
         row.error = str(error)
@@ -278,9 +280,7 @@ def purge_text_only_audio(session: Session, row: LectureSession, blobs: Any) -> 
     if material is None:
         raise LectureError("recording material not found")
     extraction = session.scalar(
-        select(Extraction.id)
-        .where(Extraction.material_id == material.id)
-        .limit(1)
+        select(Extraction.id).where(Extraction.material_id == material.id).limit(1)
     )
     if extraction is None:
         raise LectureConflict("transcript is not ready yet; audio is kept")
@@ -292,23 +292,42 @@ def purge_text_only_audio(session: Session, row: LectureSession, blobs: Any) -> 
     material.provenance = cast(Any, provenance)
     session.flush()
     if sha:
-        references = session.scalar(
-            select(func.count())
-            .select_from(Material)
-            .where(Material.blob_sha == sha, Material.id != material.id)
-        ) or 0
-        references += session.scalar(
-            select(func.count()).select_from(MaterialImage).where(MaterialImage.blob_sha == sha)
-        ) or 0
-        references += session.scalar(
-            select(func.count()).select_from(MaterialDrawing).where(MaterialDrawing.png_sha == sha)
-        ) or 0
-        references += session.scalar(
-            select(func.count()).select_from(NoteDrawing).where(NoteDrawing.png_sha == sha)
-        ) or 0
-        references += session.scalar(
-            select(func.count()).select_from(CaptureStaging).where(CaptureStaging.blob_sha == sha)
-        ) or 0
+        references = (
+            session.scalar(
+                select(func.count())
+                .select_from(Material)
+                .where(Material.blob_sha == sha, Material.id != material.id)
+            )
+            or 0
+        )
+        references += (
+            session.scalar(
+                select(func.count()).select_from(MaterialImage).where(MaterialImage.blob_sha == sha)
+            )
+            or 0
+        )
+        references += (
+            session.scalar(
+                select(func.count())
+                .select_from(MaterialDrawing)
+                .where(MaterialDrawing.png_sha == sha)
+            )
+            or 0
+        )
+        references += (
+            session.scalar(
+                select(func.count()).select_from(NoteDrawing).where(NoteDrawing.png_sha == sha)
+            )
+            or 0
+        )
+        references += (
+            session.scalar(
+                select(func.count())
+                .select_from(CaptureStaging)
+                .where(CaptureStaging.blob_sha == sha)
+            )
+            or 0
+        )
         if references == 0:
             session.execute(delete(Blob).where(Blob.sha256 == sha))
             blobs.delete(sha)

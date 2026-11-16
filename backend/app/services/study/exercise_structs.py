@@ -208,9 +208,7 @@ def check_structural(kind: str, payload: Mapping[str, Any], response: Any) -> tu
             if hotspot_id in chosen:
                 return False, "diagram_label: hotspot labelled twice"
             chosen[hotspot_id] = label
-        hits = sum(
-            1 for hotspot_id, label in expected.items() if chosen.get(hotspot_id) == label
-        )
+        hits = sum(1 for hotspot_id, label in expected.items() if chosen.get(hotspot_id) == label)
         return hits == len(expected), (
             "diagram_label: correct"
             if hits == len(expected)

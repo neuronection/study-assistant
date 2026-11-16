@@ -73,9 +73,7 @@ def upgrade() -> None:
     op.create_index("ix_artifacts_profile_id", "artifacts", ["profile_id"])
     op.create_index("ix_artifacts_course_id", "artifacts", ["course_id"])
     op.create_index("ix_artifacts_profile_created", "artifacts", ["profile_id", "created_at"])
-    op.create_index(
-        "ix_artifacts_course_node_kind", "artifacts", ["course_id", "node_id", "kind"]
-    )
+    op.create_index("ix_artifacts_course_node_kind", "artifacts", ["course_id", "node_id", "kind"])
     with op.batch_alter_table("jobs", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("type_allowed", type_="check")
         batch.create_check_constraint("type_allowed", f"type IN ({_values(JOB_TYPES)})")

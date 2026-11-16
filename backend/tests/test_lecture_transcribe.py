@@ -62,7 +62,8 @@ def test_transcription_persists_timestamped_segments_and_extraction(client: Test
             payload=LectureTranscribePayload(session_id=session_id, material_id=material_id),
         )
         handler = make_lecture_transcribe_handler(
-            FakeSpeechGateway(), client.app.state.blobs  # type: ignore[attr-defined]
+            FakeSpeechGateway(),
+            client.app.state.blobs,  # type: ignore[attr-defined]
         )
         with session_factory() as session:
             handler(session, cast(Any, job), lambda *args, **kwargs: None)

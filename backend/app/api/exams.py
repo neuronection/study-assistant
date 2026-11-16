@@ -176,10 +176,7 @@ def create_paper(
                 )
                 for section in body.sections
             ],
-            grade_bands=[
-                {"label": band.label, "min": band.min}
-                for band in body.grade_bands or []
-            ]
+            grade_bands=[{"label": band.label, "min": band.min} for band in body.grade_bands or []]
             or None,
         )
     except ExamRoomError as error:

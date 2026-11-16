@@ -88,7 +88,7 @@ tri-state:
 
 - **split** — app URL + `SA_MIGRATIONS_DATABASE_URL` + `SA_DB_SPLIT=1`
   (the shipped compose shape): supported;
-- **legacy** — neither the migrations URL nor the marker: boots with a loud
+- **unsplit** — neither the migrations URL nor the marker: boots with a loud
   warning; **not managed-ready**;
 - **broken** — `SA_DB_SPLIT=1` without a migrations URL: refuses to boot.
 

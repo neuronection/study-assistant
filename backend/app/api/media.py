@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from ..core.vocab import MaterialKind
 from ..domain.models import Material, MediaSegment
 from ..jobs.payloads import PostprocessPayload
 from ..jobs.runner import JobRunner
@@ -74,7 +75,7 @@ def _material(session: Session, material_id: str, profile_id: str) -> Material:
     material = session.get(Material, material_id)
     if material is None or material.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="material not found")
-    if material.kind not in ("audio", "video"):
+    if material.kind not in (MaterialKind.AUDIO.value, MaterialKind.VIDEO.value):
         raise HTTPException(status_code=422, detail="material is not audio or video")
     return material
 

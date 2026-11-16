@@ -661,9 +661,7 @@ class FsrsSettings(Base):
         Index("uq_fsrs_settings_profile", "profile_id", unique=True),
         vocab_check("leech_action", StudyLeechAction),
         CheckConstraint("desired_retention BETWEEN 0.70 AND 0.97", name="retention_range"),
-        CheckConstraint(
-            "maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"
-        ),
+        CheckConstraint("maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -689,9 +687,7 @@ class CourseFsrsOverride(Base):
         Index("uq_course_fsrs_overrides_course", "course_id", unique=True),
         vocab_check("leech_action", StudyLeechAction, nullable=True),
         CheckConstraint("desired_retention BETWEEN 0.70 AND 0.97", name="retention_range"),
-        CheckConstraint(
-            "maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"
-        ),
+        CheckConstraint("maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -734,9 +730,7 @@ class ExamPaper(Base):
     course_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    activity_id: Mapped[str] = mapped_column(
-        _UUID, ForeignKey("activities.id", ondelete="CASCADE")
-    )
+    activity_id: Mapped[str] = mapped_column(_UUID, ForeignKey("activities.id", ondelete="CASCADE"))
     node_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     instructions_md: Mapped[str | None] = mapped_column(Text)
@@ -768,9 +762,7 @@ class SolveEntry(Base):
     intent: Mapped[str] = mapped_column(String(20), default=SolveIntent.UNSUPPORTED.value)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     result: Mapped[SolveResult] = mapped_column(JSON)
-    note_id: Mapped[str | None] = mapped_column(
-        _UUID, ForeignKey("notes.id", ondelete="SET NULL")
-    )
+    note_id: Mapped[str | None] = mapped_column(_UUID, ForeignKey("notes.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -906,9 +898,7 @@ class LectureSession(Base):
 
 class LectureChunk(Base):
     __tablename__ = "lecture_chunks"
-    __table_args__ = (
-        Index("uq_lecture_chunks_seq", "session_id", "seq", unique=True),
-    )
+    __table_args__ = (Index("uq_lecture_chunks_seq", "session_id", "seq", unique=True),)
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     session_id: Mapped[str] = mapped_column(

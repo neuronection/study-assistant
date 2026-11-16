@@ -27,9 +27,7 @@ def test_daily_brief_runs_once_after_its_time(client: TestClient) -> None:
 
         with client.app.state.session_factory() as session:  # type: ignore[attr-defined]
             artifacts = list(
-                session.scalars(
-                    select(Artifact).where(Artifact.kind == "audio_brief")
-                )
+                session.scalars(select(Artifact).where(Artifact.kind == "audio_brief"))
             )
             assert len(artifacts) == 1
             assert artifacts[0].spec["chapters"]

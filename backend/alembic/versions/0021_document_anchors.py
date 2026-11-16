@@ -49,31 +49,19 @@ def upgrade() -> None:
         sa.Column("page", sa.Integer(), nullable=True),
         sa.Column("quote", sa.Text(), nullable=True),
         sa.Column("payload", sa.JSON(), nullable=False),
-        sa.Column(
-            "color", sa.String(length=20), nullable=False, server_default="yellow"
-        ),
+        sa.Column("color", sa.String(length=20), nullable=False, server_default="yellow"),
         sa.Column("note_md", sa.Text(), nullable=True),
         sa.Column("source", sa.String(length=20), nullable=False, server_default="user"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("orphaned_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["profile_id"], ["profiles.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["material_id"], ["materials.id"], ondelete="CASCADE"
-        ),
-        sa.CheckConstraint(
-            f"anchor_kind IN ({_values(ANCHOR_KINDS)})", name="anchor_kind_allowed"
-        ),
-        sa.CheckConstraint(
-            f"source IN ({_values(ANCHOR_SOURCES)})", name="source_allowed"
-        ),
+        sa.ForeignKeyConstraint(["material_id"], ["materials.id"], ondelete="CASCADE"),
+        sa.CheckConstraint(f"anchor_kind IN ({_values(ANCHOR_KINDS)})", name="anchor_kind_allowed"),
+        sa.CheckConstraint(f"source IN ({_values(ANCHOR_SOURCES)})", name="source_allowed"),
     )
-    op.create_index(
-        "ix_document_anchors_profile_id", "document_anchors", ["profile_id"]
-    )
-    op.create_index(
-        "ix_document_anchors_material_id", "document_anchors", ["material_id"]
-    )
+    op.create_index("ix_document_anchors_profile_id", "document_anchors", ["profile_id"])
+    op.create_index("ix_document_anchors_material_id", "document_anchors", ["material_id"])
     op.create_index(
         "ix_document_anchors_material_page",
         "document_anchors",
@@ -87,9 +75,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_document_anchors_profile_created", table_name="document_anchors"
-    )
+    op.drop_index("ix_document_anchors_profile_created", table_name="document_anchors")
     op.drop_index("ix_document_anchors_material_page", table_name="document_anchors")
     op.drop_index("ix_document_anchors_material_id", table_name="document_anchors")
     op.drop_index("ix_document_anchors_profile_id", table_name="document_anchors")

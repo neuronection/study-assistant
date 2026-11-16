@@ -49,12 +49,15 @@ def _audio(
         mime=speech.mime,
         course_id=artifact.course_id,
     )
-    material.provenance = cast(Any, {
-        "source": "artifact",
-        "kind": artifact.kind,
-        "renderer": "provider",
-        "model": speech.model,
-    })
+    material.provenance = cast(
+        Any,
+        {
+            "source": "artifact",
+            "kind": artifact.kind,
+            "renderer": "provider",
+            "model": speech.model,
+        },
+    )
     spec["renderer"] = "provider"
     spec["model"] = speech.model
     artifact.model = speech.model

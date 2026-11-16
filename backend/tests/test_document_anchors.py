@@ -44,10 +44,9 @@ def ready_material(client: TestClient) -> tuple[str, str]:
     assert uploaded.status_code == 200, uploaded.text
     material_id = str(uploaded.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     detail = client.get(f"/api/v1/materials/{material_id}").json()
     extraction = detail["extraction"]
@@ -180,9 +179,7 @@ def test_reingest_reanchors_to_the_new_extraction_version(client: TestClient) ->
     assert created.status_code == 201, created.text
     old_version = created.json()["payload"]["version_id"]
 
-    reingested = client.post(
-        f"/api/v1/materials/{material_id}/reingest", json={"mode": "text"}
-    )
+    reingested = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "text"})
     assert reingested.status_code == 200, reingested.text
 
     def extraction_version() -> int:

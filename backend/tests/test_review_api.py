@@ -138,15 +138,11 @@ def test_review_filters_and_preview(client: TestClient) -> None:
         listed = client.get("/api/v1/review/filters").json()
         assert [row["id"] for row in listed] == [filter_id]
 
-        ahead = client.get(
-            "/api/v1/review/due", params={"filter_id": filter_id}
-        ).json()
+        ahead = client.get("/api/v1/review/due", params={"filter_id": filter_id}).json()
         assert ahead["preview"] is True
         assert len(ahead["groups"][0]["cards"]) == 1
 
-        previewed = client.post(
-            f"/api/v1/review/preview/{first}", json={"rating": 3}
-        )
+        previewed = client.post(f"/api/v1/review/preview/{first}", json={"rating": 3})
         assert previewed.status_code == 200
         unchanged = client.get("/api/v1/review/due").json()
         assert unchanged["total_due"] == 2

@@ -4,9 +4,7 @@ from fastapi.testclient import TestClient
 
 
 def solve(client: TestClient, text: str, kind: str = "typed") -> dict[str, Any]:
-    response = client.post(
-        "/api/v1/solve", json={"input_text": text, "input_kind": kind}
-    )
+    response = client.post("/api/v1/solve", json={"input_text": text, "input_kind": kind})
     assert response.status_code == 201, response.text
     return cast(dict[str, Any], response.json())
 

@@ -111,9 +111,7 @@ def _reindex(session: Session, material_id: str) -> None:
     session.flush()
 
 
-def split_segment(
-    session: Session, segment: MediaSegment, at_ms: int
-) -> MediaSegment:
+def split_segment(session: Session, segment: MediaSegment, at_ms: int) -> MediaSegment:
     if segment.material_id is None:
         raise MediaError("segment has no material")
     if not segment.start_ms < at_ms < segment.end_ms:
@@ -146,9 +144,7 @@ def split_segment(
     return second
 
 
-def merge_segments(
-    session: Session, first: MediaSegment, second: MediaSegment
-) -> MediaSegment:
+def merge_segments(session: Session, first: MediaSegment, second: MediaSegment) -> MediaSegment:
     if first.material_id is None or first.material_id != second.material_id:
         raise MediaError("segments must belong to the same material")
     first.end_ms = max(first.end_ms, second.end_ms)

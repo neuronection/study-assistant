@@ -42,9 +42,7 @@ def test_narrate_creates_a_pending_artifact_and_regenerates_in_place(
         assert listing.status_code == 200
         assert [row["id"] for row in listing.json()] == [artifact["id"]]
 
-        duplicate = client.post(
-            "/api/v1/artifacts/narrate", json={"course_id": course_id}
-        )
+        duplicate = client.post("/api/v1/artifacts/narrate", json={"course_id": course_id})
         assert duplicate.status_code == 409
 
         again = client.post(
@@ -60,9 +58,7 @@ def test_render_handler_falls_back_to_a_browser_script_material(
 ) -> None:
     with client:
         course_id = make_course(client)
-        artifact = client.post(
-            "/api/v1/artifacts/narrate", json={"course_id": course_id}
-        ).json()
+        artifact = client.post("/api/v1/artifacts/narrate", json={"course_id": course_id}).json()
         session_factory = client.app.state.session_factory  # type: ignore[attr-defined]
         job = SimpleNamespace(
             id="artifact-job",
@@ -85,8 +81,6 @@ def test_render_handler_falls_back_to_a_browser_script_material(
 def test_artifact_retry_requires_a_failed_state(client: TestClient) -> None:
     with client:
         course_id = make_course(client)
-        artifact = client.post(
-            "/api/v1/artifacts/narrate", json={"course_id": course_id}
-        ).json()
+        artifact = client.post("/api/v1/artifacts/narrate", json={"course_id": course_id}).json()
         response = client.post(f"/api/v1/artifacts/{artifact['id']}/retry")
         assert response.status_code == 422

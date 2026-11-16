@@ -57,9 +57,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_exam_papers_profile_id", "exam_papers", ["profile_id"])
     op.create_index("ix_exam_papers_course_id", "exam_papers", ["course_id"])
-    op.create_index(
-        "ix_exam_papers_profile_created", "exam_papers", ["profile_id", "created_at"]
-    )
+    op.create_index("ix_exam_papers_profile_created", "exam_papers", ["profile_id", "created_at"])
     op.create_index("ix_exam_papers_course", "exam_papers", ["course_id", "created_at"])
     op.create_index("uq_exam_papers_activity", "exam_papers", ["activity_id"], unique=True)
 

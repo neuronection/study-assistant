@@ -137,9 +137,7 @@ def test_put_writes_pointer_and_reports_pending(tmp_path: Path) -> None:
 
 def test_put_rejects_current_directory(tmp_path: Path) -> None:
     with make_client(tmp_path) as client:
-        put = client.put(
-            "/api/v1/config/working-dir", json={"path": str(tmp_path / "data")}
-        )
+        put = client.put("/api/v1/config/working-dir", json={"path": str(tmp_path / "data")})
         assert put.status_code == 422
         assert "already_current" in put.json()["detail"]
 

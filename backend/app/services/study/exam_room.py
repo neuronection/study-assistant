@@ -94,9 +94,7 @@ def _validated_sections(sections: list[SectionSpec]) -> None:
         if section.count < 1 or section.marks < 1:
             raise ExamRoomError("each section needs at least one question and one mark")
         if section.marks < section.count:
-            raise ExamRoomError(
-                f"section {section.title!r} needs at least one mark per question"
-            )
+            raise ExamRoomError(f"section {section.title!r} needs at least one mark per question")
         if section.types is not None:
             unknown = sorted(set(section.types) - allowed_types)
             if unknown:
@@ -165,8 +163,8 @@ def assemble_paper(
     if not candidates:
         raise ExamRoomError("no questions in this course yet — generate a quiz first")
 
-    resolved_seed = seed if seed is not None else _stable_seed(
-        course_id, title, duration_min, sections
+    resolved_seed = (
+        seed if seed is not None else _stable_seed(course_id, title, duration_min, sections)
     )
     rng = random.Random(resolved_seed)
     activity = Activity(
@@ -189,8 +187,7 @@ def assemble_paper(
         picked = _pick(candidates, used_questions, used_stems, spec, rng)
         if len(picked) < spec.count:
             raise ExamRoomError(
-                f"section {spec.title!r} needs {spec.count} questions, only "
-                f"{len(picked)} available"
+                f"section {spec.title!r} needs {spec.count} questions, only {len(picked)} available"
             )
         base, extra = divmod(spec.marks, len(picked))
         marks = [base + (1 if position < extra else 0) for position in range(len(picked))]
@@ -342,9 +339,7 @@ def paper_report(
         for entry in section_entries:
             marks = int(entry.get("marks", 0))
             total += marks
-            section_earned += round(
-                marks * credit.get(str(entry.get("question_id")), 0.0), 2
-            )
+            section_earned += round(marks * credit.get(str(entry.get("question_id")), 0.0), 2)
         earned += section_earned
         sections.append(
             {
@@ -358,14 +353,10 @@ def paper_report(
     question_ids = [str(entry.get("question_id")) for entry in entries]
     questions = {
         question.id: question
-        for question in session.scalars(
-            select(Question).where(Question.id.in_(question_ids))
-        )
+        for question in session.scalars(select(Question).where(Question.id.in_(question_ids)))
     }
     concept_ids = {
-        concept_id
-        for question in questions.values()
-        for concept_id in (question.concept_ids or [])
+        concept_id for question in questions.values() for concept_id in (question.concept_ids or [])
     }
     concepts = {
         concept.id: concept.name

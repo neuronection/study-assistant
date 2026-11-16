@@ -108,9 +108,7 @@ def test_pause_resume_and_cancel(client: TestClient) -> None:
         assert paused.json()["status"] == "paused"
         assert paused.json()["title"] == "Renamed lecture"
 
-        resumed = client.patch(
-            f"/api/v1/lectures/{lecture['id']}", json={"status": "recording"}
-        )
+        resumed = client.patch(f"/api/v1/lectures/{lecture['id']}", json={"status": "recording"})
         assert resumed.status_code == 200
         assert resumed.json()["status"] == "recording"
 
@@ -148,9 +146,7 @@ def test_text_only_audio_purge_is_ttl_and_transcript_gated(client: TestClient) -
         course_id = make_course(client)
         lecture = create_lecture(client, course_id)
         # Flip retention at the API edge, then upload a valid recording.
-        patched = client.patch(
-            f"/api/v1/lectures/{lecture['id']}", json={"retention": "text_only"}
-        )
+        patched = client.patch(f"/api/v1/lectures/{lecture['id']}", json={"retention": "text_only"})
         assert patched.status_code == 200
         assert (
             put_chunk(

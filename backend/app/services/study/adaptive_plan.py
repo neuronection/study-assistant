@@ -113,8 +113,7 @@ def _weak_concepts(session: Session, profile_id: str, course_id: str) -> list[st
     cells = [
         cell
         for cell in weakness_matrix(rows)
-        if cell.get("n", 0) >= 3
-        and float(cell.get("accuracy", 1.0)) < WEAK_ACCURACY
+        if cell.get("n", 0) >= 3 and float(cell.get("accuracy", 1.0)) < WEAK_ACCURACY
     ]
     cells.sort(key=lambda cell: float(cell.get("accuracy", 1.0)))
     return [str(cell["concept"]) for cell in cells[:2]]

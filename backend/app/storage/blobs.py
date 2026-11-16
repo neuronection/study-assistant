@@ -28,7 +28,7 @@ def blob_path(root: Path, sha256: str) -> Path:
 
 
 def blob_key(sha256: str) -> str:
-    """The legacy content-addressed key: ``<aa>/<bb>/<sha256>``."""
+    """The content-addressed key layout: ``<aa>/<bb>/<sha256>``."""
     return f"{sha256[:2]}/{sha256[2:4]}/{sha256}"
 
 
@@ -46,7 +46,7 @@ class BlobStore:
     The public methods keep the historical ``sha256`` signatures; the
     underlying key layout is still ``<aa>/<bb>/<sha256>`` so existing
     desktop/self-host data directories remain valid. A ``Path`` argument
-    preserves the legacy construct-everywhere test/desktop shape and builds
+    preserves the construct-everywhere test/desktop shape and builds
     a local store; an ``ObjectStore`` argument is wrapped as-is.
     """
 

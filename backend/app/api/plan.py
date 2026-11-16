@@ -433,9 +433,7 @@ def commit_week_plan(
 @router.get("/capacity", response_model=CapacityOut)
 def get_planner_capacity(session: Session = Depends(get_session)) -> CapacityOut:
     profile = ensure_default_profile(session)
-    capacity = adaptive_plan.load_capacity(
-        session, profile.id, dict(profile.preferences or {})
-    )
+    capacity = adaptive_plan.load_capacity(session, profile.id, dict(profile.preferences or {}))
     return CapacityOut(
         minutes=capacity.minutes,
         blackout_dates=[day.isoformat() for day in sorted(capacity.blackout_dates)],

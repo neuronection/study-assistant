@@ -104,9 +104,7 @@ def test_activation_events_summary_export_and_clear(client: TestClient) -> None:
 
 def test_activation_rejects_unknown_events(client: TestClient) -> None:
     with client:
-        response = client.post(
-            "/api/v1/activation/events", json={"event": "not-a-real-event"}
-        )
+        response = client.post("/api/v1/activation/events", json={"event": "not-a-real-event"})
         assert response.status_code == 422
 
 
@@ -154,9 +152,7 @@ def test_activation_value_boundaries(client: TestClient) -> None:
 def test_activation_is_scoped_to_the_bound_profile(client: TestClient) -> None:
     with client:
         assert (
-            client.post(
-                "/api/v1/activation/events", json={"event": "first_review"}
-            ).status_code
+            client.post("/api/v1/activation/events", json={"event": "first_review"}).status_code
             == 201
         )
         other = _second_profile(client)
@@ -175,13 +171,8 @@ def test_activation_is_scoped_to_the_bound_profile(client: TestClient) -> None:
 
         other_export = client.get("/api/v1/activation/export", headers=other)
         assert other_export.status_code == 200
-        assert [row["event"] for row in other_export.json()["events"]] == [
-            "first_review"
-        ]
+        assert [row["event"] for row in other_export.json()["events"]] == ["first_review"]
 
         assert client.delete("/api/v1/activation", headers=other).status_code == 204
         assert client.get("/api/v1/activation/summary").json()["total"] == 1
-        assert (
-            client.get("/api/v1/activation/summary", headers=other).json()["total"]
-            == 0
-        )
+        assert client.get("/api/v1/activation/summary", headers=other).json()["total"] == 0

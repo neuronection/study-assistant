@@ -47,9 +47,7 @@ def _mark_failed(session: Session, artifact: Artifact, error: Exception) -> None
     raise JobError(f"artifact render failed: {error}") from error
 
 
-def make_artifact_render_handler(
-    gateway: Any, blobs: Any, jobs_provider: Any = None
-) -> JobHandler:
+def make_artifact_render_handler(gateway: Any, blobs: Any, jobs_provider: Any = None) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         from ...jobs.payloads import ArtifactRenderPayload
 
@@ -95,12 +93,15 @@ def make_script_material(
         content=spec.get("script", ""),
         description=f"Artifact script ({renderer})",
     )
-    material.provenance = cast(Any, {
-        "source": "artifact",
-        "kind": artifact.kind,
-        "renderer": renderer,
-        "model": artifact.model,
-    })
+    material.provenance = cast(
+        Any,
+        {
+            "source": "artifact",
+            "kind": artifact.kind,
+            "renderer": renderer,
+            "model": artifact.model,
+        },
+    )
     session.flush()
     if jobs is not None:
         MaterialsService(session, blobs).queue_ingest(material, jobs)

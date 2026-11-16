@@ -67,14 +67,10 @@ def upgrade() -> None:
         sa.Column("sha256", sa.String(length=64), nullable=False),
         sa.Column("size", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["session_id"], ["lecture_sessions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["session_id"], ["lecture_sessions.id"], ondelete="CASCADE"),
     )
     op.create_index("ix_lecture_chunks_session_id", "lecture_chunks", ["session_id"])
-    op.create_index(
-        "uq_lecture_chunks_seq", "lecture_chunks", ["session_id", "seq"], unique=True
-    )
+    op.create_index("uq_lecture_chunks_seq", "lecture_chunks", ["session_id", "seq"], unique=True)
 
 
 def downgrade() -> None:

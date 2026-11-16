@@ -198,9 +198,7 @@ async def upload_lecture_chunk(
 
 
 @router.get("/{session_id}/chunks", response_model=LectureChunkListOut)
-def list_lecture_chunks(
-    session_id: str, session: Session = Depends(get_db)
-) -> LectureChunkListOut:
+def list_lecture_chunks(session_id: str, session: Session = Depends(get_db)) -> LectureChunkListOut:
     profile = ensure_default_profile(session)
     row = _load(session, session_id, profile.id)
     return LectureChunkListOut(

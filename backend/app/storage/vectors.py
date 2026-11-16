@@ -158,7 +158,7 @@ def ensure_table(session: Session, dim: int, model: str) -> bool:
         except SQLAlchemyError as error:
             # ADR-0064: under the credential split the runtime role is
             # DML-only — it cannot create the v1 store. Fail typed with the
-            # owner recipe instead of a raw privilege error (the legacy
+            # owner recipe instead of a raw privilege error (the pre-split
             # owner-privileged state still creates here unchanged).
             raise VectorProvisioningError(
                 "the v1 vector store is not provisioned and this role "

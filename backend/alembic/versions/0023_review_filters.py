@@ -47,9 +47,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=120), nullable=False),
         sa.Column("course_id", sa.Uuid(as_uuid=False), nullable=True),
         sa.Column("node_id", sa.Uuid(as_uuid=False), nullable=True),
-        sa.Column(
-            "include_not_due", sa.Boolean(), nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("include_not_due", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("due_window_days", sa.Integer(), nullable=True),
         sa.Column("limit", sa.Integer(), nullable=True),
         sa.Column("sort_order", sa.String(length=20), nullable=False, server_default="due"),

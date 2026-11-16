@@ -5,9 +5,7 @@ from fastapi.testclient import TestClient
 
 def make_course(client: TestClient) -> str:
     exam = (date.today() + timedelta(days=10)).isoformat()
-    response = client.post(
-        "/api/v1/courses", json={"title": "Adaptive", "exam_date": exam}
-    )
+    response = client.post("/api/v1/courses", json={"title": "Adaptive", "exam_date": exam})
     assert response.status_code == 201, response.text
     return str(response.json()["id"])
 
@@ -86,6 +84,4 @@ def test_light_week_and_blackout_reduce_capacity(client: TestClient) -> None:
     assert body["light_week"] is True
     day_map = {day["day"]: day for day in body["days"]}
     assert day_map[tomorrow]["minutes"] == 0
-    assert all(
-        day["minutes"] <= 60 for day in body["days"] if day["day"] != tomorrow
-    )
+    assert all(day["minutes"] <= 60 for day in body["days"] if day["day"] != tomorrow)

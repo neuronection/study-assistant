@@ -150,7 +150,5 @@ def export_activation(session: Session = Depends(get_session)) -> ActivationExpo
 @router.delete("", status_code=204)
 def clear_activation(session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
-    session.execute(
-        delete(ActivationEventRow).where(ActivationEventRow.profile_id == profile.id)
-    )
+    session.execute(delete(ActivationEventRow).where(ActivationEventRow.profile_id == profile.id))
     session.commit()

@@ -112,9 +112,7 @@ def list_studio_artifacts(
 
 
 @router.get("/artifacts/{artifact_id}", response_model=StudioOut)
-def get_studio_artifact(
-    artifact_id: str, session: Session = Depends(get_session)
-) -> StudioOut:
+def get_studio_artifact(artifact_id: str, session: Session = Depends(get_session)) -> StudioOut:
     profile = ensure_default_profile(session)
     return _out(_load(session, artifact_id, profile.id))
 

@@ -62,7 +62,9 @@ def test_cost_provenance_migration_backfills_and_drops_float_columns(tmp_path: P
     row = raw.execute(
         "SELECT cost_micros, price_source, price_version FROM ai_interactions"
     ).fetchone()
-    assert row == (30, "legacy", "pre-contract")
+    # 0035_drop_legacy_price_source remaps the retired 'legacy' marker to
+    # 'unknown' before dropping it from the CHECK.
+    assert row == (30, "unknown", "pre-contract")
     override = raw.execute(
         "SELECT provider_key, provider_ref, model, input_micros_per_million, "
         "output_micros_per_million FROM ai_price_overrides"

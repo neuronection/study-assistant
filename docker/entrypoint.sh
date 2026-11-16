@@ -4,7 +4,7 @@ set -e
 # Modes (plan 20 Phase 4, D6 — migrations are an entrypoint/ops
 # responsibility, never `create_app`'s; ADR-0062 v7 §3 / ADR-0064):
 #   entrypoint.sh migrate   one-shot: wait for the DB, resolve the
-#                           SA_DB_SPLIT tri-state (split/legacy/broken),
+#                           SA_DB_SPLIT tri-state (split/unsplit/broken),
 #                           provision roles+extensions as the owner, apply
 #                           migrations, checkpoint schema
 #   entrypoint.sh serve     (default) boot the API — app DSN only, never the
@@ -45,7 +45,7 @@ sys.exit(f"database not reachable at {host}:{port}")
 }
 
 # app/ops/migrations (ADR-0062 v7 §3, ADR-0064): tri-state resolution
-# (split / legacy warning / broken refusal), owner-side provisioning
+# (split / unsplit warning / broken refusal), owner-side provisioning
 # (app role + grants + default privileges + vector/pg_trgm), Alembic as the
 # owner role, the checkpoint schema, re-grant. The serving process never
 # runs any of it.

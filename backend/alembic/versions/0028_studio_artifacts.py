@@ -51,9 +51,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_studio_artifacts_profile_created", "studio_artifacts", ["profile_id", "created_at"]
     )
-    op.create_index(
-        "ix_studio_artifacts_course", "studio_artifacts", ["course_id", "created_at"]
-    )
+    op.create_index("ix_studio_artifacts_course", "studio_artifacts", ["course_id", "created_at"])
 
 
 def downgrade() -> None:

@@ -72,19 +72,22 @@ MEDIA_MIME_ALLOWLIST = {
     "video/x-matroska",
 }
 
-MEDIA_EXTENSIONS = {
+AUDIO_EXTENSIONS = {
     ".mp3",
     ".m4a",
     ".wav",
     ".ogg",
     ".opus",
     ".mpga",
+}
+VIDEO_EXTENSIONS = {
     ".webm",
     ".mp4",
     ".mpeg",
     ".mov",
     ".mkv",
 }
+MEDIA_EXTENSIONS = AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
 
 _DISCOVERY_BY_MIME = {
     "application/pdf": DiscoveryKind.PAPER,
@@ -120,7 +123,7 @@ def discovery_kind_for(name: str, mime: str | None) -> str:
     extension = _extension(name)
     media_type = (mime or "").split(";")[0].strip().lower()
     if media_type in MEDIA_MIME_ALLOWLIST or extension in MEDIA_EXTENSIONS:
-        if media_type.startswith("audio"):
+        if media_type.startswith(f"{MaterialKind.AUDIO.value}/"):
             return DiscoveryKind.OTHER.value
         return DiscoveryKind.VIDEO.value
     if media_type in _DISCOVERY_BY_MIME:

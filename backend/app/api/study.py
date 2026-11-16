@@ -278,9 +278,7 @@ def put_course_fsrs(
         values = fsrs_settings.set_course(
             session,
             course_id,
-            values={
-                field: getattr(body, field) for field in body.model_fields_set
-            },
+            values={field: getattr(body, field) for field in body.model_fields_set},
         )
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

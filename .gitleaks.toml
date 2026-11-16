@@ -11,3 +11,9 @@ paths = [
   '''^backend/tests/fixtures/.*\.json$''',
   '''^contracts/.*\.fixtures\.json$''',
 ]
+regexes = [
+  # The synthetic pre-adoption capture token in the capture-adoption test
+  # (backend/tests/test_capture_api.py): a token_urlsafe(32)-shaped fixture
+  # value minted for the shape test, not a credential. Exact-literal match.
+  '''^Zx4q0J7m2n8V1c3b5R7t9Y2u4I6o8P0aS2d4F6g8H0K$''',
+]

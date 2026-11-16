@@ -145,8 +145,6 @@ def review(
     return FsrsOutcome(stability, difficulty, interval, state)
 
 
-def due_date(
-    now: datetime, interval_days: int, params: FsrsParams | None = None
-) -> datetime:
+def due_date(now: datetime, interval_days: int, params: FsrsParams | None = None) -> datetime:
     maximum = params.maximum_interval_days if params is not None else 365
     return now + timedelta(days=max(1, min(interval_days, maximum)))

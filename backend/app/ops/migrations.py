@@ -4,7 +4,7 @@
 it is the only place server-side DDL ever happens:
 
 1. resolve the credential tri-state (ADR-0064 §4):
-   **split** (owner migrations URL) / **legacy** (loud warning) / **broken**
+   **split** (owner migrations URL) / **unsplit** (loud warning) / **broken**
    (`SA_DB_SPLIT=1` without a migrations URL → refuse to boot);
 2. owner-side provisioning (split only): create/sync the app role, grants,
    `ALTER DEFAULT PRIVILEGES`, and verify-or-create the `vector` / `pg_trgm`
@@ -44,11 +44,12 @@ ALLOW_LISTED_EXTENSIONS = ("vector", "pg_trgm")
 
 _TRUTHY = {"1", "true", "yes", "on"}
 
-LEGACY_WARNING = (
-    "LEGACY DB CONFIGURATION (ADR-0064): no %s and no %s marker — migrations "
+UNSPLIT_WARNING = (
+    "NON-SPLIT DB CONFIGURATION (ADR-0064): no %s and no %s marker — migrations "
     "run against the app URL and the runtime role is not least-privilege. "
     "This install is NOT managed-ready. Adopt the split: set %s (owner DSN) "
-    "and %s=1, keep %s on the app role. Legacy keeps booting with this warning."
+    "and %s=1, keep %s on the app role. The unsplit configuration keeps "
+    "booting with this warning."
 )
 
 # Postgres identifier characters (roles, databases). Anything else refuses —
@@ -69,7 +70,7 @@ class ProvisioningError(RuntimeError):
 class MigrationPlan:
     """The resolved tri-state (ADR-0064 §4)."""
 
-    state: str  # "split" | "legacy"
+    state: str  # "split" | "unsplit"
     owner_url: str
     app_url: str | None = None
     warning: str | None = None
@@ -96,17 +97,17 @@ def resolve_plan(environ: Mapping[str, str] | None = None) -> MigrationPlan:
         if not split_requested(env):
             warning = (
                 f"{MIGRATIONS_URL_VAR} is set without the {SPLIT_MARKER}=1 "
-                "marker — add the marker so tooling can tell split from legacy."
+                "marker — add the marker so tooling can tell split from unsplit."
             )
         return MigrationPlan("split", migrations_url, app_url, warning)
-    warning = LEGACY_WARNING % (
+    warning = UNSPLIT_WARNING % (
         MIGRATIONS_URL_VAR,
         SPLIT_MARKER,
         MIGRATIONS_URL_VAR,
         SPLIT_MARKER,
         APP_URL_VAR,
     )
-    return MigrationPlan("legacy", (env.get(APP_URL_VAR) or "").strip(), app_url, warning)
+    return MigrationPlan("unsplit", (env.get(APP_URL_VAR) or "").strip(), app_url, warning)
 
 
 def _ident(name: str) -> str:

@@ -140,9 +140,7 @@ def build_narration(
             source_refs=citations,
         )
     )
-    script = "\n\n".join(
-        f"{section['title']}. {section['script']}" for section in sections
-    )
+    script = "\n\n".join(f"{section['title']}. {section['script']}" for section in sections)
     spec = ArtifactSpec(
         kind=ArtifactKind.AUDIO_BRIEF.value,
         title=(title or f"Narrate: {node_title}")[:200],

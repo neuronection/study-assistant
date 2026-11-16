@@ -9,9 +9,7 @@ def _stamp(ms: int) -> str:
     return f"{total // 60}:{total % 60:02d}"
 
 
-def rebuild_transcript_extraction(
-    session: Session, material: Material
-) -> Extraction | None:
+def rebuild_transcript_extraction(session: Session, material: Material) -> Extraction | None:
     segments = list(
         session.scalars(
             select(MediaSegment)

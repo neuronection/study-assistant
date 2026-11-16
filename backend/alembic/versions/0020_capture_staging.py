@@ -39,9 +39,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
         sa.Column("profile_id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column("source_kind", sa.String(length=20), nullable=False),
-        sa.Column(
-            "status", sa.String(length=20), nullable=False, server_default="staged"
-        ),
+        sa.Column("status", sa.String(length=20), nullable=False, server_default="staged"),
         sa.Column("filename", sa.String(length=500), nullable=False),
         sa.Column("mime", sa.String(length=120), nullable=True),
         sa.Column("blob_sha", sa.String(length=64), nullable=False),
@@ -59,9 +57,7 @@ def upgrade() -> None:
         sa.CheckConstraint(
             f"source_kind IN ({_values(CAPTURE_KINDS)})", name="source_kind_allowed"
         ),
-        sa.CheckConstraint(
-            f"status IN ({_values(CAPTURE_STATUSES)})", name="status_allowed"
-        ),
+        sa.CheckConstraint(f"status IN ({_values(CAPTURE_STATUSES)})", name="status_allowed"),
     )
     op.create_index("ix_capture_staging_profile_id", "capture_staging", ["profile_id"])
     op.create_index(
@@ -70,9 +66,7 @@ def upgrade() -> None:
         ["profile_id", "status"],
     )
     op.create_index("ix_capture_staging_group_id", "capture_staging", ["group_id"])
-    op.create_index(
-        "ix_capture_staging_material_id", "capture_staging", ["material_id"]
-    )
+    op.create_index("ix_capture_staging_material_id", "capture_staging", ["material_id"])
     op.create_index(
         "uq_capture_staging_client_op",
         "capture_staging",
@@ -93,9 +87,7 @@ def upgrade() -> None:
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["profile_id"], ["profiles.id"], ondelete="CASCADE"),
-        sa.CheckConstraint(
-            f"scope IN ({_values(CAPTURE_SCOPES)})", name="scope_allowed"
-        ),
+        sa.CheckConstraint(f"scope IN ({_values(CAPTURE_SCOPES)})", name="scope_allowed"),
     )
     op.create_index("ix_capture_tokens_profile_id", "capture_tokens", ["profile_id"])
     op.create_index(
@@ -103,9 +95,7 @@ def upgrade() -> None:
         "capture_tokens",
         ["profile_id", "revoked_at"],
     )
-    op.create_index(
-        "uq_capture_tokens_hash", "capture_tokens", ["token_hash"], unique=True
-    )
+    op.create_index("uq_capture_tokens_hash", "capture_tokens", ["token_hash"], unique=True)
 
 
 def downgrade() -> None:

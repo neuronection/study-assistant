@@ -108,8 +108,7 @@ def test_assembly_is_deterministic_for_the_same_blueprint(client: TestClient) ->
 
         def stems(activity_id: str) -> list[str]:
             return [
-                question["stem"][0]["md"]
-                for question in activity_questions(client, activity_id)
+                question["stem"][0]["md"] for question in activity_questions(client, activity_id)
             ]
 
         assert stems(first["activity_id"]) == stems(second["activity_id"])
@@ -136,9 +135,7 @@ def test_invalid_blueprints_are_rejected_without_leaving_rows(
 
         marks_short = client.post(
             f"/api/v1/courses/{course_id}/papers",
-            json=paper_body(
-                sections=[{"title": "All", "marks": 2, "count": 3, "types": ["text"]}]
-            ),
+            json=paper_body(sections=[{"title": "All", "marks": 2, "count": 3, "types": ["text"]}]),
         )
         assert marks_short.status_code == 422
         assert "one mark per question" in marks_short.json()["detail"]
@@ -289,8 +286,5 @@ def test_delete_paper_deletes_its_activity(client: TestClient) -> None:
         assert deleted.status_code == 204
 
         assert client.get(f"/api/v1/papers/{paper['id']}").status_code == 404
-        assert (
-            client.get(f"/api/v1/quiz/activities/{paper['activity_id']}").status_code
-            == 404
-        )
+        assert client.get(f"/api/v1/quiz/activities/{paper['activity_id']}").status_code == 404
         assert client.get(f"/api/v1/courses/{course_id}/papers").json() == []

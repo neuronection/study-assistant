@@ -102,13 +102,17 @@ def wait_for_assistant(
     client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
+    last: Any = None
     while time.monotonic() < deadline:
-        raw_messages = client.get(f"/api/v1/chat/sessions/{session_id}/messages").json()
-        messages: list[dict[str, Any]] = raw_messages
-        if messages and messages[-1]["role"] == "assistant":
-            return messages
+        last = client.get(f"/api/v1/chat/sessions/{session_id}/messages").json()
+        # Under full-suite parallelism a poll can transiently land on an
+        # error payload instead of the message list (the turn thread holds
+        # the SQLite write window) — keep polling; only an assistant reply
+        # ends the wait. On timeout the payload is reported, not crashed on.
+        if isinstance(last, list) and last and last[-1]["role"] == "assistant":
+            return last
         time.sleep(0.05)
-    raise AssertionError("assistant never replied")
+    raise AssertionError(f"assistant never replied; last response: {last!r}")
 
 
 def make_course(client: TestClient, title: str = "Chat course") -> str:

@@ -32,6 +32,8 @@ def test_cloud_overlay_backup_sees_the_object_backend() -> None:
     }
     assert backup["SA_CLOUD_PROFILE"].startswith("${SA_CLOUD_PROFILE:?")
     assert backup["SA_OBJECT_STORAGE_BACKEND"].startswith("${SA_OBJECT_STORAGE_BACKEND:?")
-    command = prod["services"]["backup"]["command"]
-    guard = 'if [ "$$SA_OBJECT_STORAGE_BACKEND" = "local" ] && [ -z "$$SA_CLOUD_PROFILE" ]'
-    assert guard in command
+    # The compose command only launches the sidecar script; the no-blind-tar
+    # guard (tar /data only outside a cloud profile) lives in the script.
+    sidecar = (COMPOSE / "backup-sidecar.sh").read_text(encoding="utf-8")
+    guard = '[ "${SA_OBJECT_STORAGE_BACKEND:-local}" = "local" ] && [ -z "${SA_CLOUD_PROFILE:-}" ]'
+    assert guard in sidecar

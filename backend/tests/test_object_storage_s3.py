@@ -65,9 +65,12 @@ def _config(env: dict[str, str], prefix: str) -> StorageConfig:
 
     endpoint = value("S3_ENDPOINT_URL")
     path_style_raw = value("S3_PATH_STYLE")
-    path_style = (
-        path_style_raw or ("true" if endpoint else "false")
-    ).lower() in ("1", "true", "yes", "on")
+    path_style = (path_style_raw or ("true" if endpoint else "false")).lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     sse = value("S3_SSE", "none" if endpoint else "AES256") or "none"
 
     return StorageConfig(

@@ -72,9 +72,7 @@ def test_stage_commit_list_and_discard(client: TestClient) -> None:
     assert material.json()["material"]["title"] == "Lecture photo"
 
     assert client.get("/api/v1/capture").json() == []
-    again = client.post(
-        f"/api/v1/capture/{staged['id']}/commit", json={"course_id": course_id}
-    )
+    again = client.post(f"/api/v1/capture/{staged['id']}/commit", json={"course_id": course_id})
     assert again.status_code == 409
 
     discarded = stage(client, make_pdf("Discard me"), "discard.pdf")
@@ -155,8 +153,7 @@ def test_device_tokens_hash_scope_and_revoke(client: TestClient, profile_id: str
 
     with factory() as session:
         assert (
-            authenticate_capture_token(session, token=token, scope=CaptureScope.STAGE)
-            is not None
+            authenticate_capture_token(session, token=token, scope=CaptureScope.STAGE) is not None
         )
         assert authenticate_capture_token(session, token=token, scope=CaptureScope.CLIP) is None
         assert authenticate_capture_token(session, token="nope", scope=CaptureScope.STAGE) is None
@@ -259,9 +256,7 @@ def test_assemble_images_into_one_pdf_capture(client: TestClient) -> None:
     inbox = client.get("/api/v1/capture").json()
     assert [row["id"] for row in inbox] == [pdf["id"]]
 
-    committed = client.post(
-        f"/api/v1/capture/{pdf['id']}/commit", json={"course_id": course_id}
-    )
+    committed = client.post(f"/api/v1/capture/{pdf['id']}/commit", json={"course_id": course_id})
     assert committed.status_code == 200, committed.text
     material = client.get(f"/api/v1/materials/{committed.json()['material_id']}").json()
     assert material["material"]["kind"] == "pdf"
