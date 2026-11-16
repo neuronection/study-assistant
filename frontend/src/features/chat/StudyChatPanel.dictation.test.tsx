@@ -26,6 +26,7 @@ const listNotes = vi.fn()
 const listQuizzes = vi.fn()
 const listExercises = vi.fn()
 const listCourses = vi.fn()
+const listTasks = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -42,6 +43,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listQuizzes: () => listQuizzes(),
     listExercises: () => listExercises(),
     listCourses: () => listCourses(),
+    listTasks: () => listTasks(),
     transcribeAudio: vi.fn(),
   }
 })
@@ -79,8 +81,15 @@ function baseMocks() {
   })
 }
 
-function renderPanel() {
+function renderPanel(tasks: unknown[] | 'loading' | 'error' = []) {
   baseMocks()
+  if (tasks === 'loading') {
+    listTasks.mockReturnValue(new Promise(() => undefined))
+  } else if (tasks === 'error') {
+    listTasks.mockRejectedValue(new Error('tasks failed'))
+  } else {
+    listTasks.mockResolvedValue(tasks)
+  }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const rootRoute = createRootRoute()
   const route = createRoute({
@@ -94,11 +103,30 @@ function renderPanel() {
       </QueryClientProvider>
     ),
   })
+  const settingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/settings',
+    component: () => null,
+  })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([route]),
+    routeTree: rootRoute.addChildren([route, settingsRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
-  return render(<RouterProvider router={router} />)
+  const result = render(<RouterProvider router={router} />)
+  return { ...result, router }
+}
+
+function sttTask(overrides: Record<string, unknown> = {}) {
+  return {
+    task: 'transcribe',
+    requires: 'stt',
+    model_id: null,
+    model_label: null,
+    fallback_model_id: null,
+    fallback_model_label: null,
+    default_model_label: null,
+    ...overrides,
+  }
 }
 
 afterEach(() => {
@@ -122,6 +150,48 @@ describe('StudyChatPanel dictation', () => {
       expect(composer.value).toBe('voice question ')
     })
     expect(transcribeMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('points to model assignment when no speech-to-text task is assigned', async () => {
+    renderPanel([sttTask()])
+    expect(await screen.findByRole('note')).toHaveTextContent('Dictation unavailable')
+    expect(screen.getByRole('note')).toHaveTextContent('No speech-to-text model assigned')
+    expect(
+      screen.getByRole('button', { name: 'Assign a speech-to-text model' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dictate' })).not.toBeInTheDocument()
+  })
+
+  test('the unavailable settings action opens the task assignment settings', async () => {
+    const { router } = renderPanel([sttTask()])
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign a speech-to-text model' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings'))
+    expect(router.state.location.search).toEqual({ tab: 'ai', section: 'tasks' })
+  })
+
+  test.each([
+    ['primary', { model_id: 'whisper-1', model_label: 'Whisper' }],
+    ['fallback', { fallback_model_id: 'whisper-2', fallback_model_label: 'Whisper fallback' }],
+    ['default', { default_model_label: 'Default speech model' }],
+  ])('keeps the mic when a %s assignment exists', async (_case, overrides) => {
+    renderPanel([sttTask(overrides)])
+    expect(await screen.findByRole('button', { name: 'Dictate' })).toBeInTheDocument()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  test('keeps the mic while the assignment query is unknown', async () => {
+    renderPanel([])
+    expect(await screen.findByRole('button', { name: 'Dictate' })).toBeInTheDocument()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  test.each([
+    ['loading', 'loading'],
+    ['error', 'error'],
+  ] as const)('keeps the mic while the assignment query is %s', async (_case, mode) => {
+    renderPanel(mode)
+    expect(await screen.findByRole('button', { name: 'Dictate' })).toBeInTheDocument()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
   })
 
   test('cancel keeps the draft empty', async () => {

@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from pathlib import Path
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -107,7 +106,6 @@ def import_course_bundle(
     session: Session,
     bundle: BundleData,
     profile_id: str,
-    blobs_root: Path,
     blob_store: Any,
     existing_titles: set[str],
 ) -> dict[str, Any]:

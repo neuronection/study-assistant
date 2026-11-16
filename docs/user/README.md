@@ -26,6 +26,9 @@ tour below. For the exhaustive list of everything the app does, see the
 | [Flashcards](flashcards.md) | FSRS spaced repetition fed by your material |
 | [Quizzes](quiz.md) | Generate, take and import/export quizzes |
 | [Exercises and the tutor](exercises.md) | Multi-step problems with a hint ladder |
+| [Exam papers](exams.md) | Timed mock papers with sections, marks and a marked report |
+| [Problem Desk](solve.md) | Verified single-problem solving with similar practice |
+| [Studio](studio.md) | Slide decks and handouts from your chapter materials |
 | [Tutor chat](chat.md) | Grounded answers, citations, reviewable edit proposals |
 | [Skills & prompt library](skills.md) | How the app's AI behaviors are defined and customized |
 | [Local AI — fully offline setup](local-ai.md) | Run with local models, no cloud calls |

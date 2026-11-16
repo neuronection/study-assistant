@@ -38,6 +38,8 @@
 
 > **Your material stays on your machine.** One local process, one SQLite database, no accounts
 > and no cloud — the only traffic leaving your machine is the AI calls you configure yourself.
+> That is the desktop default: web/server mode uses PostgreSQL and runs the same app on an
+> on-prem or cloud VM.
 
 ---
 
@@ -83,7 +85,8 @@ It is **beta** software, built for technical students first.
 
 - **Local-first, not cloud-first.** One local FastAPI process with SQLite (FTS5 +
   sqlite-vec) and a content-addressed blob store. No accounts, no sync, no telemetry.
-  Delete the data folder and the app is gone.
+  Delete the data folder and the app is gone. (Desktop default — web/server mode uses
+  PostgreSQL and can run on an on-prem or cloud VM.)
 - **The AI assists — your record stays yours.** Chat and generators are grounded in your
   material with citations; the AI proposes actions (create a note, cover a concept,
   generate a quiz) through review cards you approve — it cannot write into your course
@@ -227,7 +230,7 @@ All installers and older versions: [Releases](https://github.com/neuronection/st
 ### Run as a web service (Docker)
 
 Self-host the web app on a server with the family-standard standalone stack
-(db + app + nginx + backup; PostgreSQL 16 per ADR-0022 — desktop installs
+(db + app + nginx + backup; PostgreSQL 16 — desktop installs
 keep SQLite):
 
 ```bash
@@ -239,7 +242,7 @@ TLS-terminating config, backups, and ops scripts (`scripts/run-docker.sh`,
 `scripts/update-docker.sh`) are covered in [docker/README.md](docker/README.md).
 Pre-built images are published on GHCR with every release
 (`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Tier note: web/Docker runs
-PostgreSQL 16, desktop runs SQLite (ADR-0022) — both share one dialect-aware
+PostgreSQL 16, desktop runs SQLite — both share one dialect-aware
 schema verified in CI.
 
 ### Run from source (developers)
@@ -336,7 +339,7 @@ The full manual lives in [`docs/`](docs/README.md), split into a
 | Editor | Tiptap, KaTeX, MathLive, mermaid |
 | Visualization | Plotly.js charts, JSXGraph geometry (lazy-loaded) |
 | AI | LangChain chat models behind one gateway — Google, OpenAI-compatible, Anthropic |
-| Storage | SQLite (WAL, FTS5, sqlite-vec) desktop · PostgreSQL 16 + pgvector web (ADR-0022), content-addressed blob store |
+| Storage | SQLite (WAL, FTS5, sqlite-vec) desktop · PostgreSQL 16 + pgvector web, content-addressed blob store |
 | Desktop shell | pywebview (WebKitGTK / WebView2 / WKWebView) |
 | Packaging | PyInstaller, deb + AppImage, tag-driven release workflow |
 | Tooling | uv + pnpm workspaces, ruff + mypy + pytest, eslint + vitest |
@@ -364,7 +367,7 @@ Honest boundaries — not every limitation is a bug:
 ## Status & roadmap
 
 `docs/STATUS.md` is the single source of truth for phase and module status. Headline
-next steps: AI-compose quality & scale (plan 70 direction), golden OCR eval
+next steps: AI-compose quality & scale, golden OCR eval
 fixtures, and the post-1.0 backlog (local OCR adapter, Tauri shell, audio/video
 ingestion, plugins, graph-sketch grading).
 

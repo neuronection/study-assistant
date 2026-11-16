@@ -23,15 +23,22 @@ window (pywebview) — currently not recommended, see the known-issues note in
 On a fresh install (no AI provider and no course yet) a setup wizard opens
 automatically. It walks you through the same steps described below, in order:
 
-1. **Working directory** — where your database, files and backups live. The default
-   is fine for most people; change it only if you want your data elsewhere (e.g. a
-   synced folder). A change applies the next time you start the app.
-2. **AI provider** — pick a preset, name it, paste the API key (straight into your
-   OS keyring). A successful create moves on by itself.
+1. **Working directory (desktop only)** — where your database, files and backups
+   live. The default is fine for most people; change it only if you want your data
+   elsewhere (e.g. a synced folder). The path is read-only until you choose
+   **Change folder…**, which opens the system folder picker (browser development
+   falls back to typing the path). A change applies the next time you start the
+   app. Web/server instances do not show this step.
+2. **AI provider** — choose a provider tile (or **Local engines** / **Custom**),
+   paste the API key (straight into your OS keyring). Preset connections use
+   the provider's name and hide the advanced name/hosting/country fields; a
+   successful setup moves on to Models and registers the curated catalog.
 3. **Models** — enable the models the provider discovered; *Enable all* takes one
    click.
 4. **Default models** — one default per capability (text / vision / embeddings /
-   audio); optional, editable later in Settings → AI → Tasks.
+   audio). Curated presets bind their defaults during setup; any still-empty
+   capability is auto-filled from the enabled models. The picker is the same one
+   used in Settings → AI → Tasks, so you can adjust or clear a slot here.
 5. **First course** — create your own, or load the ready-made *Calculus I (sample)*
    course.
 6. **First materials** — drop PDFs/slides/Markdown onto the course; extraction and
@@ -143,7 +150,9 @@ Delete the folder to reset the app — or use the built-in flag:
 ### Changing the working directory
 
 The working directory is visible and changeable in **Settings → Data → Working
-directory** (and in the setup wizard). Rules:
+directory** (desktop only) and in the desktop setup wizard. The current path is
+shown read-only; choose **Change folder…** to open the system folder picker
+(or type the path in browser development). Rules:
 
 - The new folder must be **empty** or an **existing Study Assistant data folder**
   (contains `app.db`). To move existing data: download a backup first, switch,

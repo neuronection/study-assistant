@@ -47,6 +47,7 @@ import { RawTextView } from './RawTextView'
 import { StudyStateMenu, type StudyStatus } from './StudyStateMenu'
 import { ViewMenu } from './ViewMenu'
 import { isTextMaterial } from './textMaterial'
+import { MediaPlayer } from './MediaPlayer'
 import { StudyPaneHeader } from '@/components/layout/StudyPaneHeader'
 
 export type DetailTab =
@@ -626,6 +627,9 @@ export function MaterialDetailBody({
           </div>
         ) : (
           <>
+        {material.kind === 'audio' || material.kind === 'video' ? (
+          <MediaPlayer materialId={materialId} />
+        ) : null}
         {active === 'extraction' || active === 'formatted' ? (
           <ExtractionView
             materialId={materialId}

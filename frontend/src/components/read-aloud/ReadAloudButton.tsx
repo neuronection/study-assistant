@@ -1,4 +1,5 @@
 import { Pause, Play, Square } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -7,12 +8,21 @@ import { useReadAloud } from '@/lib/readAloud'
 export function ReadAloudButton({
   markdown,
   className,
+  autoPlay = false,
 }: {
   markdown: string
   className?: string
+  autoPlay?: boolean
 }) {
   const { t } = useTranslation()
   const { engine, speaking, active, rate, play, stop, cycleRate } = useReadAloud(markdown)
+  const played = useRef(false)
+  useEffect(() => {
+    if (autoPlay && engine !== null && !played.current) {
+      played.current = true
+      play()
+    }
+  }, [autoPlay, engine, play])
   if (engine === null) return null
   return (
     <span className={`inline-flex items-center gap-1 ${className ?? ''}`}>

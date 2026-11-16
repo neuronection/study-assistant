@@ -115,6 +115,22 @@ describe('ReadAloudButton', () => {
     expect(utterance.text).not.toContain('\\frac')
   })
 
+  test('uses the persisted speaking speed', async () => {
+    window.localStorage.setItem('sa-speech-rate', '1.5')
+    const user = userEvent.setup()
+    render(<ReadAloudButton markdown="hello" />)
+    await user.click(await screen.findByRole('button', { name: /read aloud/i }))
+    await waitFor(() => expect(speechSynthesis.speak).toHaveBeenCalled())
+    const utterance = speechSynthesis.speak.mock.calls[0][0] as { rate: number }
+    expect(utterance.rate).toBe(1.5)
+    window.localStorage.removeItem('sa-speech-rate')
+  })
+
+  test('auto-plays once when requested', async () => {
+    render(<ReadAloudButton markdown="hello" autoPlay />)
+    await waitFor(() => expect(speechSynthesis.speak).toHaveBeenCalledTimes(1))
+  })
+
   test('hides entirely when no speech engine is available', async () => {
     speechSynthesis.getVoices.mockReturnValue([])
     mockDefaults.mockResolvedValue([])

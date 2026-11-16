@@ -83,3 +83,83 @@ def test_review_due_excludes_scratch_and_reviewed_cards(client: TestClient) -> N
         body = client.get("/api/v1/review/due").json()
         assert body["total_due"] == 0
         assert body["groups"] == []
+
+
+def test_review_honors_an_offline_reviewed_at(client: TestClient) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    with client:
+        course = make_course(client, "Offline")
+        card = make_card(client, course, "offline review")
+        two_days_ago = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        accepted = client.post(
+            f"/api/v1/flashcards/{card}/review",
+            json={"rating": 3, "reviewed_at": two_days_ago},
+        )
+        assert accepted.status_code == 200, accepted.text
+
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        rejected = client.post(
+            f"/api/v1/flashcards/{card}/review",
+            json={"rating": 3, "reviewed_at": future},
+        )
+        assert rejected.status_code == 422
+
+        too_old = (datetime.now(UTC) - timedelta(days=40)).isoformat()
+        stale = client.post(
+            f"/api/v1/flashcards/{card}/review",
+            json={"rating": 3, "reviewed_at": too_old},
+        )
+        assert stale.status_code == 422
+
+
+def test_review_filters_and_preview(client: TestClient) -> None:
+    with client:
+        course = make_course(client, "Filtered")
+        first = make_card(client, course, "first filter card")
+        make_card(client, course, "second filter card")
+
+        no_filter = client.get("/api/v1/review/due").json()
+        assert no_filter["total_due"] == 2
+        assert no_filter["preview"] is False
+
+        saved = client.post(
+            "/api/v1/review/filters",
+            json={
+                "name": "Ahead",
+                "course_id": course,
+                "include_not_due": True,
+                "due_window_days": 7,
+                "limit": 1,
+            },
+        )
+        assert saved.status_code == 201, saved.text
+        filter_id = saved.json()["id"]
+        listed = client.get("/api/v1/review/filters").json()
+        assert [row["id"] for row in listed] == [filter_id]
+
+        ahead = client.get("/api/v1/review/due", params={"filter_id": filter_id}).json()
+        assert ahead["preview"] is True
+        assert len(ahead["groups"][0]["cards"]) == 1
+
+        previewed = client.post(f"/api/v1/review/preview/{first}", json={"rating": 3})
+        assert previewed.status_code == 200
+        unchanged = client.get("/api/v1/review/due").json()
+        assert unchanged["total_due"] == 2
+
+        removed = client.delete(f"/api/v1/review/filters/{filter_id}")
+        assert removed.status_code == 204
+        assert client.get("/api/v1/review/filters").json() == []
+
+
+def test_review_cap_reports_capped(client: TestClient) -> None:
+    with client:
+        course = make_course(client, "Capped")
+        make_card(client, course, "cap one")
+        second = make_card(client, course, "cap two")
+        client.put("/api/v1/study/fsrs", json={"reviews_per_day": 1})
+        client.post(f"/api/v1/flashcards/{second}/review", json={"rating": 3})
+        body = client.get("/api/v1/review/due").json()
+        assert body["capped"] is True
+        assert body["remaining_today"] == 0
+        assert body["total_due"] == 0

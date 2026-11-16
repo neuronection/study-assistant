@@ -10,6 +10,7 @@ const createBackupNow = vi.fn()
 const deleteBackup = vi.fn()
 const restoreBackupByName = vi.fn()
 const getWorkingDir = vi.fn()
+const getInstanceConfig = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -21,6 +22,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     deleteBackup: (name: string) => deleteBackup(name),
     restoreBackupByName: (name: string) => restoreBackupByName(name),
     getWorkingDir: () => getWorkingDir(),
+    getInstanceConfig: () => getInstanceConfig(),
   }
 })
 
@@ -55,7 +57,9 @@ describe('DataTab automatic backups', () => {
     deleteBackup.mockReset()
     restoreBackupByName.mockReset()
     getWorkingDir.mockReset()
+    getInstanceConfig.mockReset()
     getBackupStatus.mockResolvedValue(STATUS)
+    getInstanceConfig.mockResolvedValue({ identity_mode: 'desktop' })
     getWorkingDir.mockResolvedValue({
       path: '/data',
       default_path: '/data',
@@ -69,6 +73,15 @@ describe('DataTab automatic backups', () => {
     expect(await screen.findByText('auto-20260821-120000.zip')).toBeInTheDocument()
     expect(screen.getByLabelText(/interval \(hours\)/i)).toHaveValue(24)
     expect(screen.getByRole('button', { name: /back up now/i })).toBeInTheDocument()
+  })
+
+  test('hides the working-directory card on server identity', async () => {
+    getInstanceConfig.mockResolvedValue({ identity_mode: 'server' })
+    renderTab()
+    expect(await screen.findByText('auto-20260821-120000.zip')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByText('Working directory')).not.toBeInTheDocument()
+    )
   })
 
   test('toggling automatic backups saves immediately', async () => {

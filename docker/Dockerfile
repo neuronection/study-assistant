@@ -50,6 +50,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     apt-get update \
     && apt-get install -y --no-install-recommends git \
     && uv sync --frozen --no-dev \
+      --package studyassistant \
+      --extra object-storage-s3 \
+      --extra object-storage-azure \
       --no-install-package pywebview \
       --no-install-package pygobject \
       --no-install-package pycairo \

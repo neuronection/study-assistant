@@ -158,7 +158,7 @@ def test_blob_endpoint_serves_original(client: TestClient) -> None:
     response = client.get(f"/api/v1/blobs/{sha}")
     assert response.status_code == 200
     assert response.content == CONTENT.encode()
-    assert response.headers["content-disposition"] == "inline"
+    assert response.headers["content-disposition"].startswith("attachment")
 
     assert client.get("/api/v1/blobs/not-a-sha").status_code == 422
     assert client.get(f"/api/v1/blobs/{'0' * 64}").status_code == 404

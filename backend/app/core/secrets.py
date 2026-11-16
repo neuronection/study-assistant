@@ -1,59 +1,98 @@
-"""Secrets at rest — sealed with the family cipher, stored by the best
-available backend.
+"""Secrets at rest — the thin study adapter over ``nx_auth.secrets``.
 
-The at-rest machinery is shared family code: ``nx_auth.atrest``
-(ADR-0027, plan 19) — this module is study's adapter over it. Values are
-sealed under the auth-kit KeyRing ``data_key`` (``SA_DATA_KEY``) as
-``enc::<fernet-token>`` strings, so a storage dump alone never exposes the
-plaintext.
+Storage, backend selection and sealing are family code (plan 60 D2,
+ADR-0027/ADR-0028); this module keeps only study's frozen policy: the
+keyring service name, the sealed-file location and the failure text the
+deployment tests and call sites already speak.
+
+Values are sealed with the auth-kit ``SecretCipher`` built from study's §8
+``KeyRing`` data key (``SA_DATA_KEY``, plus ``SA_DATA_KEY_PREVIOUS`` for
+decryption-only rotation) and stored as ``enc::<fernet-token>``, so a
+storage dump alone never exposes the plaintext.
 
 **Storage is deployment-selected** (plan 52 web/desktop fix):
 
-* **OS keyring** — the desktop default (``service ``StudyAssistant``).
+* **OS keyring** — the desktop default (``service="StudyAssistant"``).
 * **Sealed file** (``<data_dir>/secrets.json``, 0600) — the server/Docker
   default, where no keyring exists. Same cipher, so the file is useless
   without ``SA_DATA_KEY``.
 
-The keyring is used **only if it round-trips a probe write**. Python's
-``keyring.backends.null`` *accepts writes and silently discards them* —
-that is silent token loss, so a backend that does not round-trip is
-rejected outright and the sealed file takes over. If **neither** works the
-module **fails closed**: no plaintext fallback, ever.
+The keyring is used **only if it round-trips a probe write**; a null backend
+accepts writes and silently discards them, so a backend that does not
+round-trip is rejected outright and the sealed file takes over. (The
+keyring library's own ``PYTHON_KEYRING_BACKEND`` knob selects which backend
+it resolves — headless tests pin it — but the probe is what decides trust.)
+If neither works, writes **fail closed** — no plaintext fallback, ever. The
+sealed file is also a read fallback when the keyring is selected, so a host
+that switched backends still resolves its previous entries.
+
+Reads are plaintext-tolerant by design (plan 19 D4): study's values are
+keyring/file-held — there is no DB ciphertext surface — so pre-adoption
+plaintext entries return verbatim and no backfill is required. Ciphertext
+that does not verify under the key ring yields ``None`` — never a guess.
+
+Reads are also **lazy about key material**: a missing slot and an unsealed
+plaintext entry resolve without the cipher ever being constructed, so a
+host with no (or unwritable) key material keeps answering them exactly as
+before adoption. Only an ``enc::`` value reaches for the ring; when the
+ring cannot be resolved there (no/partial ``SA_*_KEY`` pins, an unwritable
+config dir) that read fails closed with ``None`` — never a crash, never a
+guess. Writes stay eager: ``set_secret`` without key material still fails
+closed.
+
+Two semantic deltas from the pre-adoption backend: a stored empty value
+(``""``) resolves to ``None``, and ``set_secret("")`` /
+``delete_secret("")`` raise ``ValueError`` (the pre-adoption backend stored
+under the empty ref / silently did nothing) — call sites use non-empty
+refs.
 
 ``SA_DATA_KEY_PREVIOUS`` (comma-separated) holds prior keys for
 decryption-only rotation — new writes always seal under ``SA_DATA_KEY``
 (runbook: docs/dev/security.md "Rotating the at-rest key").
-
-Reads are plaintext-tolerant by design (plan 19 D4): study's values are
-keyring/file-held — there is no DB ciphertext surface — so pre-adoption
-plaintext entries return verbatim and no backfill is required.
-Ciphertext that does not verify under the key ring yields ``None`` —
-never a guess.
 """
 
 from __future__ import annotations
 
-import contextlib
-import json
-import os
-import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
-from nx_auth.atrest import SecretCipher, decrypt_secret, encrypt_secret, is_encrypted
+import nx_auth.secrets as kit_secrets
+from nx_auth.secrets import SecretCipher, SecretStoreUnavailable
 
 from app.core.keys import data_key_previous
 from app.core.keys import keyring as key_ring
 
 SERVICE = "StudyAssistant"
-_PROBE_REF = "__backend_probe__"
+
+#: The pre-adoption fail-closed message; deployment tests and operator
+#: docs match on "fail closed".
+_UNAVAILABLE = (
+    "no usable secret store: the OS keyring is unavailable and the sealed "
+    "file could not be written — refusing to store the credential anywhere "
+    "else (fail closed, no plaintext fallback)"
+)
+
+
+def _store_path() -> Path:
+    """The sealed-file location, resolved per call (tests swap ``data_dir``)."""
+    from app.core.config import get_settings
+
+    return Path(get_settings().data_dir) / "secrets.json"
 
 
 @lru_cache(maxsize=1)
 def _cipher() -> SecretCipher:
-    """Rotation-aware cipher over the KeyRing data_key (+ prior keys)."""
-    return SecretCipher(key_ring().data_key, previous=data_key_previous())
+    """Rotation-aware cipher over the KeyRing data_key (+ prior keys).
+
+    Built once and cached: key derivation on every ``get_secret`` /
+    ``set_secret`` is a per-request cost. ``reset_secret_caches`` drops it
+    when tests swap key material.
+    """
+    return kit_secrets.cipher(
+        data_key=key_ring().data_key,
+        previous=data_key_previous(),
+    )
 
 
 def cipher() -> SecretCipher:
@@ -68,171 +107,102 @@ def cipher() -> SecretCipher:
 
 
 def reset_secret_caches() -> None:
-    """Drop the cached cipher (tests swap key material between cases)."""
+    """Drop the cached cipher and the kit's backend selection."""
     _cipher.cache_clear()
-    _store.cache_clear()
+    kit_secrets.reset_caches()
 
 
-# ---------------------------------------------------------------------------
-# Storage backends
-# ---------------------------------------------------------------------------
+class _LazySealer:
+    """Read-path sealer — the key ring is touched only when a value must open.
 
+    ``nx_auth.secrets.get`` invokes the sealer only for a stored ``enc::``
+    value, so a missing slot and an unsealed plaintext entry never construct a
+    cipher. Study's pre-adoption reader had that same shape; the adoption's
+    eager ``sealer=_cipher()`` made every read — including one for an absent
+    slot — depend on resolvable key material.
 
-class _KeyringStore:
-    """The OS keyring — desktop default, only when it actually round-trips."""
-
-    name = "keyring"
-
-    def __init__(self) -> None:
-        import keyring
-
-        self._keyring = keyring
-
-    def get(self, ref: str) -> str | None:
-        with contextlib.suppress(Exception):
-            return self._keyring.get_password(SERVICE, ref)
-        return None
-
-    def set(self, ref: str, value: str) -> None:
-        self._keyring.set_password(SERVICE, ref, value)
-
-    def delete(self, ref: str) -> None:
-        with contextlib.suppress(Exception):
-            self._keyring.delete_password(SERVICE, ref)
-
-
-class _FileStore:
-    """A 0600 sealed file under ``data_dir`` — the server/Docker fallback.
-
-    Values are already sealed by the caller (``nx_auth.atrest``), so the
-    file is inert without ``SA_DATA_KEY``. Writes are atomic (tmp + replace)
-    and serialised under a lock.
+    Only ``decrypt_raw`` is implemented: a read-only sealer is never used to
+    seal. Unresolvable key material becomes ``ValueError`` so the kit's read
+    path answers ``None`` (its documented fail-closed branch) instead of
+    propagating a key-ring error out of a lookup.
     """
 
-    name = "file"
-
-    def __init__(self, path: Path) -> None:
-        self._path = path
-        self._lock = threading.Lock()
-
-    def _load(self) -> dict[str, str]:
+    def decrypt_raw(self, token: str) -> str:
         try:
-            raw = json.loads(self._path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {}
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def _save(self, data: dict[str, str]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
-        os.chmod(tmp, 0o600)
-        os.replace(tmp, self._path)
-
-    def get(self, ref: str) -> str | None:
-        with self._lock:
-            return self._load().get(ref)
-
-    def set(self, ref: str, value: str) -> None:
-        with self._lock:
-            data = self._load()
-            data[ref] = value
-            self._save(data)
-
-    def delete(self, ref: str) -> None:
-        with self._lock:
-            data = self._load()
-            if ref in data:
-                del data[ref]
-                self._save(data)
+            ring_cipher = _cipher()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise ValueError(
+                "the at-rest data key is unavailable, so a sealed secret "
+                "cannot be opened on this host"
+            ) from exc
+        return ring_cipher.decrypt_raw(token)
 
 
-class _NoStore:
-    """Nothing works — every call fails closed. Never a silent no-op."""
-
-    name = "none"
-
-    def get(self, ref: str) -> str | None:
-        return None
-
-    def set(self, ref: str, value: str) -> None:
-        raise RuntimeError(
-            "no usable secret store: the OS keyring is unavailable and the "
-            "sealed file could not be written — refusing to store the credential "
-            "anywhere else (fail closed, no plaintext fallback)"
-        )
-
-    def delete(self, ref: str) -> None:
-        return
-
-
-def _roundtrips(store: object) -> bool:
-    """A backend is usable only if a write is actually readable.
-
-    ``keyring.backends.null`` accepts writes and discards them — silently
-    losing a token is worse than refusing to store it, so probe before trust.
-    The keyring backend itself is selected by the keyring library (its
-    ``PYTHON_KEYRING_BACKEND`` knob, or a desktop session vs a headless
-    container); whatever it resolves to, THIS probe is what decides trust.
-    """
-    probe = f"probe-{os.getpid()}"
-    try:
-        store.set(_PROBE_REF, probe)  # type: ignore[attr-defined]
-        back = cast(str | None, store.get(_PROBE_REF))  # type: ignore[attr-defined]
-    except Exception:
-        return False
-    finally:
-        with contextlib.suppress(Exception):
-            store.delete(_PROBE_REF)  # type: ignore[attr-defined]
-    return bool(back == probe)
-
-
-@lru_cache(maxsize=1)
-def _store() -> object:
-    """Pick the storage backend once per process (probe-verified)."""
-    try:
-        candidate: object = _KeyringStore()
-        if _roundtrips(candidate):
-            return candidate
-    except Exception:
-        pass
-    try:
-        from app.core.config import get_settings
-
-        file_store: object = _FileStore(Path(get_settings().data_dir) / "secrets.json")
-        if _roundtrips(file_store):
-            return file_store
-    except Exception:
-        pass
-    return _NoStore()
+# The kit types ``sealer`` as ``SecretCipher``; this proxy carries only the
+# ``decrypt_raw`` surface ``get`` uses, and deferring that resolution is the
+# whole point (see ``_LazySealer``).
+_READ_SEALER = cast("SecretCipher", _LazySealer())
 
 
 def store_backend() -> str:
-    """Which backend is live (``keyring`` | ``file`` | ``none``) — for
-    diagnostics and the settings surface. Never a secret."""
-    return str(getattr(_store(), "name", "none"))
+    """Which writable backend is live (``keyring`` | ``file`` | ``none``).
 
-
-# ---------------------------------------------------------------------------
-# Public API (unchanged semantics)
-# ---------------------------------------------------------------------------
+    Diagnostics only, never a secret. There is no environment source in
+    study (``env_prefix=None``), so ``env`` is never reported.
+    """
+    return kit_secrets.backend_name(service=SERVICE, store_path=_store_path())
 
 
 def get_secret(ref: str) -> str | None:
-    value = cast(str | None, _store().get(ref))  # type: ignore[attr-defined]
-    if not value or not is_encrypted(value):
-        return value
-    try:
-        return decrypt_secret(value, _cipher())
-    except ValueError:
-        return None
+    """Resolve ``ref`` from the keyring, then the sealed file.
+
+    Decrypts an ``enc::`` envelope, returns an unsealed plaintext entry
+    verbatim, and answers ``None`` for a missing value, an envelope the key
+    ring cannot open, or a sealed value on a host whose key material cannot
+    be resolved. A stored empty value resolves to ``None``. Key material is
+    resolved only for an ``enc::`` value, so missing and plaintext slots
+    never depend on it.
+    """
+    return kit_secrets.get(
+        ref,
+        service=SERVICE,
+        env_prefix=None,
+        store_path=_store_path(),
+        sealer=_READ_SEALER,
+    )
 
 
 def set_secret(ref: str, value: str) -> None:
-    sealed = encrypt_secret(value, _cipher())
-    assert sealed is not None
-    _store().set(ref, sealed)  # type: ignore[attr-defined]
+    """Seal ``value`` and store it in the best writable backend."""
+    try:
+        kit_secrets.set(
+            ref,
+            value,
+            service=SERVICE,
+            env_prefix=None,
+            store_path=_store_path(),
+            sealer=_cipher(),
+        )
+    except SecretStoreUnavailable as exc:
+        raise RuntimeError(_UNAVAILABLE) from exc
 
 
 def delete_secret(ref: str) -> None:
-    _store().delete(ref)  # type: ignore[attr-defined]
+    """Remove ``ref`` from the selected backend and the sealed file.
+
+    Fails closed when no writable backend exists: a revocation that
+    silently did nothing would leave a credential live. The check is
+    explicit because the kit also targets the sealed-file path — an absent
+    slot on an unwritable host would otherwise be an effective no-op.
+    """
+    if store_backend() == "none":
+        raise RuntimeError(_UNAVAILABLE)
+    try:
+        kit_secrets.delete(
+            ref,
+            service=SERVICE,
+            env_prefix=None,
+            store_path=_store_path(),
+        )
+    except SecretStoreUnavailable as exc:
+        raise RuntimeError(_UNAVAILABLE) from exc

@@ -14,6 +14,7 @@ writes; unknown fields survive because the columns stay JSON.
 from collections.abc import Mapping
 from typing import Any, TypedDict
 
+from ..core.vocab import ActivationStep, ActivationSurface
 from .preferences import ProfilePreferences as ProfilePreferences
 
 __all__ = ["PAYLOAD_TYPES", "PAYLOAD_TYPE_NAMES"]
@@ -432,6 +433,144 @@ class CitationAuthor(TypedDict, total=False):
 type AuthorList = list[CitationAuthor]
 
 
+class NarrationSection(TypedDict, total=False):
+    kind: str
+    title: str
+    script: str
+    citations: list[str]
+    source_refs: list[str]
+
+
+class ActivationProps(TypedDict, total=False):
+    schema_version: int
+    step: ActivationStep
+    surface: ActivationSurface
+    value: int | float
+
+
+class ArtifactChapter(TypedDict, total=False):
+    title: str
+    script: str
+    kind: str
+
+
+class ArtifactSpec(TypedDict, total=False):
+    kind: str
+    title: str
+    length_minutes: int
+    voice: str | None
+    script: str
+    renderer: str
+    sections: list[NarrationSection]
+    chapters: list[ArtifactChapter]
+    model: str | None
+
+
+class StudioSlide(TypedDict, total=False):
+    layout: str
+    title: str
+    bullets: list[str]
+    body_md: str | None
+    notes: str | None
+
+
+class StudioArtifactSpec(TypedDict, total=False):
+    kind: str
+    title: str
+    subtitle: str | None
+    theme: str
+    slides: list[StudioSlide]
+    source_title: str | None
+
+
+class SolveStep(TypedDict, total=False):
+    op: str
+    title: str
+    before: str
+    after: str
+    check: str
+    verified: bool
+    detail: str
+
+
+class SolveResult(TypedDict, total=False):
+    input: str
+    normalized: str
+    intent: str
+    title: str
+    answer_latex: str | None
+    answer_text: str | None
+    steps: list[SolveStep]
+    assumptions: list[str]
+    verified: bool
+    message: str | None
+
+
+class PaperQuestionMark(TypedDict, total=False):
+    question_id: str
+    marks: int
+
+
+class PaperSectionDoc(TypedDict, total=False):
+    id: str
+    title: str
+    instructions: str | None
+    marks: int
+    questions: list[PaperQuestionMark]
+
+
+class PaperDocument(TypedDict, total=False):
+    sections: list[PaperSectionDoc]
+    source: str
+    seed: int
+
+
+class GradeBand(TypedDict, total=False):
+    label: str
+    min: float
+
+
+type GradeBandList = list[GradeBand]
+
+
+class AnchorPayload(TypedDict, total=False):
+    """Closed per-kind anchor payload (plan 90-B).
+
+    One document shape keeps the JSON column inventory honest; the kind
+    decides which keys are required, and ``validate_anchor`` rejects anything
+    outside that kind's contract.
+    """
+
+    page: int
+    x: float
+    y: float
+    w: float
+    h: float
+    shape: str
+    points: list[list[float]]
+    version_id: str
+    start: int
+    end: int
+    occurrence: int
+    start_ms: int
+    end_ms: int
+    segment_ids: list[str]
+    exercise_id: str
+
+
+class CaptureMeta(TypedDict, total=False):
+    """Boundary-validated metadata for a staged capture (plan 90-A).
+
+    Open by design: source-specific hints (client name, page count, clip note)
+    are never queried, so they stay in the staging document rather than
+    multiplying columns.
+    """
+
+    client: str
+    page_count: int
+    note: str
+
+
 class SuggestionMeta(TypedDict, total=False):
     site: str
     mcp: bool
@@ -573,7 +712,7 @@ class SkillContract(TypedDict, total=False):
 
 
 class TaskParams(TypedDict, total=False):
-    monthly_cap_usd: float
+    monthly_cap_micros: int
     temperature: float
     max_tokens: int
     reasoning_effort: str
@@ -691,12 +830,18 @@ class JobPayload(TypedDict, total=False):
 
 
 PAYLOAD_TYPE_NAMES: dict[str, str] = {
+    "activation_events.props": "ActivationProps",
     "activities.config": "ActivityConfig",
     "ai_interactions.metadata": "AiInteractionMetadata",
     "notifications.payload": "NotificationPayload",
     "notifications.recipients": "StringList",
     "notifications.source_ref": "NotificationSourceRef",
     "activities.generated_from": "ActivityGeneratedFrom",
+    "exam_papers.document": "PaperDocument",
+    "exam_papers.grade_bands": "GradeBandList",
+    "solve_entries.result": "SolveResult",
+    "studio_artifacts.spec": "StudioArtifactSpec",
+    "artifacts.spec": "ArtifactSpec",
     "answers.error_tags": "StringList",
     "answers.feedback": "FeedbackList",
     "answers.help_events": "HelpEventList",
@@ -717,6 +862,9 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "chat_quiz_pendings.choices": "StringList",
     "chat_sessions.context": "ChatSessionContext",
     "chat_sessions.mention_registry": "MentionRegistryList",
+    "capture_staging.meta": "CaptureMeta",
+    "document_anchors.payload": "AnchorPayload",
+    "review_filters.kinds": "StringList",
     "calendar_links.options": "CalendarLinkOptions",
     "calendar_links.scopes": "StringList",
     "concepts.aliases": "StringList",
@@ -781,6 +929,7 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
 }
 
 PAYLOAD_TYPES: dict[str, object] = {
+    "ActivationProps": ActivationProps,
     "ActivityConfig": ActivityConfig,
     "ActivityGeneratedFrom": ActivityGeneratedFrom,
     "AnswerResponse": AnswerResponse,
@@ -834,6 +983,20 @@ PAYLOAD_TYPES: dict[str, object] = {
     "BundleConceptsMap": BundleConceptsMap,
     "BundleCourseMap": BundleCourseMap,
     "BundleHistoryMap": BundleHistoryMap,
+    "CaptureMeta": CaptureMeta,
+    "AnchorPayload": AnchorPayload,
+    "SolveResult": SolveResult,
+    "PaperDocument": PaperDocument,
+    "PaperSectionDoc": PaperSectionDoc,
+    "PaperQuestionMark": PaperQuestionMark,
+    "GradeBand": GradeBand,
+    "GradeBandList": GradeBandList,
+    "ArtifactSpec": ArtifactSpec,
+    "ArtifactChapter": ArtifactChapter,
+    "NarrationSection": NarrationSection,
+    "StudioArtifactSpec": StudioArtifactSpec,
+    "StudioSlide": StudioSlide,
+    "SolveStep": SolveStep,
     "TurnFailure": TurnFailure,
     "WidgetStateMap": WidgetStateMap,
 }

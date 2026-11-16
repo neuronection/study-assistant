@@ -35,6 +35,13 @@ RATING_EASY = 4
 
 
 @dataclass(frozen=True)
+class FsrsParams:
+    desired_retention: float = DESIRED_RETENTION
+    maximum_interval_days: int = 365
+    weights: tuple[float, ...] = DEFAULT_WEIGHTS
+
+
+@dataclass(frozen=True)
 class FsrsCard:
     stability: float | None
     difficulty: float | None
@@ -109,13 +116,16 @@ def review(
     rating: int,
     now: datetime,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
+    params: FsrsParams | None = None,
 ) -> FsrsOutcome:
     if rating not in (RATING_AGAIN, RATING_HARD, RATING_GOOD, RATING_EASY):
         raise ValueError("rating must be 1-4")
+    effective = params or FsrsParams(weights=weights)
+    retention = effective.desired_retention
     if card.stability is None or card.difficulty is None or card.last_review_at is None:
         stability = _clamp(weights[rating - 1], MIN_STABILITY, MAX_STABILITY)
         difficulty = _initial_difficulty(rating, weights)
-        interval = _interval(stability, DESIRED_RETENTION)
+        interval = min(_interval(stability, retention), effective.maximum_interval_days)
         state = "learning"
         return FsrsOutcome(stability, difficulty, interval, state)
 
@@ -130,10 +140,11 @@ def review(
         stability = _stability_after_success(
             card.difficulty, card.stability, recall, rating, weights
         )
-        interval = _interval(stability, DESIRED_RETENTION)
+        interval = min(_interval(stability, retention), effective.maximum_interval_days)
         state = "review"
     return FsrsOutcome(stability, difficulty, interval, state)
 
 
-def due_date(now: datetime, interval_days: int) -> datetime:
-    return now + timedelta(days=interval_days)
+def due_date(now: datetime, interval_days: int, params: FsrsParams | None = None) -> datetime:
+    maximum = params.maximum_interval_days if params is not None else 365
+    return now + timedelta(days=max(1, min(interval_days, maximum)))

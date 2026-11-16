@@ -1,10 +1,11 @@
 import csv
 import io
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..core.vocab import (
@@ -12,11 +13,15 @@ from ..core.vocab import (
     GoalUnit,
     ItemFlag,
     RecommendationKind,
+    ReviewSource,
     SpeedLabel,
     SpeedQuadrant,
 )
+from ..domain.models import AiInteraction, Exercise, FsrsState, ReviewLog, utcnow
 from ..services.platform import metrics
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study import fsrs_settings
+from ..services.study.exercise_kinds import CARD_KINDS
 from .deps import get_session
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -159,15 +164,29 @@ class CostTaskOut(BaseModel):
     calls: int
     tokens_in: int
     tokens_out: int
-    cost_usd: float
+    cost_micros: int
     models: dict[str, int]
-    monthly_cap_usd: float | None = None
+    monthly_cap_micros: int | None = None
+
+
+class CostCallOut(BaseModel):
+    id: str
+    task: str | None
+    model: str | None
+    resolved_model: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_micros: int | None
+    price_source: str
+    outcome: str | None
+    created_at: str
 
 
 class CostsOut(BaseModel):
     month: str
     per_task: list[CostTaskOut]
-    total_usd: float
+    total_micros: int
+    recent: list[CostCallOut]
 
 
 @router.get("/overview", response_model=OverviewOut)
@@ -344,7 +363,7 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
     from sqlalchemy import func, select
 
     from ..ai.tasks import TASK_DEFS
-    from ..domain.models import AiInteraction, TaskAssignment
+    from ..domain.models import TaskAssignment
 
     month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     rows = session.execute(
@@ -354,7 +373,7 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
             func.count(),
             func.coalesce(func.sum(AiInteraction.input_tokens), 0),
             func.coalesce(func.sum(AiInteraction.output_tokens), 0),
-            func.coalesce(func.sum(AiInteraction.cost_usd), 0.0),
+            func.coalesce(func.sum(AiInteraction.cost_micros), 0),
         )
         .where(
             AiInteraction.context_type == "gateway",
@@ -363,11 +382,11 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
         .group_by(AiInteraction.task, AiInteraction.model)
     ).all()
     caps = {
-        assignment_row.task: (assignment_row.params or {}).get("monthly_cap_usd")
+        assignment_row.task: (assignment_row.params or {}).get("monthly_cap_micros")
         for assignment_row in session.scalars(select(TaskAssignment))
     }
     per_task: dict[str, dict[str, Any]] = {}
-    for task, model, calls, tokens_in, tokens_out, cost in rows:
+    for task, model, calls, tokens_in, tokens_out, cost_micros in rows:
         entry = per_task.setdefault(
             str(task),
             {
@@ -375,14 +394,14 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
                 "calls": 0,
                 "tokens_in": 0,
                 "tokens_out": 0,
-                "cost_usd": 0.0,
+                "cost_micros": 0,
                 "models": {},
             },
         )
         entry["calls"] += int(calls)
         entry["tokens_in"] += int(tokens_in)
         entry["tokens_out"] += int(tokens_out)
-        entry["cost_usd"] = round(entry["cost_usd"] + float(cost), 6)
+        entry["cost_micros"] += int(cost_micros)
         if model:
             entry["models"][model] = entry["models"].get(model, 0) + int(calls)
     tasks_out = []
@@ -394,17 +413,174 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
                 "calls": 0,
                 "tokens_in": 0,
                 "tokens_out": 0,
-                "cost_usd": 0.0,
+                "cost_micros": 0,
                 "models": {},
             },
         )
-        entry["monthly_cap_usd"] = caps.get(task_def.task)
+        entry["monthly_cap_micros"] = caps.get(task_def.task)
         tasks_out.append(entry)
     for leftover in per_task.values():
-        leftover["monthly_cap_usd"] = caps.get(str(leftover["task"]))
+        leftover["monthly_cap_micros"] = caps.get(str(leftover["task"]))
         tasks_out.append(leftover)
+
+    recent_rows = session.execute(
+        select(AiInteraction)
+        .where(
+            AiInteraction.context_type == "gateway",
+            AiInteraction.created_at >= month_start,
+        )
+        .order_by(AiInteraction.created_at.desc())
+        .limit(50)
+    ).scalars()
+    recent = [
+        {
+            "id": str(row.id),
+            "task": row.task,
+            "model": row.model,
+            "resolved_model": row.model_external_id,
+            "input_tokens": row.input_tokens,
+            "output_tokens": row.output_tokens,
+            "cost_micros": row.cost_micros,
+            "price_source": row.price_source,
+            "outcome": None,
+            "created_at": row.created_at.isoformat(),
+        }
+        for row in recent_rows
+    ]
     return {
         "month": month_start.date().isoformat(),
         "per_task": tasks_out,
-        "total_usd": round(sum(entry["cost_usd"] for entry in tasks_out), 6),
+        "total_micros": sum(entry["cost_micros"] for entry in tasks_out),
+        "recent": recent,
     }
+
+
+class RetentionBucketOut(BaseModel):
+    key: str
+    reviews: int
+    correct: int
+    retention: float
+
+
+class RetentionOut(BaseModel):
+    target: float
+    reviews: int
+    correct: int
+    retention: float | None
+    lapses: int
+    buckets: list[RetentionBucketOut]
+
+
+@router.get("/retention", response_model=RetentionOut)
+def retention(
+    days: int = 90,
+    session: Session = Depends(get_session),
+) -> RetentionOut:
+    profile = ensure_default_profile(session)
+    since = utcnow() - timedelta(days=max(1, min(days, 365)))
+    rows = session.execute(
+        select(ReviewLog.rating, ReviewLog.interval_days)
+        .join(Exercise, Exercise.id == ReviewLog.card_id)
+        .where(
+            Exercise.profile_id == profile.id,
+            ReviewLog.reviewed_at >= since,
+            ReviewLog.source == ReviewSource.REVIEW.value,
+        )
+    ).all()
+    buckets = {
+        "young": {"reviews": 0, "correct": 0},
+        "mature": {"reviews": 0, "correct": 0},
+    }
+    correct = 0
+    lapses = 0
+    for rating, interval_days in rows:
+        bucket = "young" if (interval_days or 0) < 21 else "mature"
+        buckets[bucket]["reviews"] += 1
+        if rating == 1:
+            lapses += 1
+            continue
+        buckets[bucket]["correct"] += 1
+        correct += 1
+    total = len(rows)
+    values = fsrs_settings.get_profile(session, profile.id)
+    return RetentionOut(
+        target=values.desired_retention,
+        reviews=total,
+        correct=correct,
+        retention=(correct / total) if total else None,
+        lapses=lapses,
+        buckets=[
+            RetentionBucketOut(
+                key=key,
+                reviews=entry["reviews"],
+                correct=entry["correct"],
+                retention=(entry["correct"] / entry["reviews"]) if entry["reviews"] else 0.0,
+            )
+            for key, entry in buckets.items()
+        ],
+    )
+
+
+class WorkloadDayOut(BaseModel):
+    day: str
+    due: int
+
+
+class WorkloadOut(BaseModel):
+    days: list[WorkloadDayOut]
+    new_available: int
+    total: int
+    peak_day: str | None
+    peak_count: int
+
+
+@router.get("/workload", response_model=WorkloadOut)
+def workload(
+    days: int = 30,
+    session: Session = Depends(get_session),
+) -> WorkloadOut:
+    profile = ensure_default_profile(session)
+    horizon = max(1, min(days, 90))
+    today = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    until = today + timedelta(days=horizon)
+    rows = session.execute(
+        select(FsrsState.due_at)
+        .join(Exercise, Exercise.id == FsrsState.card_id)
+        .where(
+            Exercise.profile_id == profile.id,
+            Exercise.kind.in_(CARD_KINDS),
+            FsrsState.due_at >= today,
+            FsrsState.due_at < until,
+        )
+    ).scalars()
+    counts: dict[str, int] = {}
+    for due_at in rows:
+        day = due_at.date().isoformat()
+        counts[day] = counts.get(day, 0) + 1
+    series = [
+        WorkloadDayOut(
+            day=(today + timedelta(days=index)).date().isoformat(),
+            due=counts.get((today + timedelta(days=index)).date().isoformat(), 0),
+        )
+        for index in range(horizon)
+    ]
+    new_available = int(
+        session.scalar(
+            select(func.count(Exercise.id))
+            .outerjoin(FsrsState, FsrsState.card_id == Exercise.id)
+            .where(
+                Exercise.profile_id == profile.id,
+                Exercise.kind.in_(CARD_KINDS),
+                FsrsState.id.is_(None),
+            )
+        )
+        or 0
+    )
+    peak = max(series, key=lambda entry: entry.due, default=None)
+    return WorkloadOut(
+        days=series,
+        new_available=new_available,
+        total=sum(entry.due for entry in series),
+        peak_day=peak.day if peak is not None and peak.due > 0 else None,
+        peak_count=peak.due if peak is not None else 0,
+    )

@@ -1,10 +1,10 @@
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...domain.models import Course
+from ...storage.blobs import BlobStore
 from .course_export import build_course_bundle
 from .course_import import import_course_bundle
 from .course_validate import BundleData, read_course_bundle
@@ -28,13 +28,12 @@ def duplicate_course(
     session: Session,
     course: Course,
     profile_id: str,
-    blobs_root: Path,
-    blob_store: Any,
+    blobs: BlobStore,
     *,
     title: str | None = None,
     copy_materials: bool = True,
 ) -> dict[str, Any]:
-    package = build_course_bundle(session, course, blobs_root)
+    package = build_course_bundle(session, course, blobs)
     bundle: BundleData = read_course_bundle(package)
     materials_copied = len(bundle.materials) if copy_materials else 0
     if not copy_materials:
@@ -44,8 +43,7 @@ def duplicate_course(
         session,
         bundle,
         profile_id,
-        blobs_root,
-        blob_store,
+        blobs,
         set(session.scalars(select(Course.title).where(Course.profile_id == profile_id))),
     )
     return {

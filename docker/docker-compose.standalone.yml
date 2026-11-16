@@ -30,8 +30,11 @@ services:
     environment:
       POSTGRES_DB: ${SA_DB_NAME:-neuronection_study}
       POSTGRES_USER: neuronection_study_owner
-      POSTGRES_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD in docker/.env (see docker/.env.production.example)}
+      # ADR-0064: two roles, two credentials. The owner bootstraps the DB;
+      # the app role gets SA_DB_APP_PASSWORD (the operator's SA_DB_PASSWORD).
+      POSTGRES_PASSWORD: ${SA_DB_OWNER_PASSWORD:?Set SA_DB_OWNER_PASSWORD in docker/.env (see docker/.env.production.example)}
       SA_DB_APP_USER: neuronection_study_app
+      SA_DB_APP_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD in docker/.env (see docker/.env.production.example)}
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
@@ -47,7 +50,9 @@ services:
 
   migrate:
     # One-shot migrations (plan 20 Phase 4, D6): `entrypoint.sh migrate`
-    # applies the owner-role DDL and exits; the app never runs migrations.
+    # resolves the ADR-0064 tri-state and runs — as the owner role only —
+    # role bootstrap (app role + grants + default privileges + vector/pg_trgm),
+    # Alembic and the checkpoint schema. The app never runs any of it.
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -60,13 +65,21 @@ services:
         condition: service_healthy
     environment:
       SA_DATA_DIR: /data
+      # Per-instance key family (identity-auth §8) — alembic boots the app
+      # Settings (env.py); pinned in docker/.env.
+      SA_SESSION_KEY: ${SA_SESSION_KEY:?Set SA_SESSION_KEY in docker/.env}
+      SA_REFRESH_KEY: ${SA_REFRESH_KEY:?Set SA_REFRESH_KEY in docker/.env}
+      SA_DATA_KEY: ${SA_DATA_KEY:?Set SA_DATA_KEY in docker/.env}
       SA_DB_NAME: ${SA_DB_NAME:-neuronection_study}
       SA_DB_USER: neuronection_study_app
-      SA_DB_PASSWORD: ${SA_DB_PASSWORD}
+      # Distinct secrets (ADR-0064): the owner DSN lives ONLY here; the app
+      # role's SA_DB_APP_PASSWORD lets migrate bootstrap/sync the role.
+      SA_DB_APP_PASSWORD: ${SA_DB_PASSWORD}
       SA_DB_HOST: db
       SA_DB_PORT: "5432"
+      SA_DB_SPLIT: "1"
       SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
-      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_OWNER_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
     logging: *default-logging
     networks:
       - study-assistant-network
@@ -90,22 +103,68 @@ services:
       SA_HOST: 0.0.0.0
       SA_DATA_DIR: /data
       SA_SPA_DIST: /app/frontend/dist
+      # Family object storage (ADR-0057 / plan 55 P1). Empty defaults keep
+      # the local volume; a cloud profile sets its provider block (see
+      # docker/.env.production.example and docker/docker-compose.cloud.yml).
+      # The app validates the resolved config at boot and fails loud.
+      SA_CLOUD_PROFILE: ${SA_CLOUD_PROFILE:-}
+      SA_OBJECT_STORAGE_BACKEND: ${SA_OBJECT_STORAGE_BACKEND:-}
+      SA_OBJECT_STORAGE_REQUIRED: ${SA_OBJECT_STORAGE_REQUIRED:-false}
+      SA_OBJECT_STORAGE_LOCAL_ROOT: ${SA_OBJECT_STORAGE_LOCAL_ROOT:-/data/blobs}
+      # Intentionally unset by default: study's bootstrap binds an unset cap
+      # to MAX_UPLOAD_MB (200 MB), not the contract's 100 MB default.
+      SA_OBJECT_STORAGE_MAX_MB: ${SA_OBJECT_STORAGE_MAX_MB:-}
+      SA_OBJECT_STORAGE_PRESIGN_TTL: ${SA_OBJECT_STORAGE_PRESIGN_TTL:-300}
+      SA_S3_BUCKET: ${SA_S3_BUCKET:-}
+      SA_S3_REGION: ${SA_S3_REGION:-}
+      SA_S3_ENDPOINT_URL: ${SA_S3_ENDPOINT_URL:-}
+      SA_S3_ACCESS_KEY_ID: ${SA_S3_ACCESS_KEY_ID:-}
+      SA_S3_SECRET_ACCESS_KEY: ${SA_S3_SECRET_ACCESS_KEY:-}
+      SA_S3_SESSION_TOKEN: ${SA_S3_SESSION_TOKEN:-}
+      SA_S3_PATH_STYLE: ${SA_S3_PATH_STYLE:-}
+      SA_S3_SSE: ${SA_S3_SSE:-}
+      SA_S3_KMS_KEY_ID: ${SA_S3_KMS_KEY_ID:-}
+      SA_S3_PREFIX: ${SA_S3_PREFIX:-}
+      SA_S3_VERIFY_TLS: ${SA_S3_VERIFY_TLS:-}
+      SA_S3_CONNECT_TIMEOUT: ${SA_S3_CONNECT_TIMEOUT:-}
+      SA_S3_READ_TIMEOUT: ${SA_S3_READ_TIMEOUT:-}
+      SA_S3_MAX_ATTEMPTS: ${SA_S3_MAX_ATTEMPTS:-}
+      SA_AZURE_STORAGE_CONTAINER: ${SA_AZURE_STORAGE_CONTAINER:-}
+      SA_AZURE_STORAGE_CONNECTION_STRING: ${SA_AZURE_STORAGE_CONNECTION_STRING:-}
+      SA_AZURE_STORAGE_ACCOUNT_URL: ${SA_AZURE_STORAGE_ACCOUNT_URL:-}
+      SA_AZURE_STORAGE_ACCOUNT_NAME: ${SA_AZURE_STORAGE_ACCOUNT_NAME:-}
+      SA_AZURE_STORAGE_CREDENTIAL: ${SA_AZURE_STORAGE_CREDENTIAL:-}
+      SA_AZURE_STORAGE_PREFIX: ${SA_AZURE_STORAGE_PREFIX:-}
+      SA_AZURE_CONNECT_TIMEOUT: ${SA_AZURE_CONNECT_TIMEOUT:-}
+      SA_AZURE_READ_TIMEOUT: ${SA_AZURE_READ_TIMEOUT:-}
+      SA_AZURE_MAX_ATTEMPTS: ${SA_AZURE_MAX_ATTEMPTS:-}
       # Per-instance key family (identity-auth §8) — pinned in docker/.env.
       SA_SESSION_KEY: ${SA_SESSION_KEY:?Set SA_SESSION_KEY in docker/.env}
       SA_REFRESH_KEY: ${SA_REFRESH_KEY:?Set SA_REFRESH_KEY in docker/.env}
       SA_DATA_KEY: ${SA_DATA_KEY:?Set SA_DATA_KEY in docker/.env}
-      # ADR-0022: web mode runs PostgreSQL 16. SA_DATABASE_URL wins over the
-      # SA_DB_* credentials (keep the password URL-safe — it is embedded in
-      # the URLs). Runtime connects as the least-privilege app role.
+      # ADR-0022/ADR-0064: web mode runs PostgreSQL 16 and connects as the
+      # least-privilege app role. SA_DATABASE_URL wins over the SA_DB_*
+      # credentials (keep the password URL-safe — it is embedded in the
+      # URL). The owner DSN is deliberately absent from this service: it
+      # lives only in the one-shot migrate service above, and the
+      # entrypoint refuses a serving env that carries it.
       SA_DB_NAME: ${SA_DB_NAME:-neuronection_study}
       SA_DB_USER: neuronection_study_app
       SA_DB_PASSWORD: ${SA_DB_PASSWORD}
       SA_DB_HOST: db
       SA_DB_PORT: "5432"
       SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
-      # Migrations run in the one-shot `migrate` service below (owner
-      # role) — the app process itself never runs DDL (plan 20 Phase 4).
-      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
+      # --- Cookie/proxy derivation (ADR-0062 v7 §9, plan 64 §1.6) -------
+      # `Secure` is derived from the public scheme: SA_PUBLIC_URL (or the
+      # SA_TLS override), never a static true — so LAN/VPN logins over
+      # plain HTTP keep working. Under nginx-TLS set SA_PUBLIC_URL=https://…,
+      # or SA_TLS=1 when TLS terminates on another host's proxy.
+      SA_COOKIE_SECURE: ${SA_COOKIE_SECURE:-}
+      SA_PUBLIC_URL: ${SA_PUBLIC_URL:-}
+      SA_TLS: ${SA_TLS:-}
+      # nginx is the one trusted proxy hop in front of the app here; raise
+      # it only when another trusted proxy (VPN gateway, cloud LB) precedes.
+      SA_TRUSTED_PROXY_COUNT: ${SA_TRUSTED_PROXY_COUNT:-1}
     # No host ports: all traffic is routed via the nginx service.
     volumes:
       - data:/data
@@ -130,24 +189,21 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGPASSWORD: ${SA_DB_PASSWORD}
+      PGPASSWORD: ${SA_DB_OWNER_PASSWORD}
       PGHOST: db
       POSTGRES_DB: ${SA_DB_NAME:-neuronection_study}
       POSTGRES_USER: neuronection_study_owner
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      # Under a cloud profile the blob bytes live in the provider; the
+      # sidecar must not tar /data blindly (it only holds secrets/cache).
+      SA_CLOUD_PROFILE: ${SA_CLOUD_PROFILE:-}
+      SA_OBJECT_STORAGE_BACKEND: ${SA_OBJECT_STORAGE_BACKEND:-local}
     volumes:
       - ./backups:/backups
       - data:/data:ro
-    command: >
-      sh -c 'while true; do
-        ts=$$(date -u +%Y%m%d-%H%M%S);
-        pg_dump -U $$POSTGRES_USER -Fc $$POSTGRES_DB > /backups/db-$$ts.dump;
-        tar czf /backups/data-$$ts.tar.gz -C /data . || true;
-        find /backups -name "db-*.dump" | sort | head -n -$$BACKUP_KEEP | xargs -r rm --;
-        find /backups -name "data-*.tar.gz" | sort | head -n -$$BACKUP_KEEP | xargs -r rm --;
-        sleep $$((BACKUP_INTERVAL_HOURS * 3600));
-      done'
+      - ./backup-sidecar.sh:/usr/local/bin/backup-sidecar.sh:ro
+    command: ["sh", "/usr/local/bin/backup-sidecar.sh"]
     logging: *default-logging
     networks:
       - study-assistant-network

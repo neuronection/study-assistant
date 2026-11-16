@@ -46,6 +46,24 @@ that course:
 
 ## Reviewing
 
+**Review ahead** (the *Ahead N days* filter) shows cards before they are due.
+Preview ratings are logged for your time and streak but do **not** change the
+schedule; tick **Reschedule as reviewed** if you want them to. The daily review
+cap from Study pace hides the rest of the queue with an honest capped banner.
+Named filters can be saved and reused; **Due today** is the default.
+
+**Study pace** (Settings → General) controls how much the scheduler asks of
+you: Light / Standard / Intense presets, a retention target, maximum interval,
+daily new/review caps, leech handling, sibling burying and load balancing. The
+defaults match the previous schedule; changing them only affects future
+intervals. Per-course overrides are available from the course's scheduling
+settings.
+
+Ratings taken without a connection are queued on the device and replayed
+with their original review time when you reconnect; a **rating saved offline**
+pill shows the pending count and a **Sync now** action. The queue is the same
+one used by the capture inbox, so one failed rating never blocks the rest.
+
 The review queue shows what's due. For each card:
 
 1. Read the front, work out the answer.

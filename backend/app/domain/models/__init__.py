@@ -1,3 +1,12 @@
+from .anchors import (
+    DocumentAnchor as DocumentAnchor,
+)
+from .capture import (
+    CaptureStaging as CaptureStaging,
+)
+from .capture import (
+    CaptureToken as CaptureToken,
+)
 from .chat import (
     ChatMessage as ChatMessage,
 )
@@ -139,6 +148,9 @@ from .ops import (
     AiModel as AiModel,
 )
 from .ops import (
+    AiPriceOverride as AiPriceOverride,
+)
+from .ops import (
     ConceptSkillRating as ConceptSkillRating,
 )
 from .ops import (
@@ -196,10 +208,16 @@ from .retrieval import (
     VectorSpace as VectorSpace,
 )
 from .study import (
+    ActivationEventRow as ActivationEventRow,
+)
+from .study import (
     Activity as Activity,
 )
 from .study import (
     Answer as Answer,
+)
+from .study import (
+    Artifact as Artifact,
 )
 from .study import (
     Attempt as Attempt,
@@ -211,7 +229,13 @@ from .study import (
     CalendarLink as CalendarLink,
 )
 from .study import (
+    CourseFsrsOverride as CourseFsrsOverride,
+)
+from .study import (
     ErrorPattern as ErrorPattern,
+)
+from .study import (
+    ExamPaper as ExamPaper,
 )
 from .study import (
     Exercise as Exercise,
@@ -223,7 +247,19 @@ from .study import (
     ExerciseStep as ExerciseStep,
 )
 from .study import (
+    FsrsSettings as FsrsSettings,
+)
+from .study import (
     FsrsState as FsrsState,
+)
+from .study import (
+    LectureChunk as LectureChunk,
+)
+from .study import (
+    LectureSession as LectureSession,
+)
+from .study import (
+    MediaSegment as MediaSegment,
 )
 from .study import (
     Mistake as Mistake,
@@ -238,10 +274,19 @@ from .study import (
     QuizHelpEvent as QuizHelpEvent,
 )
 from .study import (
+    ReviewFilter as ReviewFilter,
+)
+from .study import (
     ReviewLog as ReviewLog,
 )
 from .study import (
+    SolveEntry as SolveEntry,
+)
+from .study import (
     StepAttempt as StepAttempt,
+)
+from .study import (
+    StudioArtifact as StudioArtifact,
 )
 from .study import (
     StudySession as StudySession,

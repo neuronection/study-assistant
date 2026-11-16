@@ -2,10 +2,12 @@ import hashlib
 from typing import Any, cast
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..ai.embeddings import serialize_vector
 from ..core.ids import hex_id, uuid_str
+from .vector_provisioning import VectorProvisioningError
 
 VEC_TABLE = "chunk_vecs"
 VEC_META = "vec_meta"
@@ -58,13 +60,32 @@ def rowid_for(chunk_id: str) -> int:
     return int.from_bytes(digest, "big") & _ROWID_MASK
 
 
-def _ensure_ids_table(session: Session) -> None:
-    session.execute(
-        text(
-            f"CREATE TABLE IF NOT EXISTS {VEC_IDS} "
-            "(rowid BIGINT PRIMARY KEY, chunk_id TEXT NOT NULL UNIQUE)"
+def _table_exists(session: Session, name: str) -> bool:
+    """Existence probe for the runtime DDL guards (ADR-0064): Postgres
+    checks schema CREATE privilege even for `IF NOT EXISTS` on an existing
+    table, so the DML-only app role must never *issue* the statement —
+    ask first, create only when genuinely missing (and only where the
+    role is allowed to)."""
+    if _is_postgres(session):
+        return (
+            session.execute(text("SELECT to_regclass(:name)"), {"name": name}).scalar() is not None
         )
+    return (
+        session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name = :name"),
+            {"name": name},
+        ).first()
+        is not None
     )
+
+
+def _ensure_ids_table(session: Session) -> None:
+    if not _table_exists(session, VEC_IDS):
+        session.execute(
+            text(
+                f"CREATE TABLE {VEC_IDS} (rowid BIGINT PRIMARY KEY, chunk_id TEXT NOT NULL UNIQUE)"
+            )
+        )
 
 
 def _is_postgres(session: Session) -> bool:
@@ -72,9 +93,10 @@ def _is_postgres(session: Session) -> bool:
 
 
 def _load_meta(session: Session) -> dict[str, str]:
-    session.execute(
-        text(f"CREATE TABLE IF NOT EXISTS {VEC_META} (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
-    )
+    if not _table_exists(session, VEC_META):
+        session.execute(
+            text(f"CREATE TABLE {VEC_META} (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        )
     rows = session.execute(text(f"SELECT key, value FROM {VEC_META}")).mappings()
     return {row["key"]: row["value"] for row in rows}
 
@@ -119,19 +141,36 @@ def ensure_table(session: Session, dim: int, model: str) -> bool:
         )
     if _is_postgres(session):
         # ADR-0022 S3 twin: sqlite-vec vec0 → pgvector + HNSW (cosine).
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        session.execute(
-            text(
-                f"CREATE TABLE {VEC_TABLE} "
-                f"(rowid BIGINT PRIMARY KEY, chunk_embedding vector({int(dim)}))"
+        try:
+            session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            session.execute(
+                text(
+                    f"CREATE TABLE {VEC_TABLE} "
+                    f"(rowid BIGINT PRIMARY KEY, chunk_embedding vector({int(dim)}))"
+                )
             )
-        )
-        session.execute(
-            text(
-                f"CREATE INDEX ix_{VEC_TABLE}_embedding ON {VEC_TABLE} "
-                "USING hnsw (chunk_embedding vector_cosine_ops)"
+            session.execute(
+                text(
+                    f"CREATE INDEX ix_{VEC_TABLE}_embedding ON {VEC_TABLE} "
+                    "USING hnsw (chunk_embedding vector_cosine_ops)"
+                )
             )
-        )
+        except SQLAlchemyError as error:
+            # ADR-0064: under the credential split the runtime role is
+            # DML-only — it cannot create the v1 store. Fail typed with the
+            # owner recipe instead of a raw privilege error (the pre-split
+            # owner-privileged state still creates here unchanged).
+            raise VectorProvisioningError(
+                "the v1 vector store is not provisioned and this role "
+                "cannot create it (ADR-0064 split: the app role is "
+                "DML-only). Create it once as the owner, with the "
+                "dimension of your configured embeddings model — see "
+                "docs/dev/deployment.md → 'Vector store provisioning': "
+                f"`docker compose exec db psql -U neuronection_study_owner "
+                f'-d <db> -c "CREATE TABLE {VEC_TABLE} (rowid BIGINT '
+                f'PRIMARY KEY, chunk_embedding vector(<dim>))"` (+ the '
+                "hnsw index)"
+            ) from error
     else:
         session.execute(
             text(
@@ -229,18 +268,8 @@ def read_meta(session: Session) -> dict[str, str]:
 
 
 def table_exists(session: Session) -> bool:
-    if _is_postgres(session):
-        return (
-            session.execute(text("SELECT to_regclass(:name)"), {"name": VEC_TABLE}).scalar()
-            is not None
-        )
-    return (
-        session.execute(
-            text("SELECT name FROM sqlite_master WHERE type='table' AND name = :name"),
-            {"name": VEC_TABLE},
-        ).first()
-        is not None
-    )
+    """`chunk_vecs` presence (the v1 store's typed dim table)."""
+    return _table_exists(session, VEC_TABLE)
 
 
 def stored_chunk_ids(session: Session) -> dict[int, str]:

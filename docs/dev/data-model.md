@@ -1,8 +1,8 @@
 # Data model (as built)
 
 SQLite, WAL mode, foreign keys on, busy-timeout 5 s. Managed by Alembic —
-the `0001_baseline` squash (plan 81 F, ADR-196) plus `0002_vocab_sweep`
-(plan 82 C); the app runs migrations on startup. All user-content tables are `profile_id`-scoped
+the `0001_baseline` squash plus `0002_vocab_sweep`
+the app runs migrations on startup. All user-content tables are `profile_id`-scoped
 (no-auth profiles; a default profile is seeded on first run).
 
 The **contract** layer — per-table identity, closed sets and their CHECK twins,
@@ -29,13 +29,13 @@ profiles ─┬─ courses ─── tree_nodes (self-FK parent, ≤4 levels, ro
                                           └─ exercise_sessions ─── step_attempts (hint level,
                                                                    error class, independence)
 providers ─── models ─── task_assignments        (machine-global, not per profile)
-              models ─── default_task_assignments (per-capability defaults, ADR-088)
-              models ─── course_task_assignments  (per-course task model overrides, ADR-091)
-              models ─── course_default_task_assignments (per-course capability defaults, ADR-092)
+              models ─── default_task_assignments (per-capability defaults)
+              models ─── course_task_assignments (per-course task model overrides)
+              models ─── course_default_task_assignments (per-course capability defaults)
 jobs · ai_interactions                          (durable queue · AI audit log)
 ```
 
-## Identity (ADR-198; folded into `0001_baseline`)
+## Identity (folded into `0001_baseline`)
 
 Every user-data entity is keyed by a UUID string — `Uuid(as_uuid=False)`, the
 same convention `users`/`profiles` carry from the family identity schema. On
@@ -60,15 +60,15 @@ dialect twin). Integer surrogate keys are retired; natural keys are unchanged
   it); `storage/vectors.py` derives it from the chunk id and keeps the reverse
   mapping in `chunk_vec_ids`.
 
-## Scoping model (ADR-039, migration 0019)
+## Scoping model (migration 0019)
 
 Every course has exactly one **root node** (`is_root`, depth 0) — the course level
 is a node. Nodes nest to **depth 4** (5 layers incl. root). Placement for all study
 resources is a single `node_id` column paired with the owning row's `course_id`
 under a **composite FK `(node_id, course_id) → tree_nodes(id, course_id)`** —
 cross-course placement is impossible at the database level. `node_id` NULL ⇔
-unbound ("All courses" content, ADR-033). Ownership/purge stays `course_id`
-(ADR-036). Roll-up queries use the materialized `path` prefix (`/root/…/node/`);
+unbound ("All courses" content). Ownership/purge stays `course_id`
+Roll-up queries use the materialized `path` prefix (`/root/…/node/`);
 depth-first ordering uses `sort_path`; both are derived data rebuildable from
 `parent_id` + `order_idx`.
 
@@ -81,8 +81,8 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   **preferences JSON?** (0039 — user preferences, e.g.
   `use_embeddings`), **last_used_at?** (§6 last-used profile), created_at,
   updated_at. `preferences` keeps its pass-through JSON (extension-owned `mcp` /
-  `search_providers` sections) behind the `ProfilePreferences` TypedDict and the
-  pydantic validation at the preferences API edge (ADR-200). Every `profile_id`
+  `search_providers` sections, plus `planner_capacity`) behind the `ProfilePreferences` TypedDict and the
+  pydantic validation at the preferences API edge. Every `profile_id`
   column is a UUID with ON DELETE CASCADE;
   user creation auto-provisions Default in the same transaction and
   deleting the last profile re-provisions it.
@@ -91,10 +91,10 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   for preset setup rows; NULL = manually added), enabled, status JSON (last
   test: ok/error/count)
 - **models**: id, provider_id, external_id, label, caps JSON (text/vision/tools/
-  embeddings/stt/tts/decision — vocabulary per family §15 + plan 26 after
+  embeddings/stt/tts/decision — vocabulary per family §15 + migration
   0064; `decision` is explicit-only, never inferred), **decision_transport?**
   (0069 — the transport seam, `systemone` today), ctx_tokens,
-  cost_in/out, **reasoning_effort?** (0038 — per-model reasoning
+  **reasoning_effort?** (0038 — per-model reasoning
   control: OpenAI `none/low/medium/high` (set `none` to enable function tools on reasoning
   models), Anthropic `minimal/low/medium/high`), enabled, missing — unique (provider, external_id)
 - **task_assignments**: task (PK: ocr, notes_ocr, description, outline, concepts,
@@ -103,48 +103,48 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **default_task_assignments** (0041): requires (PK: text | vision |
   embeddings | stt | tts | decision:tool-dispatch | decision:boolean-gate |
   decision:choice | decision:score — the four `decision:*` slots seeded by
-  0069, plan 26),
+  migration 0069),
   model_id, fallback_model_id — per-capability default models; a task's unset
-  model/fallback inherits its capability's default (ADR-088)
+  model/fallback inherits its capability's default
 - **course_task_assignments** (0042): course_id+task (composite PK), model_id,
   fallback_model_id — optional **per-course overrides** of a task's model and/or
   fallback; NULL slots fall through to the global chain (task assignment →
   capability default). Cleared on course purge; unassigned when their model is
-  deleted (ADR-091)
+  deleted
 - **course_default_task_assignments** (0043): course_id+requires (composite PK:
   text | vision | embeddings), model_id, fallback_model_id — per-course
   **capability defaults**; a task resolves per-slot through global default →
-  global task → course default → course task (ADR-092). Purged with the course;
+  global task → course default → course task. Purged with the course;
   model deletion nulls refs
 
 ### Library
 - **material_folders**: id, profile_id, course_id (one folder tree per course,
   unique per profile+course+path), parent_id, name, path (materialized),
   source_id? (unique → material_sources: a linked source is a **symlink-style
-  folder node** in its course's tree, ADR-037 — live browse via the source's
+  folder node** in its course's tree, live browse via the source's
   target, virtual subdirectories never persisted; deleting the node = unlink)
 - **material_sources**: id, profile_id, label, path, recursive, include_globs,
   course_id (required — scanned files land in that course), enabled,
   scan_interval_sec? (per-source override, min 15 s; NULL → global default),
-  last_scan_error?, last_scanned_at — linked folders (B15/ADR-037); scans are
+  last_scan_error?, last_scanned_at — linked folders (B15); scans are
   stat-first, changed files re-ingest as new extraction versions, moved files
-  remap by content hash. **`preset`** (0006, plan 85 D, ADR-213;
+  remap by content hash. **`preset`** (0006;
   `folder|vault`, CHECK twin) selects the scan meaning: `folder` ingests files
   as materials and gets a library folder node, `vault` ingests `.md` files as
   **notes** with `[[wikilink]]` edges and has no folder node
-- **material_suggestions** (0062, plan 73-D): id, profile_id, course_id?
+- **material_suggestions** (0062): id, profile_id, course_id?
   (nullable — scratchpad-level discovery is allowed; suggestions are pointers,
   not study content), node_id? (composite `(node_id, course_id)` FK discipline
   when set — node deletion re-points to the parent like other placements),
   provider, url (raw, display) + url_norm (`normalize_url` identity key,
-  ADR-171; **unique per (profile_id, url_norm)** — one row per identity,
+  **unique per (profile_id, url_norm)** — one row per identity,
   re-discovery upserts), title, snippet?, kind (DiscoveryKind), meta JSON,
   status (`suggested|saved|dismissed` StrEnum), material_id? (set when
   attached/imported — deleting the material reverts the row to `suggested`),
   timestamps. Course purge deletes the course's rows; scratchpad rows survive.
   **Suggestions do not ride `sa-course/v2`** — they are profile-scoped tracking
   history, not study content.
-- **external_sources** (0063, plan 73-E): id, profile_id, course_id (required —
+- **external_sources** (0063): id, profile_id, course_id (required
   a source feeds one course's suggestion stream), kind
   (`rss|youtube_channel|youtube_playlist|site_search` StrEnum), url
   (String 2048), label?, options JSON (per-kind: `max_items`, `query`+`site`
@@ -155,13 +155,36 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   cascades; **rides `sa-course/v2`** (kind/url/label/options/enabled/interval
   exported, import re-creates rows with fresh cursors).
 - **blobs**: sha256 PK, rel_path, size, mime — content-addressed originals
+- **review_filters** (0023): `profile_id`, `name`, nullable
+  `course_id`/`node_id`, `include_not_due`, `due_window_days`, `limit`,
+  `sort_order` (`due|oldest|mixed`), `kinds` (`StringList`), timestamps.
+- **review_log.source** (0023): `review|cram_preview|external|backfill`;
+  preview rows are logged for time/streak honesty only.
+- **fsrs_settings / course_fsrs_overrides** (0022): retention,
+  max interval, daily new/review caps, leech threshold/action, sibling burying
+  and load balancing; profile row required for changes, course row nullable.
+- **document_anchors** (0021): `profile_id`, nullable
+  `material_id` (cascade), `anchor_kind` (`text_range|pdf_quad|image_region|
+  time_range|transcript_span|card_ref`), `page`, `quote`, `payload`
+  (`AnchorPayload`), `color`, `note_md`, `source` (`user|ai|import`),
+  timestamps and `orphaned_at` (honest state after an extraction edit).
+- **capture_staging** (0020): `profile_id`, `source_kind`
+  (`upload|camera|clipboard|drop|share|clipper`), `status`
+  (`staged|committed|discarded|expired`), filename/mime/blob_sha/byte_size,
+  optional `group_id` (multi-page scan), `client_op_id` (idempotency),
+  `meta` (`CaptureMeta`), `material_id` (set on commit), timestamps and
+  `expires_at` (7-day TTL, status-only expiry).
+- **capture_tokens** (0020): profile-bound device credential for
+  external capture sources — `label`, `token_hash` (unique, never plaintext),
+  `scope` (`capture:stage|capture:clip`), `created_at`, `last_used_at`,
+  `revoked_at`.
 - **materials**: id, profile_id, course_id (**required** — every material is owned
-  by exactly one course; no global library, ADR-036), folder_id?, kind
+  by exactly one course; no global library), folder_id?, kind
   (pdf/image/md/txt/doc), title, blob_sha, filename, mime, pages, language, status
   (pending/processing/ready/failed), content_hash, phash?, source/external fields
   (for future linked folders) — index (course_id, status); upload dedup is
   per (profile, course, content_hash)
-- **materials** — AV metadata (0049, ADR-104): `duration_sec` (float, from
+- **materials** — AV metadata (0049): `duration_sec` (float, from
   mutagen at upload), `bitrate_kbps` (int) — nullable, only set for
   audio/video kinds; feeds the transcript metadata header and the pre-flight
   transcription size warning
@@ -169,7 +192,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   user-written summary of the file, set at text-file creation or via the
   material PATCH (whitespace-only normalizes to NULL); shown on the material
   page's Description tab
-- **materials** — citation metadata (0004, plan 85 B, ADR-212): `citation_title`
+- **materials** — citation metadata (0004): `citation_title`
   (500), `citation_authors` JSON (`AuthorList` — ordered `{name, affiliation?}`
   rows, keep-open), `citation_year`, `citation_doi` (255), `citation_container`
   (300) and `citation_kind` (`CitationKind` CHECK twin, nullable — ordinary
@@ -178,23 +201,23 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   deterministic style (`Author (Year) — Title`)
 - **extractions**: id, material_id, version (append-only; latest = current),
   extractor (pymupdf | ocr | native | manual), model, blocks JSON
-  (+ `blocks_schema_version`, ADR-200), markdown, confidence, tokens/cost,
+  (`blocks_schema_version`), markdown, confidence, tokens/cost,
   reviewed, edited_by_user
 - **chunks**: id, extraction_id, ordinal, text, token_count
-- **material_images** (0048, ADR-103): id, material_id (FK, cascade), position
+- **material_images** (0048): id, material_id (FK, cascade), position
   (document order), blob_sha (FK→blobs, content-addressed), mime, ocr_version,
   ocr_markdown, ocr_job_id, created_at — embedded images extracted from
-  converted office/web materials (plan 47); referenced from the extraction
+  converted office/web materials; referenced from the extraction
   markdown via `sa-image://{id}`, transcribed asynchronously by the
-  `image_ocr` job (plan-46 async pattern), OCR text joins FTS/AI context like
+  `image_ocr` job (async pattern), OCR text joins FTS/AI context like
   drawing OCR
-- **material_drawings** (0032, ADR-064): id, material_id (FK, cascade), strokes
-  JSON (+ `strokes_schema_version`, ADR-200; replayable vector strokes — the
+- **material_drawings** (0032): id, material_id (FK, cascade), strokes
+  JSON (`strokes_schema_version`; replayable vector strokes — the
   source of truth), png_sha (FK→blobs, content-addressed PNG render),
   **view_x/view_y/view_width/view_height** (0046/0074 — the exported region as
   typed columns, mirrors `note_drawings`), ocr_version, ocr_blocks JSON
   (+ `ocr_blocks_schema_version`), ocr_markdown,
-  ocr_job_id (0047, ADR-102, mirrors `note_drawings.ocr_job_id`),
+  ocr_job_id (0047, mirrors `note_drawings.ocr_job_id`),
   created_at — mirrors `note_drawings`; drawings are referenced from the
   extraction markdown via `![drawing](sa-drawing://{id})`, and their OCR joins the
   material FTS + AI chunk context
@@ -222,7 +245,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   material_id, extraction_id?, rationale, auto_assigned, confidence, created_at —
   unique (node_id, material_id); unlink ≠ delete. Course-level assignment =
   the root node
-- **material_folder_links** (0030, ADR-058): id, course_id, node_id (composite FK
+- **material_folder_links** (0030): id, course_id, node_id (composite FK
   like material_links), folder_id → material_folders, rationale, auto_assigned,
   confidence, created_at — unique (node_id, folder_id). A node's effective
   materials = direct links ∪ **members of assigned folders, resolved at read
@@ -238,7 +261,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   node+concept unique, weight? — coverage at any depth
 
 ### Quiz
-- **activities**: id, profile_id, course_id (required, ADR-040), node_id? (placement; root ⇔ course
+- **activities**: id, profile_id, course_id (required), node_id? (placement; root ⇔ course
   level; NULL ⇔ unbound), type (quiz), title, config, generated_from, created_at
 - **questions**: id, activity_id, parent_id?, type (single/multi/truefalse/text/
   numeric/equation), stem blocks, options blocks, answer JSON (per type), explanation
@@ -257,8 +280,8 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **mistakes**: id, profile_id, question_id, error_tags, created_at, resolved_at?
 
 ### Exercises & tutor
-- **exercises**: id, profile_id, course_id (required, ADR-040), node_id? (placement), title, **kind**
-  (default `multi_step`; `card_basic`/`card_reverse`/`card_cloze` = flashcards, ADR-045 — one
+- **exercises**: id, profile_id, course_id (required), node_id? (placement), title, **kind**
+  (default `multi_step`; `card_basic`/`card_reverse`/`card_cloze` = flashcards, one
   exercise per card, `deck_ref?` groups a deck), context
   blocks, difficulty, created_from (`manual` | `generator: exgen` | `source:
   similar, from_exercise_id` | `source: drill, pattern` | cards: `{source, source_ref}`)
@@ -272,57 +295,57 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   independence_score, started/finished
 - **step_attempts**: id, session_id, step_idx, response, correct, hint_level_used,
   error_class (misread/procedural/conceptual), feedback, **state JSON** (per-widget
-  state document keyed by widget id, plan 34D)
+  state document keyed by widget id)
 
-### Error patterns (drills, ADR-063)
+### Error patterns (drills)
 - **error_patterns**: id, **key** (unique stable slug), course_type_id? (FK→course_types,
   null = global), name, description, example?, detection? (optional deterministic
   detector spec, e.g. `{type: negated}` for sign_slip, `{type: factor, factors}`),
   is_system (seeded vs AI/user-discovered), is_active, order_idx, created_at.
-  Code-seeded idempotently via `seed_error_patterns` (ADR-020 pattern; G10 calculus
+  Code-seeded idempotently via `seed_error_patterns` (the shared seeding pattern; G10 calculus
   taxonomy under `math`). Drill resolution = active patterns where `course_type_id`
   matches the course's type or is null; counts are course-scoped via
   `Mistake→Question→Activity.course_id`. `exercises.created_from` provenance is by
   pattern **key** (string), not id — no FK back.
 
 ### Notes, handwriting, flashcards
-- **notes**: id, profile_id, course_id (required, ADR-040), **node_id?** (placement — any depth; root
+- **notes**: id, profile_id, course_id (required), **node_id?** (placement — any depth; root
   ⇔ course level), owner_type (standalone/material/exercise_session/chat_message)
   + owner_id? (**attachment** to non-node things only), title, body JSON blocks
-  (+ `body_schema_version`, ADR-200; text blocks +
-  `{"type":"drawing","drawing_id"}` inline blocks, plan 22 E — serialized as
+  (`body_schema_version`; text blocks +
+  `{"type":"drawing","drawing_id"}` inline blocks, serialized as
   `![drawing](sa-drawing://N)` markdown; unknown ids rejected 422; every write
   is validated by `app/domain/documents.py`), search_text (title + body +
   drawings' OCR markdown — powers note search incl. handwriting), tags JSON,
-  pinned, timestamps; **vault provenance** (0006, plan 85 D, ADR-213):
+  pinned, timestamps; **vault provenance** (0006):
   `source_id?` → `material_sources` (`SET NULL` — unlinking keeps the note),
   `external_path`, `file_mtime`, `file_size`, `content_hash` mirror the
   linked-folder scanner so rescans version an edited `.md` file
-- **note_links** (0006, plan 85 D, ADR-213): id, profile_id, course_id,
+- **note_links** (0006): id, profile_id, course_id,
   `from_note_id` → notes (CASCADE), `to_note_id?` → notes (CASCADE, NULL for a
   broken wikilink), `target` (the link text), created_at; unique
   `(from_note_id, target)`, indexed by target for backlinks. Populated by the
   vault scanner from `[[wikilinks]]`; never written by the editor.
 - **note_drawings**: id, note_id, strokes JSON (+ `strokes_schema_version`,
-  ADR-200; replayable vector strokes — the source of truth), png_sha → blobs
+  replayable vector strokes — the source of truth), png_sha → blobs
   (content-addressed render), **view_x/view_y/view_width/view_height** (0046,
-  ADR-098; typed columns since 0074 — the exported region in stroke
+  typed columns since 0074 — the exported region in stroke
   coordinates, 1 PNG px = 1 logical px; lets re-editing restore 100% scale),
   ocr_version, ocr_blocks JSON (+ `ocr_blocks_schema_version`)/ocr_markdown
-  (notes_ocr result, re-runnable), ocr_job_id (0047, ADR-102 — the in-flight
+  (notes_ocr result, re-runnable), ocr_job_id (0047, the in-flight
   background `drawing_ocr` job, or null; serialized only while that job is
   queued/running)
 - **note_versions**: id, note_id (FK CASCADE), profile_id, title, tags, body
   JSON (+ `body_schema_version`), cause (autosave-coalesced | manual |
   restore), created_at — pre-write
-  snapshots taken coalesced (≥10 min apart or `force_version`; plan 22 B),
+  snapshots taken coalesced (≥10 min apart or `force_version`),
   capped 50/note; restore writes the old body and force-snapshots (undoable)
 - **deleted_items**: id, profile_id, entity_type (note | quiz | exercise |
   chat), title, payload JSON (full subtree snapshot — children, drawings w/
   embedded PNG base64, review history), deleted_at, purge_after (7-day TTL,
-  purged at boot + on listing; plan 22 D). Restore re-inserts with original ids
+  purged at boot + on listing). Restore re-inserts with original ids
   (collisions re-inserted with fresh ids + FK remap); no soft-delete columns
-- **flashcards**: *folded into exercises as `card_*` kinds (ADR-045, migration 0026
+- **flashcards**: *folded into exercises as `card_*` kinds (migration 0026
   dropped the table — front/back live on the step, FSRS/review rows re-pointed to
   exercises.id; the `/flashcards` REST surface is unchanged)*
 - **fsrs_states**: id, card_id (unique → exercises.id for card kinds), state
@@ -362,7 +385,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   **use_embeddings?** (0039 — per-chat query-embedding override; null = follow
   the profile preference), **active_root_id?** (0044 — which root-level message
   starts the visible branch path), **quizme**, created_at. The one pending
-  quiz card lives in `chat_quiz_pendings` (0074, ADR-200), not in a JSON column.
+  quiz card lives in `chat_quiz_pendings` (0074), not in a JSON column.
 - **chat_quiz_pendings**: session_id PK (FK chat_sessions ON DELETE CASCADE),
   question, choices JSON (list[str]), expected_index?, expected_latex?,
   expected_text?, accept JSON (list[str]), awaiting_answer, verdict
@@ -380,11 +403,11 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   created_at, executed_at
 - **chat_proposal_anchors**: proposal_id + position PK (FK CASCADE), op (replace
   | append | prepend), find_text?, text — ordered anchored text edits
-  (0074, ADR-200); the API recomposes them into `payload.text_edits`
+  (0074); the API recomposes them into `payload.text_edits`
 - **chat_messages**: id, session_id, role, blocks JSON (+
-  `blocks_schema_version`, ADR-200), citations JSON
+  `blocks_schema_version`), citations JSON
   ([{index, chunk_id, material_id, title, quote}]), grounded bool?,
-  **state JSON** (per-widget state document keyed by widget id, plan 34D),
+  **state JSON** (per-widget state document keyed by widget id),
   **tool_calls JSON** ([{name, argument, phase, result?, title?}] — the tools the
   tutor invoked that turn, shown as collapsible cards; READ/STATE results are
   never stored, only a `read N chars` summary for READ), **warnings JSON?** (0040 —
@@ -395,7 +418,11 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **ai_interactions**: id, context_type (chat/tutor/quiz_help/exgen/flashcards/
   note_action/**gateway**/…), context_id, direction, **task** (set on gateway
   ledger rows), model, input/output tokens, **cached_input_tokens?** (0037 —
-  provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms,
+  provider cache-read tokens), **cost_micros?** (nullable integer,
+  recorded at call time; the old float `cost_usd` was migrated once to
+  `legacy`/`pre-contract`), **usage_source/estimate_method/price_source/
+  price_version** (provenance), **model_external_id/provider_key**,
+  latency_ms,
   **metadata JSON** + **metadata_schema_version** (0015 — caller-supplied
   `space_id`/`kind`/`view`/`chunk_index` embedding tags only, never text) —
   every model call lands here; `context_type="gateway"` rows are the cost ledger
@@ -407,6 +434,13 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   (ids/counts/scores/reasons only), source_ref JSON?, recipients JSON (admin
   user ids), dedup_key? (partial unique), dedup_expires_at?, created_at —
   deduped, recoverable alert events; the bell reads active keys, history stays
+- **activation_events**: id, profile_id (FK CASCADE), event (closed
+  `ActivationEvent` vocabulary), at, props JSON (closed `ActivationStep` /
+  `ActivationSurface` members, `schema_version: 1` and a bounded numeric
+  `value`; no content,
+  query text, file names or identifiers) — first-party milestone counters,
+  profile-scoped, export/clear; the API rejects unknown/extra props and
+  out-of-vocabulary values (no migration; validation only)
 - **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
   (queued/running/done/failed/cancelled), progress, stage, progress_detail
   (bounded live-indexing counters; NULL outside an active vector run and
@@ -427,13 +461,13 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   on SQLite / pgvector + HNSW on PostgreSQL, created at runtime with the vector
   extension; **vec_meta** stores dim + model; **chunk_vec_ids** keeps the
   rowid→chunk UUID reverse map. A model/dimension change is **not** applied in
-  place (0012, plan 50 P3a): `storage/vectors.ensure_table` raises
+  place (0012): `storage/vectors.ensure_table` raises
   `VectorSpaceChangeRequired` and the old table stays readable until an
-  explicit new-space/cutover handoff runs. Since 0013 (plan 51 Q3c2a) the
+  explicit new-space/cutover handoff runs. Since 0013 the
   `content` space is dual-written to its provisioned `vec_dfbcce9b` backend
   and `chunk_vecs` remains the compatibility fallback.
-- **vector_spaces / vector_documents / vector_records** (0012/0013/0014,
-  plan 50 P3a + plan 51 Q3c2b1) — the portable metadata mapping. The legacy
+- **vector_spaces / vector_documents / vector_records** (0012/0013/0014)
+  — the portable metadata mapping. The legacy
   `content` space keeps the synthetic id `v1-chunk-vecs`; 0013 updates its
   `index_table` to `vec_dfbcce9b`, and Q3c2b1 adds real `building`/`active`/
   `retired` spaces beside it. A document is a material (`kind='material'`,
@@ -451,7 +485,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   it. 0017 adds the nullable tokenizer/chunk identity and token-offset columns;
   0018 widens the record uniqueness to `(space, chunk, window)` so a v2 space
   can store several token windows per source chunk while legacy v1 rows keep
-  exactly one. Plan 52 T5b2 writes the pair, the token offsets and the v2
+  exactly one. The token-schema step writes the pair, the token offsets and the v2
   `space_key` for a token-aware space; v1 rows stay NULL and character
   chunking is unchanged.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
@@ -466,7 +500,86 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
-- **0019_job_progress_detail (plan 52 T5c)**: adds the nullable
+- **0032_lecture_transcribe_job**: widens `jobs.type` with
+  `lecture_transcribe` and adds `lecture_sessions.audio_purged_at`. The job
+  transcribes a finalized lecture once, persists timestamped `media_segments`
+  and a derived extraction, then indexes it; if no STT model is assigned it
+  leaves the audio ready with an honest error. Text-only sessions are purged
+  lazily when due (7-day TTL) and only when a transcript exists and deletion
+  does not break another reference. Downgrade restores the CHECK and drops
+  the column.
+- **0031_lecture_sessions**: adds `lecture_sessions` (profile/course
+  scope, consent, retention, status, final material) and ordered
+  `lecture_chunks` (seq, sha256, size). Chunks are ordered byte ranges of one
+  logical recording; finalize concatenates them in order, creates a normal
+  audio material and queues ingest/transcription. Downgrade drops both tables.
+- **0030_media_segments (first cut)**: adds `media_segments`
+  (profile-scoped ordered transcript windows with start/end ms, text, speaker,
+  confidence, source). The first cut seeds one full-duration segment from the
+  existing extraction when no timestamped transcript exists; the player/seek
+  contract is shared for later incremental STT. Downgrade drops the table.
+- **0029_artifacts (first cut)**: adds `artifacts`, the typed
+  registry for rendered outputs (`audio_brief` first), with status, spec
+  schema version, output material, job/model/voice and a one-live lookup index;
+  widens `jobs.type` with `artifact_render`. The audio renderer uses the
+  existing TTS gateway and falls back to a browser-voice script material when
+  no model is assigned. Downgrade drops the table and restores the job CHECK.
+- **0028_studio_artifacts (first cut)**: adds `studio_artifacts`,
+  the typed slide-deck/handout spec with profile/course scope, source material
+  and generated material links (both `ON DELETE SET NULL`). The generated
+  markdown is a normal material in the library; the spec is the print contract.
+  Downgrade drops the table.
+- **0027_solve_entries**: adds `solve_entries`, the
+  profile-scoped Problem Desk history. A row stores the normalized input,
+  closed input kind/intent, the typed `SolveResult` document (answer, verified
+  steps, assumptions, message) and an optional `note_id` with
+  `ON DELETE SET NULL`. It is course-less; notes saved from a solve live in the
+  hidden scratchpad and survive entry deletion. Downgrade drops the table.
+- **0026_exam_papers**: adds `exam_papers`, one row per assembled
+  paper. A paper points at an `activities` row (`type=exam`) whose copied
+  `questions` are the immutable snapshot; `document` stores the typed sections,
+  marks and question ids, and `grade_bands` stores the user's scale. Source
+  questions are copied at assembly time, so later bank edits never change a
+  paper already sat. Downgrade drops the table; the paper activity and its
+  questions are removed by their own cascade when the paper is deleted.
+- **0025_diagram_label_kind**: widens `exercises.kind` with
+  `diagram_label`. The payload lives in `exercise_steps.expected`
+  (`image_sha` + labelled hotspots); grading is deterministic label→hotspot
+  matching, so no table is added. Downgrade restores the previous CHECK.
+- **0024_plan_generated**: widens `plan_items.origin` with
+  `generated`. The adaptive weekly plan writes generated rows and replaces
+  that block on the next commit; manual/draft/calendar rows are untouched.
+  Downgrade restores the previous three-value CHECK.
+- **0023_review_filters**: adds `review_filters` (named
+  profile-scoped presets: course/node, ahead window, limit, order, kinds) and
+  `review_log.source` (`review|cram_preview|external|backfill`). A cram
+  preview writes a review log only — FSRS state and Elo are untouched; real
+  reviews stay `review`. Downgrade drops the table and the column.
+- **0022_fsrs_settings**: adds `fsrs_settings` (one row per
+  profile, created on first save) and `course_fsrs_overrides` (nullable
+  columns inherit the profile). The scheduler resolves course → profile →
+  defaults; no existing row means the shipped FSRS-4.5 defaults, so upgrades
+  do not change anyone's schedule until they opt in. Downgrade drops both.
+- **0021_document_anchors**: adds `document_anchors`, the one
+  addressable-region model (`text_range` now; `pdf_quad`, `image_region`,
+  `time_range`, `transcript_span`, `card_ref` reserved for their consumers).
+  A text highlight stores the extraction version, normalized quote, offsets
+  and occurrence; `reanchor_material` re-locates the quote after an extraction
+  edit or re-ingest and rewrites the offsets, or sets `orphaned_at` when the quote is gone.
+  `payload` is a boundary-validated `AnchorPayload` (kind decides required
+  keys); `profile_id` is required, `material_id` cascades. Downgrade drops the
+  table.
+- **0020_capture_staging**: adds `capture_staging` and
+  `capture_tokens`. A staged capture is a row in front of the ordinary
+  upload path: the bytes live in the content-addressed blob store, `commit`
+  delegates to `MaterialsService.upload` and only then marks the row
+  committed. `expires_at` is a status transition (`staged → expired`), never
+  a blob delete, so immortal store and trash restore hold.
+  `client_op_id` is a profile-scoped partial unique key for the offline
+  journal's idempotent replay. `capture_tokens` stores only a SHA-256 hash,
+  a closed `capture:stage|capture:clip` scope and revoke timestamps — the
+  plaintext exists once at issue. Downgrade drops both tables.
+- **0019_job_progress_detail**: adds the nullable
   `jobs.progress_detail` JSON document (`JSON` on SQLite and PostgreSQL).
   Vector handlers write bounded counts only (phase, processed/total
   documents, cumulative/estimated chunks, embedded/skipped/failed, local
@@ -474,7 +587,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   UPDATE as `progress`/`stage`; no ids or text. The column stays NULL for
   every other job family and is pruned when the final `result` commits.
   Downgrade drops the column (live telemetry, never audit data).
-- **0018_vector_record_token_windows (plan 52 T5b2)**: widens the two
+- **0018_vector_record_token_windows**: widens the two
   `vector_records` unique keys to include `chunk_id`/`chunk_index` —
   `(document_id, view, chunk_id, chunk_index)` and
   `(space_id, chunk_id, chunk_index)`. A v2 space stores one record per token
@@ -482,7 +595,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   per chunk (`chunk_index=0`) and need no rewrite. Downgrade restores the
   narrower keys and is only safe before a v2 space writes more than one
   window per chunk.
-- **0017_vector_token_schema (plan 52 T5b1)**: adds the nullable tokenizer
+- **0017_vector_token_schema**: adds the nullable tokenizer
   (`kind`/`identifier`/`revision`/`artifact_sha256`/`exact`/`max_input_tokens`)
   and chunk (`max_tokens`/`overlap_tokens`/`max_chars`) scalars to
   `vector_spaces`, and nullable `token_count`/`token_start`/`token_end` to
@@ -490,27 +603,27 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   all-or-none, kind/exact/provenance, chunk bounds,
   `chunker_version='2'` when a tokenizer is present, and ordered/consistent
   token offsets. Downgrade drops these columns/checks but keeps `space_key`.
-  Plan 52 T5b2 now writes them for a token-aware space; legacy rows stay NULL.
-- **0016_vector_space_stored_key (plan 52 T5b1)**: adds non-null
+   now writes them for a token-aware space; legacy rows stay NULL.
+- **0016_vector_space_stored_key**: adds non-null
   `vector_spaces.space_key` (`String(64)`) and stamps every existing row once
   with the frozen v1 eight-field pre-image before enforcing NOT NULL. The
   stored value is the remap/cutover identity; consumers never recompute it.
   Downgrade drops the column.
-- **0015_retrieval_alerts (plan 51 Q3c3a)**: adds
+- **0015_retrieval_alerts**: adds
   `ai_interactions.metadata` (JSON, non-null, `{}`) and
   `metadata_schema_version` (smallint, non-null, `1`) — caller-supplied
   `space_id`/`kind`/`view`/`chunk_index` embedding tags, never text — plus
   the boot-seeded `notification_kinds` registry and deduped `notifications`
   event rows with admin recipient ids and a partial unique dedup key.
   Downgrade drops both notification tables and the two ledger columns.
-- **0014_vector_record_chunk_id (plan 51 Q3c2b1)**: adds
+- **0014_vector_record_chunk_id**: adds
   `vector_records.chunk_id` (nullable `String(80)`), its index and the
   unique `(space_id, chunk_id)` constraint, then backfills `chunk_id = id`
   for the legacy `v1-chunk-vecs` space. A building space coexists with
   the active one, so the global record primary key can no longer be the
   chunk id; `chunk_id` is the search hydration handle. Downgrade drops the
   column/constraint/index; record rows stay.
-- **0012_vector_spaces (plan 50 P3a, ADR-0051 companion)**: adds
+- **0012_vector_spaces (companion)**: adds
   `vector_spaces` (one `active` space per name; `index_table` allows the
   legacy `chunk_vecs`, NULL for linear, or a future `vec_<8hex>`),
   `vector_documents` (material source handle + `profile_id`; unique per
@@ -522,7 +635,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   dropped or rewritten; content hashes left empty by the SQL backfill are
   filled idempotently by `StudyVectorStore.backfill_metadata`. No coverage
   snapshot is written. Downgrade drops only the three metadata tables.
-- **0011_retrieval_run_actions (plan 51 Q3b)**: `jobs` gains
+- **0011_retrieval_run_actions**: `jobs` gains
   `idempotency_key` (nullable, 8–120 chars), `lock_key`, `heartbeat_at`
   and `cancel_requested` (boolean, default false). Two partial unique
   indexes cover only `status IN ('queued','running')`:
@@ -532,7 +645,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   terminal rows inside the contract's 24 h key window. Downgrade drops
   both indexes and the four columns (batch mode on SQLite), leaving run
   history intact.
-- **0010_retrieval_ops (plan 51 Q3a, ADR-0051 companion)**: the `jobs.type`
+- **0010_retrieval_ops (companion)**: the `jobs.type`
   CHECK widens with the three family `VECTOR_*` names and `jobs.result`
   (JSON, nullable) carries the bounded run-result document. New
   `retrieval_query_rollups` (dimensions `space_id/kind/view/degraded_reason/
@@ -544,13 +657,13 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   it. Downgrade drops the tables and the
   result column and restores the old type CHECK; it fails loudly if a
   `VECTOR_*` job row still exists rather than rewriting run history.
-- **0008_quiz_question_kinds (plan 87 B, ADR-217)**: the `questions.type`
+- **0008_quiz_question_kinds**: the `questions.type`
   CHECK twin widens with the exercise-engine kinds (`matching`, `ordering`,
   `cloze`, `essay`); answer payloads reuse the existing JSON column (no new
   typed columns). SQLite rebuilds the table through batch mode; downgrade
   restores the 11-member CHECK and fails loudly if a new-kind row still
   exists.
-- **0007_source_providers (plan 86 A/B/E, ADR-214/215/216)**:
+- **0007_source_providers**:
   `external_sources` gains the open, registry-validated `provider` string
   (default `rss`), the `auth_kind` CHECK twin (`token|oauth2|none`), the
   nullable keyring-slot pointer `account_ref`, and `consecutive_failures`
@@ -563,35 +676,35 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   SQLite rebuilds both altered tables through batch mode; downgrade drops
   the columns/table and restores the four-member `kind` CHECK (fails loudly
   if adapter-kind rows still exist).
-- **0006_vault_notes (plan 85 D, ADR-213)**: `material_sources` gains
+- **0006_vault_notes**: `material_sources` gains
   `preset` (`folder|vault`, CHECK twin, default `folder`); `notes` gains the
   linked-file provenance (`source_id` → `material_sources` `SET NULL`,
   `external_path`, `file_mtime`, `file_size`, `content_hash`); new
   `note_links` table (outbound wikilink edges with a nullable resolved
   target). SQLite rebuilds `material_sources`/`notes` through batch mode;
   downgrade drops the table, the columns and the CHECK.
-- **0005_plan_item_external_uid (plan 85 C, ADR-213)**: `plan_items` gains the
+- **0005_plan_item_external_uid**: `plan_items` gains the
   nullable `external_uid` column and the partial unique index
   `uq_plan_items_course_external_uid` (`WHERE external_uid IS NOT NULL`).
   Downgrade drops the index and the column.
-- **0004_citation_metadata (plan 85 B, ADR-212)**: `materials` gains the
+- **0004_citation_metadata**: `materials` gains the
   nullable citation columns (`citation_title`, `citation_authors` JSON,
   `citation_year`, `citation_doi`, `citation_container`, `citation_kind`) and
   the `CitationKind` CHECK twin (`citation_kind IS NULL OR …`). SQLite rebuilds
   the table through `batch_alter_table(recreate="always")`; downgrade drops the
   CHECK and the six columns, restoring the previous shape.
-- **0003_discovery_kinds (plan 85 A, ADR-211)**: `material_suggestions.kind`
+- **0003_discovery_kinds**: `material_suggestions.kind`
   widens to the scholarly `DiscoveryKind` members (`paper`, `dataset`,
   `reference`). The CHECK swaps through a batch rebuild; downgrade restores the
   four-member vocabulary and fails loudly if a scholarly-kind row still exists.
-- **0002_vocab_sweep (plan 82 C, ADR-204)**: `questions.type` and
+- **0002_vocab_sweep**: `questions.type` and
   `exercises.kind` gain their CHECK twins now that the vocabularies are
   StrEnums (`QuestionType`, `ExerciseKind`; `exercises.kind` also carries the
   `FlashcardKind` card kinds — cards are exercise rows). SQLite cannot add a
   CHECK in place, so both land through `batch_alter_table(recreate="always")`;
   a row holding an unknown value fails the copy loudly. Downgrade drops both
   and recreates the previous shape.
-- **0001_baseline (plan 81 F, ADR-196)**: the chain squashed. The former
+- **0001_baseline**: the chain squashed. The former
   `0001`–`0075` history is deleted and `0001_baseline` is regenerated from
   the post-A–E models (65 tables, all named constraints/CHECK twins, UUID
   identity, payload law, scope/lifecycle law). `alembic upgrade head` on an
@@ -620,7 +733,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   columns/aliases/deprecation windows) is recorded in
   [migrations.md](migrations.md).
 
-- **0075 (plan 81 E, ADR-201)**: scope & lifecycle law. `material_groups` and
+- **0075**: scope & lifecycle law. `material_groups` and
   `materials.group_id` are **deleted** — the table shipped as a P0 plan row
   (01 A4) with no CRUD/UI; grouping is served by node placement
   (`material_links`) + material folders, and a future group feature arrives
@@ -642,7 +755,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   table's scope path or non-user class; cross-profile reads are proven closed
   by `tests/test_profile_isolation.py`.
 
-- **0074 (plan 81 D, ADR-200)**: payload contract law. Known-shape state
+- **0074**: payload contract law. Known-shape state
   leaves JSON: `chat_proposals` gains `target_kind`/`target_name`/
   `target_node_id`/`target_node_path`/`original_md` columns and the ordered
   `chat_proposal_anchors` table for anchored edits (the per-action instruction
@@ -665,7 +778,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   (the data moves only run on a database that still carries the old columns);
   0068's text rewrite likewise skips columns the current model no longer has.
 
-- **0073 (plan 81 C, ADR-198)**: UUID identity for every user-data entity.
+- **0073**: UUID identity for every user-data entity.
   Every surrogate integer primary key becomes `Uuid(as_uuid=False)` — the
   convention `users`/`profiles` already used (CHAR(32) hex on SQLite, native
   `uuid` on PostgreSQL) — and every FK that pointed at one follows, including
@@ -678,7 +791,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   **The revision is destructive**: SQLite cannot convert an `INTEGER` primary
   key into the UUID storage shape in place, so the whole identity domain is
   dropped and rebuilt child-first from the model metadata (the 0066 pattern) —
-  no rows are carried over (dev databases are rebuilt, ADR-196). `users`,
+  no rows are carried over (dev databases are rebuilt). `users`,
   `profiles`, `auth_sessions`, `audit_events` and `blobs` survive. The
   PostgreSQL FTS twins are rebuilt with `material_id TEXT`; FTS rows and the
   vec tables are cleared (reindex after upgrading). `downgrade()` restores the
@@ -688,7 +801,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   `created_at, id` and the suggestion cursor is `"<created_at>|<id>"`
   (`tests/test_uuid_identity_migration.py`, `tests/test_course_bundle.py`).
 
-- **0072 (plan 81 B, ADR-197)**: DB-enforced closed sets. Nineteen
+- **0072**: DB-enforced closed sets. Nineteen
   StrEnum-backed columns (`courses.origin`, `materials.kind/status`,
   `jobs.type/status`, `chat_proposals.status`, `plan_items.kind/origin`,
   `study_sessions.kind/source`, `questions.flag`, `item_stats.flag`,
@@ -708,7 +821,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   preservation across the batch rebuilds
   (`tests/test_vocab_checks_migration.py`).
 
-- **0069 (plan 26 Phase 3, ADR-0032)**: decision models — `models` gains
+- **0069 (Phase 3)**: decision models — `models` gains
   nullable `decision_transport` (VARCHAR(20), the transport seam,
   `systemone` today), and the four `decision:*` slot rows are seeded into
   `default_task_assignments` (insert-if-absent; boot seeding is
@@ -733,7 +846,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   shared). SQLite files: `<data_dir>/study.sqlite3` +
   `checkpoints.sqlite3` (was `app.db`/`checkpoints.db`).
 
-- **0066 (family plan 16 S2b, ADR-0013)**: profiles identity rework —
+- **0066**: profiles identity rework
   the whole profile domain is rebuilt from the model metadata:
   `profiles` gains `user_id` (NOT NULL, FK users, CASCADE), `is_default`,
   `updated_at`, `last_used_at`, UUID ids; every `profile_id` column
@@ -746,14 +859,14 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   the head + schema shape (superseded by `0001_baseline` — those shape
   assertions now live in `tests/test_baseline_migration.py`).
 
-- **0065 (family plan 16 S2, ADR-0013)**: identity core — `users`,
+- **0065**: identity core — `users`,
   `auth_sessions`, `instance_settings`, `audit_events` (family-normative
   shapes; uuid ids — native `uuid` on PostgreSQL, CHAR(32) hex on
   SQLite). Fresh-schema only: recreate pre-0065 dev databases
   (greenfield posture). The `profiles` rework (UUID ids +
   `user_id NOT NULL`) landed in 0066 (see above).
 
-- **0064 (plan 79)**: BYOK setup + `stt`/`tts` capability split — adds
+- **0064**: BYOK setup + `stt`/`tts` capability split — adds
   nullable `providers.preset_key` (String 40; §15 stamp, NULL = manual
   row); rewrites `models.caps` JSON lists (`audio` expands to
   `['stt','tts']` per the frozen §15 contract, `speech` → `tts`);
@@ -764,17 +877,17 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   keep the extra `speech` entry) and drops `preset_key`. Tests:
   `tests/test_byok_migration.py` (legacy shape → upgrade → downgrade
   round-trip).
-- **0063 (plan 73-E)**: `external_sources` table — profile FK indexed, course
+- **0063**: `external_sources` table — profile FK indexed, course
   FK indexed (required), kind/url/label/options/enabled/scan_interval_sec/
   last_scan_error/last_scanned_at/cursor JSON/created_at. No data migration
   (new table). Downgrade drops the table.
-- **0062 (plan 73-D)**: `material_suggestions` table — profile FK indexed,
+- **0062**: `material_suggestions` table — profile FK indexed,
   nullable course FK indexed, nullable `node_id` with the composite
   `(node_id, course_id)` FK to the node tree, provider/url/url_norm/title/
   snippet/kind/meta/status/material_id/created_at/updated_at, plus unique
   `uq_material_suggestions_profile_url` on `(profile_id, url_norm)`. No data
   migration (new table). Downgrade drops the table.
-- **0061 (plan 73-A, ADR-164/171)**: `materials.source_url` (nullable string
+- **0061**: `materials.source_url` (nullable string
   2048, the raw URL preserved for display) and `materials.source_url_norm`
   (nullable string 2048, the `normalize_url` identity key) plus two partial
   indexes: `ix_materials_source_url` (`WHERE source_url IS NOT NULL`) and
@@ -782,11 +895,11 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   `(course_id, source_url_norm) WHERE kind = 'link' AND source_url_norm IS
   NOT NULL` — database-enforced per-course link dedupe. Downgrade drops both
   indexes and columns.
-- **0060 (plan 49-C, ADR-108)**: `activities.time_limit_sec` (nullable int) and
+- **0060**: `activities.time_limit_sec` (nullable int) and
   `attempts.deadline_at` (nullable timestamp, server-computed at attempt start
   from the quiz's limit) — server-enforced quiz timing. Downgrade drops both
   columns.
-- **0059 (plan 49-A, ADR-106)**: `study_sessions` table (profile FK indexed,
+- **0059**: `study_sessions` table (profile FK indexed,
   nullable course FK, nullable `node_id`, `kind` focus|quiz|exercise|review|
   read|note, `source` timer|auto|manual, nullable `entity_ref` for resume
   matching, `started_at`/`ended_at`/`last_beat`, `duration_sec`; index on
@@ -794,7 +907,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   analytics. Also `daily_rollups.study_seconds` (server_default 0) and
   `study_goals` gains `unit` (answers|minutes, default answers) and
   `minutes_per_day` (default 30). Downgrade drops the columns and the table.
-- **0058 (plan 75-E, ADR-180)**: `material_sources.mirror_subdirs` boolean
+- **0058**: `material_sources.mirror_subdirs` boolean
   (server_default false) — opt-in linked-source subdirectory mirroring; when
   on, scan mirrors the source's subdirectory tree into the linked folder's
   children (title-match reuse, plain-library child folders with `source_id`
@@ -804,21 +917,21 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   change to `folder_member_ids` needed (review finding: the expected
   source-folder flatness bug does not apply to child folders). Downgrade
   drops the column (mirrored folders and assignments remain user data).
-- **0057 (plan 67-D, ADR-149)**: `materials.tags` JSON (list[str], notes-style
+- **0057**: `materials.tags` JSON (list[str], notes-style
   normalized via the shared `normalize_tags`) + `materials.starred` boolean
   (server_default false) + partial index `ix_materials_starred` where
   `starred = 1`; both round-trip in `sa-course/v2` bundles; list endpoint
   filters `tag=` / `starred=`.
-- **0056 (plan 53 round 2, Quiz-me daily credit)**: new `quizme_answers` table
+- **0056 (Quiz-me daily credit)**: new `quizme_answers` table
   (id, profile_id FK, session_id FK, correct bool, created_at) — one row per
   graded quiz-me answer so `daily_history` can fold verdicts into the daily
   answer/correct counts beside `Answer` rows (no synthetic Answer row — there
   is no Question to reference). Downgrade drops the table.
-- **0055 (plan 53-C, Quiz-me)**: `chat_sessions.quizme` (bool, default off) +
+- **0055 (Quiz-me)**: `chat_sessions.quizme` (bool, default off) +
   `chat_sessions.quiz_pending` (JSON — the pending quiz: question, choices,
   expected answer material **never exposed to the model**, verdict after
   grading). Downgrade drops both columns.
-- **0054 (plan 53-A, planner)**: new `plan_items` table — per-course planner
+- **0054 (planner)**: new `plan_items` table — per-course planner
   rows (profile_id, course_id, node_id nullable via the placement composite
   FK `(node_id, course_id)` — items follow node merge-delete and
   promote-to-course automatically), `title`, `detail?` (evidence line),
@@ -827,12 +940,12 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   (course_id, due_date) and (profile_id, due_date). Draft items are
   regenerable suggestions; re-generating deletes only future undone drafts.
   Course purge removes items. Downgrade drops the table.
-- **plan_items** — calendar provenance (0005, plan 85 C, ADR-213):
+- **plan_items** — calendar provenance (0005):
   `external_uid` (nullable, ≤200) is the source ICS occurrence UID; a partial
   unique index on `(course_id, external_uid) WHERE external_uid IS NOT NULL`
   makes a re-import update rows instead of duplicating the week, while
   hand-made items (NULL) stay NULL-distinct (family data-model §9)
-- **0053 (plan 52-A, Scratchpad)**: `courses.origin`
+- **0053 (Scratchpad)**: `courses.origin`
   (`manual | genesis | import | scratch`, default `manual`, `CourseOrigin`
   StrEnum) + `courses.hidden` (bool, default false) — the per-profile
   Scratchpad is a hidden `origin=scratch` course (unique per profile via the
@@ -845,21 +958,21 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   per-material description written from the text-file dialog (create) and the
   material page's edit mode (`PATCH /materials/{id}`); whitespace-only
   normalizes to NULL. Downgrade drops the column.
-- **0051 (plan 51, ADR-125)**: item-level Elo — `item_stats.rating` +
+- **0051**: item-level Elo — `item_stats.rating` +
   `item_stats.rating_count` (nullable; seeded lazily from the question's
   difficulty) and the new `concept_skill_ratings` table
   (profile_id/concept/skill unique, `rating`/`rating_count`) for the student's
   per-cell rating — kept separate from `concept_skill_stats` because
   materialize deletes-and-rebuilds that table. Downgrade drops both.
-- **0049 (plan 47, ADR-104)**: `materials.duration_sec` + `materials.bitrate_kbps`
+- **0049**: `materials.duration_sec` + `materials.bitrate_kbps`
   nullable columns — read with mutagen at upload for audio/video materials
   (no ffmpeg, containers pass through to the provider). Downgrade drops both.
-- **0048 (plan 47, ADR-103)**: new `material_images` table — extracted embedded
+- **0048**: new `material_images` table — extracted embedded
   images of converted office/web materials (docx/pptx/epub/html), one row per
   image with a content-addressed blob, document position, and async `image_ocr`
-  state (`ocr_version`/`ocr_markdown`/`ocr_job_id`, plan-46 pattern). Downgrade
+  state (`ocr_version`/`ocr_markdown`/`ocr_job_id`, pattern). Downgrade
   drops the table.
-- **0047 (plan 46, ADR-102)**: `ocr_job_id` nullable Integer column added to
+- **0047**: `ocr_job_id` nullable Integer column added to
   `note_drawings` and `material_drawings` — pointer to the in-flight background
   `drawing_ocr` job (create/update/re-OCR save first and return; the job fills
   the OCR fields and clears the pointer). Downgrade drops both columns.
@@ -867,25 +980,25 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   `material_fts` for typo-tolerant search; backfilled from existing rows on upgrade,
   dropped on downgrade. Synced service-layer together with `material_fts` (no shape
   change to tracked tables).
-- **0044 (plan 40, ADR-093)**: chat branching — `chat_messages.parent_id` +
+- **0044**: chat branching — `chat_messages.parent_id` +
   `active_child_id`, `chat_sessions.active_root_id`; data migration chains each
   session's existing messages by id (identical linear view afterwards).
-- **0031 (plan 28, ADR-063)**: `error_patterns` — course-type-scoped error-pattern
+- **0031**: `error_patterns` — course-type-scoped error-pattern
   taxonomies (new table; rows seeded idempotently from code at startup, G10 calculus
   taxonomy under `math`).
-- **0030 (plan 25 A, ADR-058)**: `material_folder_links` — folder assignment to
+- **0030**: `material_folder_links` — folder assignment to
   nodes (new table, no data migration).
-- **0029 (plan 22 H)**: `courses.exam_date` (nullable Date) — exam planner.
-- **0028 (plan 22 D, ADR-048)**: `deleted_items` — snapshot trash; destructive
+- **0029**: `courses.exam_date` (nullable Date) — exam planner.
+- **0028**: `deleted_items` — snapshot trash; destructive
   deletes of notes/quizzes/exercises/chats snapshot the subtree first (deletes
   return `{deleted_item_id}` 200, no longer 204); course deletion requires
   `confirmed_backup` and creates a fresh backup before purging.
-- **0027 (plan 22 B, ADR-046)**: `note_versions` — coalesced pre-write snapshots
+- **0027**: `note_versions` — coalesced pre-write snapshots
   (PATCH notes may carry `force_version`; history/restore endpoints added).
-- **0020 (ADR-040)**: `course_id` NOT NULL on notes/activities/exercises/
+- **0020**: `course_id` NOT NULL on notes/activities/exercises/
   flashcards; course-less rows moved into the per-profile "Unsorted" course at
   its root node (auto-created if missing). Creation endpoints require a course.
-- **0019 (Phase 9A, ADR-039)**: chapters/sections collapse into `tree_nodes`
+- **0019 (Phase 9A)**: chapters/sections collapse into `tree_nodes`
   (chapters → depth 1–2 preserving nesting; sections → children of their chapter's
   node; every course gains a root). `material_links.owner_type/owner_id` → `node_id`
   + `course_id` under the composite FK; activities/exercises/flashcards
@@ -893,7 +1006,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   'section' → `node_id` placement; `section_concepts` → `node_concepts`;
   chat_sessions gain `node_id`. Old tables/columns dropped — no dual source of
   truth. Downgrade intentionally unsupported (structural rewrite).
-- **0014 (Phase 8A, ADR-036)**: `section_materials` → `material_links` (data
+- **0014 (Phase 8A)**: `section_materials` → `material_links` (data
   preserved, owner_type='section'); `materials.course_id` and
   `material_folders.course_id`/`material_sources.course_id` became required.
   Course-less materials/sources and unassignable folders migrated into an

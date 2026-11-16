@@ -104,7 +104,7 @@ cards; entering one scopes everything to it.
   are warned about **at upload** (most providers cap transcription around
   25 MB) — use a local whisper server or split the file. Re-ingest
   re-transcribes into a new version (handy after switching to a better model).
-- **How a file is extracted — modes (plan 74)**: PDFs offer three extraction
+- **How a file is extracted — modes**: PDFs offer three extraction
   modes, chosen per re-ingest — **Auto** (smart per-page choice: pages with
   healthy text are read directly, while pages that are too thin, garbled
   `(cid:…)` glyph junk, or figure-dominated go through the OCR task),
@@ -133,6 +133,42 @@ cards; entering one scopes everything to it.
 - Re-uploading the same file **to the same course** is detected (content hash) —
   nothing is processed twice. The same file in a second course is a separate
   material (bytes stored once on disk).
+
+## Capture from the camera
+
+The New menu (＋) has **Take photo…** — on a phone this opens the camera, on a
+desktop it opens the file picker with image types. Selected photos are staged
+first: the **Capture inbox** shows each photo with its size and status, and
+nothing enters the library until you press **Add**. Add files one by one or
+**Add all**; **Discard** drops a staged capture. Once added, the material lands
+in the open course (and current topic, in the workspace) through the normal
+upload/OCR path, so dedupe, extraction and search behave exactly like a file
+upload. A staged capture expires after seven days; expiry only removes it from
+the inbox — it never deletes bytes that are already part of a material.
+
+When you stage more than one photo, the inbox shows a **page filmstrip**:
+reorder pages, rotate them in 90° steps, remove one, name the scan and choose
+**Combine into PDF**. The combined PDF is staged as one item and then added
+like any other file.
+
+Without a connection, photos wait in the inbox under **Waiting for connection**
+(saved on this device, or for the session only where the browser has no
+durable storage). They upload automatically when you reconnect — the same
+capture is never staged twice — and you can **Retry**, **Retry all** or
+**Remove** a waiting item before it leaves.
+
+## Highlights
+
+Select text in a material's extraction and choose **Highlight** in the floating
+toolbar. The highlight is saved with the passage and an optional note; the
+**Highlights** button in the reading header lists every mark, lets you jump
+back to it, change its color (yellow, green, blue, pink), add a note, or delete
+it. Highlights are personal study state and are not included in course
+bundles or exports.
+
+If the extraction is edited or re-ingested and the quoted text still exists, the
+highlight moves with it. If the quote is gone, the highlight stays in the list marked
+**source changed** instead of silently disappearing.
 
 ## The material page
 

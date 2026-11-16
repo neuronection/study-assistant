@@ -8,6 +8,9 @@ from sqlalchemy import (
     JSON as JSON,
 )
 from sqlalchemy import (
+    BigInteger as BigInteger,
+)
+from sqlalchemy import (
     Boolean as Boolean,
 )
 from sqlalchemy import (

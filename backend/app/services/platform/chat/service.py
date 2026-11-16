@@ -333,7 +333,10 @@ class ChatService(ToolsMixin, TurnContextMixin):
                 skill_version_id=skill_version_id,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                cost_usd=None,
+                cost_micros=None,
+                usage_source="estimated",
+                estimate_method="heuristic_family_v1",
+                price_source="unknown",
                 latency_ms=latency_ms,
                 metadata_json=accounting.metadata(),
             )

@@ -2,13 +2,17 @@
 # Study Assistant — Postgres bootstrap (runs once via
 # /docker-entrypoint-initdb.d, on first boot of an empty data volume).
 #
-# Creates the family roles from deployment.md / ADR-0022:
-#   neuronection_study_owner — POSTGRES_USER: owns the schema and runs migrations (DDL).
-#   neuronection_study_app  — runtime role: CONNECT + DML only, never DDL.
+# Creates the family roles from deployment.md / ADR-0064:
+#   neuronection_study_owner — POSTGRES_USER: owns the schema and runs
+#                              migrations (DDL); holds SA_DB_OWNER_PASSWORD.
+#   neuronection_study_app  — runtime role: CONNECT + DML only, never DDL;
+#                              holds SA_DB_PASSWORD (distinct from the
+#                              owner's — a leaked app container must not
+#                              gain DDL rights).
 #
-# Both roles share one password (SA_DB_PASSWORD / POSTGRES_PASSWORD) so the
-# env surface stays at the law's SA_DB_NAME / SA_DB_USER / SA_DB_PASSWORD /
-# SA_DATABASE_URL; the split is privilege-based, not credential-based.
+# docker-compose.prod.yml / standalone.yml pass SA_DB_APP_PASSWORD
+# explicitly; dev flavors without it keep the legacy single-secret fallback
+# (dev is not a deployment surface).
 #
 # Optionally creates the companion test database (POSTGRES_TEST_DB) next to
 # the main DB — the dev-db flavor sets it to neuronection_study_test.
@@ -17,11 +21,11 @@ set -e
 DB="${POSTGRES_DB:-neuronection_study}"
 OWNER="${POSTGRES_USER:-neuronection_study_owner}"
 APP_USER="${SA_DB_APP_USER:-neuronection_study_app}"
-APP_PASSWORD="${SA_DB_PASSWORD:-${POSTGRES_PASSWORD:-}}"
+APP_PASSWORD="${SA_DB_APP_PASSWORD:-${SA_DB_PASSWORD:-${POSTGRES_PASSWORD:-}}}"
 TEST_DB="${POSTGRES_TEST_DB:-}"
 
 if [ -z "$APP_PASSWORD" ]; then
-  echo "SA_DB_PASSWORD (or POSTGRES_PASSWORD) must be set — cannot create role '${APP_USER}'." >&2
+  echo "SA_DB_APP_PASSWORD (or SA_DB_PASSWORD / POSTGRES_PASSWORD for dev flavors) must be set — cannot create role '${APP_USER}'." >&2
   exit 1
 fi
 

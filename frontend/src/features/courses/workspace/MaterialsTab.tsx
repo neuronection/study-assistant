@@ -1,6 +1,6 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useNavigate} from '@tanstack/react-router'
-import {BookOpen, ChevronRight, ExternalLink, FolderClosed, Loader2, Plus, Upload, X} from 'lucide-react'
+import {AudioLines, BookOpen, ChevronRight, ExternalLink, FolderClosed, Loader2, Plus, Upload, X, Camera} from 'lucide-react'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Button} from '@/components/ui/button'
@@ -23,8 +23,11 @@ import {useMaterialUpload} from '@/components/materials/materialUpload'
 import {useWindowDropRegistration} from '@/lib/window-drop-store'
 import {useImportUrlStore} from '@/lib/import-url-store'
 import {useCreateMaterialMenu} from '@/components/materials/createMaterialMenu'
+import {CaptureInboxDialog} from '@/features/capture/CaptureInboxDialog'
+import {useCaptureInbox} from '@/features/capture/useCaptureInbox'
 import {NewFolderDialog} from '@/components/materials/NewFolderDialog'
 import {NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput} from '@/features/library/NewTextFileDialog'
+import {LectureRecorderDialog} from '@/features/lectures/LectureRecorderDialog'
 import {MarqueeSurface} from '@/components/ui/Marquee'
 import {fuzzyFilter} from '@/lib/fuzzy'
 import {allocateMaterial, allocateNodeFolder, browseSource, createFolder, createTextMaterial, deallocateMaterial, deallocateNodeFolder, deriveMaterials, ingestSourceFile, getPlacementSuggestions, getUnassignedMaterials, mirrorFolder as mirrorFolderApi, listFolders, listMaterials, type Folder, type Material, type WorkspaceFolder, type WorkspaceMaterial, type PlacementSuggestion, type TextFileEditState, updateTextMaterial} from '@/lib/api'
@@ -152,6 +155,7 @@ export function MaterialsTab({
   const [createError, setCreateError] = useState<string | null>(null)
   const [materialQuery, setMaterialQuery] = useState('')
   const [discoverOpen, setDiscoverOpen] = useState(false)
+  const [lectureOpen, setLectureOpen] = useState(false)
   const [unassignedOpen, setUnassignedOpen] = useState(false)
   const [unassignedTarget, setUnassignedTarget] = useState<string | null>(null)
   const unassigned = useQuery({
@@ -487,9 +491,24 @@ export function MaterialsTab({
 
   useWindowDropRegistration(true, workspace.node.title, () => upload)
 
+  const capture = useCaptureInbox({
+    courseId,
+    folderId: null,
+    nodeId: currentId,
+  })
+
   const createMenu = useCreateMaterialMenu({
     upload,
+    prepend: [
+      {
+        key: 'record-lecture',
+        label: t('lectures.recordAction'),
+        icon: AudioLines,
+        onSelect: () => setLectureOpen(true),
+      },
+    ],
     onNewText: (kind) => setTextDialog(kind),
+    onCaptureFiles: capture.openFiles,
     onNewFolder: () => setFolderDialog(true),
     onNewUrl: () =>
       useImportUrlStore.getState().openImport(undefined, currentId),
@@ -1005,6 +1024,17 @@ export function MaterialsTab({
         setPaneMenu({ x: event.clientX, y: event.clientY })
       }}
     >
+      {capture.queued.length > 0 || capture.items.some((item) => item.status === 'staged') ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={capture.show}
+          title={t('captureInbox.show')}
+        >
+          <Camera className="size-4" aria-hidden />
+          {capture.queued.length + capture.items.filter((item) => item.status === 'staged').length}
+        </Button>
+      ) : null}
       {createMenu.inputs}
       {!browseActive ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -1343,6 +1373,14 @@ export function MaterialsTab({
         />
       ) : null}
 
+      {lectureOpen ? (
+        <LectureRecorderDialog
+          courseId={courseId}
+          nodeId={currentId}
+          onClose={() => setLectureOpen(false)}
+          onCreated={() => void refresh()}
+        />
+      ) : null}
       {textDialog !== null ? (
         <NewTextFileDialog
           defaultKind={textDialog}
@@ -1425,6 +1463,7 @@ export function MaterialsTab({
           onClose={() => setUnassignedTarget(null)}
         />
       ) : null}
+      <CaptureInboxDialog state={capture} courseId={courseId} />
     </MarqueeSurface>
   )
 }

@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, cast
 
@@ -779,7 +780,8 @@ def list_tasks(session: Session = Depends(get_session)) -> list[TaskOut]:
     result: list[TaskOut] = []
     for task_def in TASK_DEFS:
         assignment = assignments.get(task_def.task)
-        monthly_cap = (assignment.params or {}).get("monthly_cap_usd") if assignment else None
+        cap_micros = (assignment.params or {}).get("monthly_cap_micros") if assignment else None
+        monthly_cap = (int(cap_micros) / 1_000_000) if cap_micros is not None else None
         result.append(
             _task_out(
                 task_def,
@@ -870,9 +872,11 @@ def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_se
         raise HTTPException(status_code=404, detail="unknown task")
     params = dict(assignment.params or {})
     if body.monthly_cap_usd is None:
-        params.pop("monthly_cap_usd", None)
+        params.pop("monthly_cap_micros", None)
     else:
-        params["monthly_cap_usd"] = body.monthly_cap_usd
+        params["monthly_cap_micros"] = int(
+            Decimal(str(body.monthly_cap_usd)) * 1_000_000 + Decimal("0.5")
+        )
     assignment.params = cast(TaskParams, params)
     session.commit()
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
@@ -885,7 +889,11 @@ def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_se
         assignment,
         default,
         labels,
-        monthly_cap=cast(float | None, params.get("monthly_cap_usd")),
+        monthly_cap=(
+            int(str(params["monthly_cap_micros"])) / 1_000_000
+            if params.get("monthly_cap_micros") is not None
+            else None
+        ),
     )
 
 

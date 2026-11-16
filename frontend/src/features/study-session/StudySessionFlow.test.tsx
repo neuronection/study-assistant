@@ -49,6 +49,9 @@ function makeCard(id: string, front: string): FlashcardInfo {
 
 const DUE: ReviewDue = {
   total_due: 1,
+  capped: false,
+  preview: false,
+  remaining_today: null,
   groups: [
     {
       course_id: '3',

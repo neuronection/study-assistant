@@ -40,7 +40,7 @@ against one row shape (the [Authoring](authoring-and-configuration.md)
 tables).
 
 **Provider** — a discovery channel resolved per search: the built-ins
-(`web` over the ADR-0035 trio, `youtube` over yt-dlp flat search),
+(`web`, `youtube` over yt-dlp flat search),
 site-filtered presets (`site:<domain>`), and one per enabled
 discovery-contract MCP tool (`mcp.<server>.<tool>`). Providers return
 normalized rows; they are never persisted as materials.
@@ -65,7 +65,7 @@ consent act; the disclosure text is data, not copy.
 **Sealed secret** — a credential that never enters the database or a
 file: provider API keys (`search:<id>` slots) and MCP tokens/env maps
 (`mcp:<id>:token` / `mcp:<id>:env`) live in the OS keyring, sealed
-at-rest by the family cipher (`SA_DATA_KEY`, ADR-0027). Stored rows
+at-rest by the family cipher (`SA_DATA_KEY`). Stored rows
 carry only `has_token`/`key_set` booleans and masked hints.
 
 ## The diagram
@@ -100,13 +100,13 @@ chat.
 ## The vendored-contract discipline
 
 Three artifact families in this subsystem are byte-identical copies of
-dev-repo canonicals, never edited in place (ADR-0031 sync-and-gate):
+dev-repo canonicals, never edited in place (sync-and-gate):
 
 - the **charter set** (`contracts/extension-charter.json`, the manifest
   schema, fixtures, the Python validators in `extensions/`) — synced by
   the family contract sync tooling, drift-walled by the family wiring
   verifier;
-- the **ADR-0035 web-search trio** (`extensions/search/
+- the **web-search trio** (`extensions/search/
   providers_contract.py` + its fixtures and catalog) — synced by
   the family search-provider sync tooling, with desktop's TS adapters as
   the reference implementation of the same wire contract;

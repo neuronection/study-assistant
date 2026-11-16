@@ -19,7 +19,7 @@
 #    fastmcp/mcp imports appear only under backend/app/ai/ — the same
 #    CLASS_RE the vendored gate runs, so probe and gate never disagree
 #  4 vendored family contract modules exist at their ledgered paths
-#    (backend/app/extensions/{polite_http,contract,conformance}.py, the
+#    (backend/app/extensions/{polite_http,contract,conformance,extension_sources}.py, the
 #    contracts/ artifact set, and the ADR-0035 trio at
 #    backend/app/extensions/search/) — drift vs the dev canonicals is the
 #    dev repo's sync --check gates, not this probe
@@ -101,6 +101,7 @@ for vendored in \
   "backend/app/extensions/polite_http.py" \
   "backend/app/extensions/contract.py" \
   "backend/app/extensions/conformance.py" \
+  "backend/app/extensions/extension_sources.py" \
   "backend/app/extensions/search/providers_contract.py" \
   "backend/app/extensions/search/providers_contract.fixtures.json" \
   "backend/app/extensions/search/providers_catalog.json" \

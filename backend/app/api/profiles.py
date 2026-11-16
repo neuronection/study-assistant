@@ -62,16 +62,32 @@ class ProfileOut(BaseModel):
     is_default: bool
 
 
+class DailyBriefPrefsOut(BaseModel):
+    enabled: bool = False
+    time: str = "07:00"
+    length_minutes: int = 5
+    voice: str | None = None
+
+
+class DailyBriefPrefsIn(BaseModel):
+    enabled: bool | None = None
+    time: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    length_minutes: int | None = Field(default=None, ge=1, le=20)
+    voice: str | None = Field(default=None, max_length=100)
+
+
 class PreferencesOut(BaseModel):
     use_embeddings: bool = True
     ocr_image_max_edge: int = DEFAULT_IMAGE_MAX_EDGE
     discovery: DiscoveryPrefsOut = Field(default_factory=DiscoveryPrefsOut)
+    daily_brief: DailyBriefPrefsOut = Field(default_factory=DailyBriefPrefsOut)
 
 
 class PreferencesIn(BaseModel):
     use_embeddings: bool | None = None
     ocr_image_max_edge: int | None = None
     discovery: DiscoveryPrefsIn | None = None
+    daily_brief: DailyBriefPrefsIn | None = None
 
 
 def _discovery_prefs(prefs: dict[str, Any]) -> DiscoveryPrefsOut:
@@ -118,6 +134,19 @@ def _preferences(profile: Any) -> PreferencesOut:
         use_embeddings=bool(prefs.get("use_embeddings", True)),
         ocr_image_max_edge=int(max_edge),
         discovery=_discovery_prefs(prefs),
+        daily_brief=_daily_brief_prefs(prefs),
+    )
+
+
+def _daily_brief_prefs(prefs: dict[str, Any]) -> DailyBriefPrefsOut:
+    raw = prefs.get("daily_brief")
+    if not isinstance(raw, dict):
+        return DailyBriefPrefsOut()
+    return DailyBriefPrefsOut(
+        enabled=bool(raw.get("enabled", False)),
+        time=str(raw.get("time") or "07:00"),
+        length_minutes=int(raw.get("length_minutes") or 5),
+        voice=(str(raw["voice"]) if raw.get("voice") else None),
     )
 
 
@@ -179,6 +208,18 @@ def update_preferences(
         section: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
         section.update(_validated_discovery(body.discovery))
         prefs["discovery"] = section
+    if body.daily_brief is not None:
+        existing = prefs.get("daily_brief")
+        section = dict(existing) if isinstance(existing, dict) else {}
+        if body.daily_brief.enabled is not None:
+            section["enabled"] = body.daily_brief.enabled
+        if body.daily_brief.time is not None:
+            section["time"] = body.daily_brief.time
+        if body.daily_brief.length_minutes is not None:
+            section["length_minutes"] = body.daily_brief.length_minutes
+        if body.daily_brief.voice is not None:
+            section["voice"] = body.daily_brief.voice or None
+        prefs["daily_brief"] = section
     try:
         validate_preferences(prefs)
     except PreferencesError as error:

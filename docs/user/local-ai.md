@@ -4,7 +4,7 @@ The study assistant is **provider-first**: every AI call (chat, OCR, quiz
 generation, embeddings, dictation) resolves through a provider model you
 configure. That means the whole app runs **100% locally, with zero API keys and
 zero cost**, whenever the provider is a local engine on your machine — no
-in-process models are bundled (ADR-105); the app speaks the OpenAI-compatible
+in-process models are bundled; the app speaks the OpenAI-compatible
 surface that local engines already expose.
 
 ## Supported engines
@@ -24,11 +24,11 @@ leave the key field empty, nothing is written to the keyring.
 ## Quick start (wizard)
 
 1. Start your engine, e.g. `ollama serve` (or `ollama start` on desktop installs).
-2. Launch the study assistant — the first-run wizard's **Provider** step probes
-   your machine once for running engines (Ollama `:11434`, llama.cpp `:8080`/`:8081`,
-   LM Studio `:1234`). A hit shows the engine name and model count with a one-click
-   **Add** button; you can always re-probe with **Detect local engines**.
-   Detection is localhost-only, read-only, and never persisted.
+2. Launch the study assistant — in the first-run wizard's **Provider** step,
+   choose the **Local engines** tile. It probes your machine for running engines
+   (Ollama `:11434`, llama.cpp `:8080`/`:8081`, LM Studio `:1234`); a hit shows
+   the engine name and model count with a one-click **Add** button. Detection is
+   localhost-only, read-only, and never persisted.
 3. On the **Models** step, enable the models you want and correct the guessed
    capabilities in the draft panel if needed (see *Capability guesses* below).
 4. On the **Defaults** step, assign one model per capability
@@ -36,10 +36,11 @@ leave the key field empty, nothing is written to the keyring.
    wizard shows an "everything runs on this machine" hint.
 5. Done — no key ever entered, nothing leaves the machine.
 
-In Settings → AI → Providers you get the same detection from the empty state, and
-every provider card has a **Connection** row that probes the engine
-(`GET /v1/models` + a tiny embedding round-trip when an embeddings model is
-discovered) so a wrong port or stale engine is caught in one click.
+In Settings → AI → Providers, **Add provider** opens the same grid; the
+**Local engines** tile is the single detection surface (the old empty-state
+block is gone). Every provider card has a **Connection** row that probes the
+engine (`GET /v1/models` + a tiny embedding round-trip when an embeddings model
+is discovered) so a wrong port or stale engine is caught in one click.
 
 ## Recommended models per capability
 

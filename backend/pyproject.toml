@@ -54,6 +54,12 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+# Family object-storage contract (ADR-0057 / plan 55 P1). Web images install
+# one extra; desktop packaging installs neither (local is stdlib-only).
+object-storage-s3 = ["boto3>=1.34"]
+object-storage-azure = ["azure-storage-blob>=12.19", "azure-identity>=1.17"]
+
 [project.scripts]
 studyassistant = "app.shell:run"
 
@@ -83,29 +89,27 @@ packages = ["app", "studyassistant"]
 line-length = 100
 target-version = "py312"
 # Vendored family contract modules must stay BYTE-identical to their dev
-# canonicals (ADR-0031/0035/0040) — excluded from the formatter too, since
-# `ruff format` does not honor the lint per-file-ignores below and would
-# reflow them (plan 81 C review, 2026-10-21).
+# canonicals (ADR-0031/0035/0040) — excluded from lint and format; findings
+# belong to the canonical, not the vendored copy (same accommodation for the
+# cloud, retrieval, vector/tokenizer and model-pricing contracts).
 extend-exclude = [
     "app/extensions/contract.py",
     "app/extensions/polite_http.py",
     "app/extensions/conformance.py",
+    "app/extensions/extension_sources.py",
     "app/extensions/search/providers_contract.py",
-    # Cloud-connector contract (ADR-0052): vendored byte-identical from
-    # the family contract canonical via the sync tooling — lint findings belong to
-    # the family canonical, never to a vendored copy (same accommodation as
-    # contract.py above).
+    "app/extensions/isolation.py",
+    "app/ai/flow_events.py",
     "app/extensions/cloud/cloud_calendar.py",
     "app/extensions/cloud/cloud_files.py",
     "app/extensions/cloud/cloud_providers.py",
-    # Family retrieval-operations contract (plan 51 Q0): vendored
-    # byte-identical from the family contract canonical — lint findings belong to the family
-    # canonical, never to this copy.
     "app/storage/retrieval_ops.py",
-    # Family vector-retrieval and tokenizer/chunk contracts (plan 50 /
-    # plan 52): vendored byte-identical from the family canonical.
     "app/storage/vector_contract.py",
     "app/storage/tokenizer_contract.py",
+    "app/storage/object_storage.py",
+    "app/storage/object_storage_migrate.py",
+    "app/ai/model_pricing.py",
+    "app/ai/model_pricing_data.py",
     "tests/cloud_conformance.py",
 ]
 
@@ -117,6 +121,7 @@ select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 # contracts/ai-presets.json — never hand-edited; long decision-model data
 # lines are exempt (the byok gate's R1 guards the data, not ruff).
 "app/ai/providers/presets_data.py" = ["E501"]
+"app/ai/model_pricing_data.py" = ["E501"]
 # Vendored family contract modules (byte-identical dev-canonical copies via
 # the sync scripts — ADR-0031/ADR-0035/ADR-0040): lint findings belong in
 # the dev canonical, not the vendored copy; drift is gated by the sync
@@ -128,6 +133,7 @@ select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/storage/retrieval_ops.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/storage/vector_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/storage/tokenizer_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+"app/storage/object_storage.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
@@ -152,7 +158,7 @@ strict = true
 # is byte-identical to the family extension contract — never edited in-repo, and
 # mypy-strict compliance is the family canonical's duty (career carries the same
 # exclusion; the unification wave's sync introduced strict-mode findings here).
-exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py", "app/storage/vector_contract.py", "app/storage/tokenizer_contract.py"]
+exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py", "app/storage/vector_contract.py", "app/storage/tokenizer_contract.py", "app/storage/object_storage.py", "app/storage/object_storage_migrate.py"]
 
 [[tool.mypy.overrides]]
 module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]

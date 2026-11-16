@@ -23,6 +23,7 @@ export type OnboardingState = Schemas['OnboardingStateOut']
 export type WorkingDirInfo = Schemas['WorkingDirOut']
 export type WorkingDirValidation = Schemas['ValidateWorkingDirOut']
 export type UpdateCheck = Schemas['UpdateCheckOut']
+export type StorageStatus = Schemas['StorageStatusOut']
 
 export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> {
   const response = await fetchFn('/api/v1/health')
@@ -35,6 +36,14 @@ export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> 
 export async function getUpdateCheck(): Promise<UpdateCheck> {
   const response = await apiFetch('/api/v1/instance/update-check')
   return json<UpdateCheck>(response)
+}
+
+/** Read-only deployment storage facts (plan 55 P4b2). Admin-only; the
+ * `refresh` flag drops the 30 s health cache so the test button is real. */
+export async function getStorageStatus(refresh = false): Promise<StorageStatus> {
+  const suffix = refresh ? '?refresh=true' : ''
+  const response = await apiFetch(`/api/v1/admin/storage/status${suffix}`)
+  return json<StorageStatus>(response)
 }
 
 export async function listFsDirs(path?: string): Promise<FsDirs> {

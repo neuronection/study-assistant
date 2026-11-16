@@ -1,13 +1,24 @@
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from nx_auth.instance import IdentityMode
 from pydantic import BaseModel, Field
 
 from ..core.config import default_data_dir
 from ..core.working_dir import clear_override, read_override, write_override
 
-router = APIRouter(prefix="/config", tags=["config"])
+
+def _desktop_only(request: Request) -> None:
+    if request.app.state.settings.identity_mode != IdentityMode.DESKTOP:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+router = APIRouter(
+    prefix="/config",
+    tags=["config"],
+    dependencies=[Depends(_desktop_only)],
+)
 
 
 class WorkingDirIn(BaseModel):

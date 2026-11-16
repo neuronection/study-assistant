@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "product": "study",
+  "tiers": [
+    "desktop",
+    "T1",
+    "T2"
+  ],
+  "profiles": [
+    "household",
+    "clinic"
+  ],
+  "limits": {
+    "min_ram_gb": 4
+  },
+  "probes": {
+    "liveness": "/api/v1/health",
+    "readiness": "/ready"
+  },
+  "backupPolicy": {
+    "offhost": true,
+    "encrypted": "when-shared"
+  },
+  "paths": [
+    {
+      "path": "desktop",
+      "support": "supported",
+      "verified": "v0.13.0"
+    },
+    {
+      "path": "compose-selfhosted",
+      "support": "supported",
+      "verified": "v0.13.0"
+    },
+    {
+      "path": "cloud-vm",
+      "support": "best-effort",
+      "verified": null
+    },
+    {
+      "path": "managed-db",
+      "support": "best-effort",
+      "verified": null
+    },
+    {
+      "path": "terraform",
+      "support": "best-effort",
+      "verified": null
+    }
+  ]
+}

@@ -53,7 +53,7 @@ courses, materials, grading, migrations, packaging assets, …), plus:
 
 - `tests/evals/` — the golden quiz-generation eval (`test_quizgen_golden.py`
   with fixtures under `golden/`) **and the golden OCR/extraction gate**
-  (`test_ocr_golden.py` + `ocr_thresholds.json`, plan 84 C / ADR-210). The OCR
+  (`test_ocr_golden.py` + `ocr_thresholds.json`). The OCR
   eval scores per-page routing, native PDF extraction and hybrid assembly
   against recorded thresholds (block structure, math-fence integrity, numeric
   fidelity). The default run is deterministic and offline; the vision half is
@@ -103,7 +103,7 @@ cascade, real WebSocket streaming).
 
 ## Coverage
 
-Coverage is **measured report-only** (plan 84 D, ADR-210): CI uploads
+Coverage is **measured report-only**: CI uploads
 `pytest --cov=app` and vitest v8 coverage artifacts on every PR, and no floor
 fails the build until a month of numbers exists (a floor on an invented number
 is noise). Run locally:

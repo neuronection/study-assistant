@@ -16,6 +16,7 @@ describe('interface-prefs store', () => {
       paletteRecent: true,
       courseJumpBackIn: true,
       courseCardMeta: true,
+      autoSpeak: false,
     })
   })
 
@@ -48,6 +49,7 @@ describe('interface-prefs store', () => {
       paletteRecent: true,
       courseJumpBackIn: true,
       courseCardMeta: true,
+      autoSpeak: false,
     })
     window.localStorage.setItem(
       storageKeys.interfacePrefs,
@@ -65,6 +67,7 @@ describe('interface-prefs store', () => {
       paletteRecent: true,
       courseJumpBackIn: true,
       courseCardMeta: true,
+      autoSpeak: false,
     })
   })
 })

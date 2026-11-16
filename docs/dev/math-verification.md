@@ -87,7 +87,7 @@ Error classification for tutor steps: parse failure → `misread`, else
 
 ## Region grading — number-line answers (`app/math/regions.py`)
 
-The `numberline` question type (plan 51-A, ADR-112) accepts an interactive
+The `numberline` question type accepts an interactive
 payload of placed points and shaded intervals:
 `{points: [{value}], intervals: [{lo, hi, lo_closed, hi_closed}]}`. Grading is
 pure geometry — no LLM anywhere in the verify path:
@@ -109,7 +109,7 @@ pure geometry — no LLM anywhere in the verify path:
   `missed_point`, `extra_point`) flow into the mistake notebook like any other
   graded answer; the attempt report carries the exact payload for replay.
 
-## Error-spot flaw proofing (`error_spot`, plan 51-C, ADR-114)
+## Error-spot flaw proofing (`error_spot`)
 
 Finding someone else's mistake is graded without an LLM, and the flaw itself is
 proven before the exercise is ever banked:
@@ -132,7 +132,7 @@ proven before the exercise is ever banked:
   half failed. Legacy pick-only responses stay deterministic. The rubric LLM
   path remains only as the fallback for malformed responses.
 
-## Table-fill per-cell grading (`app/math/tables.py`, plan 51-F)
+## Table-fill per-cell grading (`app/math/tables.py`)
 
 The `table_fill` question type grades a grid cell by cell, reusing the flat
 kinds' checkers per cell — no LLM anywhere:
@@ -148,7 +148,7 @@ kinds' checkers per cell — no LLM anywhere:
   (≤8 columns, ≤10 rows), every fillable value parses for its kind, ≥1
   fillable cell; drafts failing these go to the standard repair loop.
 
-## Composite follow-through (`app/math/composite.py`, plan 51-E)
+## Composite follow-through (`app/math/composite.py`)
 
 Multi-part questions grade per part with the flat checkers, plus one
 determinism-first trick — **follow-through credit**:
@@ -166,7 +166,7 @@ determinism-first trick — **follow-through credit**:
   an LLM: text = normalized match, numeric = tolerance, equation = equivalence
   chain (on both the declared and the recomputed expectation).
 
-## Graph-reading answers (`app/math/graphs.py`, plan 51-G)
+## Graph-reading answers (`app/math/graphs.py`)
 
 The `graph_read` type inverts the usual trust model — the model proposes only
 the *stimulus* (an expression of x, the plotted domain and the target x), and
@@ -187,3 +187,23 @@ every graded number is computed in code:
   point mode = exact nearest-sample index from the plotly click. No LLM in any
   grading path; image-region hotspot/label variants (arbitrary diagrams) are
   deferred until an image-authoring surface exists (plan as-built note).
+
+## Problem Desk verified steps (`app/services/solve/`)
+
+The Desk is deterministic-first and model-free in this slice:
+
+- `parse.py` normalizes LaTeX/unicode/implicit multiplication, separates a
+  command (`solve`, `simplify`, `integrate`, …) and classifies the intent;
+  unsupported shapes return a message instead of an expression.
+- `steps.py` produces one closed set: linear/quadratic solve, simplify,
+  expand, factor, differentiate, integrate and numeric evaluate. Every step
+  carries `{op, title, before, after, check, verified, detail}`.
+- Checks are operation-specific: **equivalence** (`simplify(before-after)=0`),
+  **derivative** (`d(after)=before`), **antiderivative**
+  (`d(after)=before` for the integrand), and **substitution** (every computed
+  root satisfies the original equation). A failing rewrite/final answer yields
+  `verified=false` with no answer; steps that fail are not displayed.
+- Assumptions are explicit (the arbitrary integration constant); limits,
+  graphs and systems are deliberately unsupported until their checks exist.
+- No model authors expressions. An optional prose-narration pass would only
+  wrap fixed expressions and is deferred.

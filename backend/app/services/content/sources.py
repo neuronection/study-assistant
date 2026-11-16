@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from ...core.vocab import MaterialStatus, SourcePreset
 from ...domain.models import (
-    Blob,
     Course,
     Material,
     MaterialFolder,
@@ -23,6 +22,7 @@ from ...domain.models import (
     NoteLink,
     utcnow,
 )
+from ...storage.blobs import BlobStore
 from .drawings import blocks_md, md_to_blocks, note_search_text
 from .materials import UnsupportedMaterialError, detect_kind
 from .notes import normalize_tags, save_note_body
@@ -161,9 +161,9 @@ def _vault_tags(meta: dict[str, Any]) -> list[str]:
 
 
 class SourcesService:
-    def __init__(self, session: Session, blobs_root: Path) -> None:
+    def __init__(self, session: Session, blobs: BlobStore) -> None:
         self._session = session
-        self._blobs_root = blobs_root
+        self._blobs = blobs
 
     def _get(self, profile_id: str, source_id: str) -> MaterialSource:
         source = self._session.get(MaterialSource, source_id)
@@ -763,22 +763,12 @@ class SourcesService:
         return {"backfilled": updated, "mirrored_dirs": len(mapping)}
 
     def _store_blob(self, path: Path) -> str:
-        data = path.read_bytes()
-        digest = hashlib.sha256(data).hexdigest()
-        target = self._blobs_root / digest[:2] / digest[2:4] / digest
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if not target.exists():
-            target.write_bytes(data)
-        if self._session.get(Blob, digest) is None:
-            self._session.add(
-                Blob(
-                    sha256=digest,
-                    rel_path=str(target.relative_to(self._blobs_root)),
-                    size=len(data),
-                    mime=mimetypes.guess_type(path.name)[0],
-                )
-            )
-        return digest
+        stored = self._blobs.put(
+            path.read_bytes(),
+            mime=mimetypes.guess_type(path.name)[0],
+            session=self._session,
+        )
+        return stored.sha256
 
     def _create_material(
         self,

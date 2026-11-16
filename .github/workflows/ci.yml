@@ -148,6 +148,7 @@ jobs:
           path: frontend/coverage/
           if-no-files-found: ignore
       - run: pnpm --filter frontend build
+      - run: pnpm --filter frontend check:bundle
 
   e2e:
     runs-on: ubuntu-latest

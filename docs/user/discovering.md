@@ -2,7 +2,7 @@
 
 **Discover** finds study material outside your library and keeps a list of what
 you found. Nothing is imported until you choose to attach it — discovery is a
-suggestion funnel, never an auto-import (ADR-167).
+suggestion funnel, never an auto-import.
 
 Open it from a course or node workspace (**Discover material**). Search a topic,
 then narrow the providers with the chips above the results.

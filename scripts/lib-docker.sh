@@ -47,16 +47,16 @@ check_docker() {
 }
 
 require_env() {
-    # Web mode runs PostgreSQL 16 (ADR-0022): SA_DB_PASSWORD is required by
-    # the compose `:?` guards. Prefer docker/.env (family convention), fall
-    # back to a root .env.
+    # Web mode runs PostgreSQL 16 (ADR-0022/ADR-0064): SA_DB_OWNER_PASSWORD
+    # + SA_DB_PASSWORD are required by the compose `:?` guards. Prefer
+    # docker/.env (family convention), fall back to a root .env.
     if [ -f "docker/.env" ]; then
         COMPOSE_ENV_ARGS=(--env-file docker/.env -f "${COMPOSE_FILE}")
     elif [ -f ".env" ]; then
         echo -e "${YELLOW}Note: using root .env (docker/.env is the family convention).${NC}"
         COMPOSE_ENV_ARGS=(--env-file .env -f "${COMPOSE_FILE}")
     else
-        die "docker/.env not found. Run: cp docker/.env.production.example docker/.env && set SA_DB_PASSWORD"
+        die "docker/.env not found. Run: cp docker/.env.production.example docker/.env && set SA_DB_OWNER_PASSWORD + SA_DB_PASSWORD"
     fi
 }
 

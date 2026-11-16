@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": "study",
-  "updated": "2026-11-03",
+  "updated": "2026-11-12",
   "capabilities": [
     {
       "id": "material-to-practice",
@@ -114,9 +114,33 @@
       "visual": "images/components/scheduled-recall-desktop2x.png"
     },
     {
+      "id": "read-and-highlight",
+      "verb": "Highlight your reading and keep it attached to the source",
+      "summary": "Mark any passage in a material with a color and a note; highlights stay anchored to the text, re-locate when the extraction changes, and are honestly marked when the quote is gone.",
+      "category": "discover",
+      "status": "shipped",
+      "order": 45,
+      "proofs": [
+        "Select any passage in a material and mark it with one of four colors",
+        "A highlight keeps an optional note and jumps back to the exact text",
+        "When an extraction changes, highlights re-locate by quote or show \"source changed\" — never silently vanish",
+        "Highlights are personal study state and stay out of course bundles"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/library"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
       "id": "capture-and-search",
       "verb": "Capture notes, handwriting and speech that stay searchable",
-      "summary": "Markdown notes with KaTeX and mermaid plus an infinite handwriting canvas join one library; hybrid keyword and semantic search indexes every note, transcript and drawing.",
+      "summary": "Camera photos, markdown notes with KaTeX and mermaid, and an infinite handwriting canvas join one library; hybrid keyword and semantic search indexes every note, transcript, drawing and scan.",
       "category": "discover",
       "status": "shipped",
       "order": 50,
@@ -124,7 +148,7 @@
         "An infinite handwriting canvas saves crops and its OCR joins the search index",
         "Search fuses FTS5 keyword and vector results, with a typo-tolerant fuzzy tier",
         "Dictate at the cursor; your provider's speech-to-text transcribes into editors and chat",
-        "Ctrl/Cmd+Shift+K quick capture files a markdown thought from anywhere",
+        "Take photo stages shots in a capture inbox, queues them offline and replays each exactly once",
         "A command palette (Ctrl/Cmd+K) jumps anywhere and runs full-text search"
       ],
       "links": [
@@ -272,7 +296,7 @@
         "label": "calendar providers"
       },
       "proofs": [
-        "Providers, scopes and the bind form's fields render from the family catalog (ADR-0052); calendars are picked from a discovered list",
+        "Providers, scopes and the bind form's fields render from the family catalog; calendars are picked from a discovered list",
         "Credentials live only in the OS keyring; the database stores a pointer",
         "All-day projections use the canonical exclusive end (due date + 1 day)",
         "Two-way sync accepts only exam/deadline categories unless you opt into all events",
@@ -287,6 +311,186 @@
           "kind": "source",
           "href": "https://github.com/neuronection/study-assistant",
           "label": "GitHub"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "exam-papers",
+      "verb": "Sit a timed mock paper and see which topics cost you marks",
+      "summary": "Assemble a multi-section paper from your own question bank with fixed marks and a time budget, sit it without hints, then read a marked report with per-section scores, grade bands and the topics that lost the most marks.",
+      "category": "automate",
+      "status": "beta",
+      "order": 35,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/exams"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "problem-desk",
+      "verb": "Put one problem on the desk and see only verified steps",
+      "summary": "Type, paste or photograph one problem; a deterministic solver shows only steps whose equivalence, derivative, antiderivative or substitution checks passed, plus three similar problems.",
+      "category": "ai",
+      "status": "beta",
+      "order": 36,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/solve"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "studio-artifacts",
+      "verb": "Turn a chapter into a printable slide deck or handout",
+      "summary": "Pick a course material and Studio builds a deterministic outline, keeps the generated pages in the library as markdown, and prints a 16:9 deck or A4 handout through the normal print path.",
+      "category": "automate",
+      "status": "beta",
+      "order": 37,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/studio"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "narrated-brief",
+      "verb": "Turn a topic into a grounded narrated brief",
+      "summary": "Builds a deterministic brief with due-card count, weak spots and material summaries, and can render it daily on a schedule or on demand, with a device-voice fallback.",
+      "category": "ai",
+      "status": "beta",
+      "order": 38,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "transcript-timeline",
+      "verb": "Jump through a recording by its transcript",
+      "summary": "Audio and video materials play with a timestamped transcript list: click a line to seek, search the text, follow the active segment and change playback speed.",
+      "category": "discover",
+      "status": "beta",
+      "order": 39,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "lecture-moments",
+      "verb": "Mark the moment you will want to revisit",
+      "summary": "While listening to a recording, mark the current timestamp with a note; moments list below the player and seek back to the exact moment.",
+      "category": "discover",
+      "status": "beta",
+      "order": 40,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "lecture-recording",
+      "verb": "Record a lecture in ordered, resumable parts",
+      "summary": "A consent-gated foreground recorder uploads ordered, sha-checked parts; stop concatenates and validates them, transcribes with timestamped segments, and can keep only the transcript after a 7-day audio window.",
+      "category": "automate",
+      "status": "beta",
+      "order": 41,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "global-audio-player",
+      "verb": "Keep a recording playing while you move around the app",
+      "summary": "One app-shell audio player keeps a lecture or brief playing across routes, with a mini-player, seek, speed, persisted position and media-session metadata when supported.",
+      "category": "discover",
+      "status": "beta",
+      "order": 42,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "local-insights",
+      "verb": "See the milestones and features you use",
+      "summary": "A first-party event log of milestones and feature use, visible in Settings with JSON export and clear. Stored in this instance for your profile on web; on this device for desktop. Never sent to a third party.",
+      "category": "privacy",
+      "status": "beta",
+      "order": 43,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "study-coach",
+      "verb": "Get one clear next step on Home",
+      "summary": "Up to two deterministic coach cards use existing study state to point at the next move — first file, due review, exam practice, practise or AI setup — with one deep link and per-rule dismissal.",
+      "category": "discover",
+      "status": "beta",
+      "order": 44,
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
         }
       ],
       "platforms": [

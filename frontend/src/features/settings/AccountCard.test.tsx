@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { AccountCard } from './AccountCard'
+import { audioCacheName, audioStateKey } from '@/lib/audio-offline'
+import { rememberSessionScope, resetSessionScopeForTests } from '@/lib/session-scope'
+import { installFakeCaches } from '@/test/caches'
 
 const listMySessions = vi.fn()
 const revokeMySession = vi.fn()
@@ -63,8 +66,15 @@ function renderCard() {
   )
 }
 
+function sessionRows(): HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>('[data-as="account-session-row"]'),
+  )
+}
+
 describe('AccountCard', () => {
   beforeEach(() => {
+    resetSessionScopeForTests()
     listMySessions.mockReset()
     revokeMySession.mockReset()
     changeMyPassword.mockReset()
@@ -82,21 +92,77 @@ describe('AccountCard', () => {
     deleteMyAccount.mockResolvedValue(undefined)
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('signing out the current session purges the scoped audio cache', async () => {
+    const scope = 'u:user-1:p:profile-a'
+    const storage = installFakeCaches()
+    rememberSessionScope(scope)
+    await storage.open(audioCacheName(scope))
+    window.localStorage.setItem(audioStateKey(scope), 'state')
+
+    renderCard()
+    await screen.findByText('Firefox on Linux')
+    const rows = sessionRows()
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /Sign out/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+
+    await waitFor(() => expect(setCurrentUser).toHaveBeenCalledWith(null))
+    await waitFor(async () =>
+      expect(await caches.keys()).not.toContain(audioCacheName(scope))
+    )
+    expect(window.localStorage.getItem(audioStateKey(scope))).toBeNull()
+  })
+
   test('lists sessions with the current marker and revoked state', async () => {
     renderCard()
-    const rows = await screen.findAllByTestId('account-session')
+    await screen.findByText('Firefox on Linux')
+    const rows = sessionRows()
     expect(rows).toHaveLength(3)
-    expect(screen.getByText('Firefox on Linux')).toBeInTheDocument()
-    expect(screen.getByText('(this device)')).toBeInTheDocument()
+    expect(screen.getByText('this device')).toBeInTheDocument()
+    expect(rows[0]).toHaveAttribute('aria-current', 'true')
     expect(screen.getByText('Phone')).toBeInTheDocument()
     expect(screen.getByText('Old laptop')).toBeInTheDocument()
-    expect(screen.getByText('Signed out')).toBeInTheDocument()
+    const revokedBadge = rows[2].querySelector('[data-as="account-session-revoked"]')
+    expect(revokedBadge).toHaveTextContent('Signed out')
+    expect(rows[2].querySelector('[data-as="account-session-badges"]')).toBeNull()
+    expect(rows[2]).toHaveAttribute('data-revoked', 'true')
+    expect(within(rows[2]).queryByRole('button')).toBeNull()
     expect(screen.getAllByRole('button', { name: /Sign out/ })).toHaveLength(2)
+  })
+
+  test('a successful revoke announces the result and keeps focus on the list', async () => {
+    listMySessions
+      .mockResolvedValueOnce(SESSIONS)
+      .mockResolvedValueOnce(
+        SESSIONS.map((session) =>
+          session.id === 'fam-2'
+            ? { ...session, revoked_at: '2026-09-02T10:00:00Z' }
+            : session,
+        ),
+      )
+    renderCard()
+    await screen.findByText('Phone')
+    const rows = sessionRows()
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /Sign out/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+
+    await waitFor(() =>
+      expect(sessionRows()[1]).toHaveAttribute('data-revoked', 'true'),
+    )
+    expect(within(sessionRows()[1]).queryByRole('button')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent('Session signed out.')
+    expect(screen.getByRole('heading', { name: 'Sessions' })).toHaveFocus()
   })
 
   test('revoking a session asks for confirmation first', async () => {
     renderCard()
-    const rows = await screen.findAllByTestId('account-session')
+    await screen.findByText('Phone')
+    const rows = sessionRows()
     fireEvent.click(within(rows[1]).getByRole('button', { name: /Sign out/ }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Sign out this session?')).toBeInTheDocument()
@@ -104,9 +170,34 @@ describe('AccountCard', () => {
     await waitFor(() => expect(revokeMySession).toHaveBeenCalledWith('fam-2'))
   })
 
+  test('marks the row whose revoke is in flight', async () => {
+    let settle: () => void = () => {}
+    revokeMySession.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve
+        }),
+    )
+    renderCard()
+    await screen.findByText('Phone')
+    const rows = sessionRows()
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /Sign out/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+    const busy = await within(rows[1]).findByRole('button', {
+      name: 'Signing out… — Phone',
+    })
+    expect(busy).toBeDisabled()
+    expect(busy).toHaveAttribute('aria-busy', 'true')
+    expect(within(rows[0]).getByRole('button', { name: /Sign out/ })).toBeEnabled()
+    settle()
+    await waitFor(() => expect(revokeMySession).toHaveBeenCalledWith('fam-2'))
+  })
+
   test('declining the confirm dialog revokes nothing', async () => {
     renderCard()
-    const rows = await screen.findAllByTestId('account-session')
+    await screen.findByText('Phone')
+    const rows = sessionRows()
     fireEvent.click(within(rows[1]).getByRole('button', { name: /Sign out/ }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
@@ -116,7 +207,8 @@ describe('AccountCard', () => {
 
   test('revoking the current session warns and signs the app out', async () => {
     renderCard()
-    const rows = await screen.findAllByTestId('account-session')
+    await screen.findByText('Firefox on Linux')
+    const rows = sessionRows()
     fireEvent.click(within(rows[0]).getByRole('button', { name: /Sign out/ }))
     const dialog = await screen.findByRole('dialog')
     expect(
@@ -125,6 +217,29 @@ describe('AccountCard', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
     await waitFor(() => expect(revokeMySession).toHaveBeenCalledWith('fam-1'))
     await waitFor(() => expect(setCurrentUser).toHaveBeenCalledWith(null))
+  })
+
+  test('a failed session listing shows the generic error', async () => {
+    listMySessions.mockRejectedValue(new Error('boom'))
+    renderCard()
+    expect(
+      await screen.findByText('Something went wrong — try again.'),
+    ).toBeInTheDocument()
+    expect(sessionRows()).toHaveLength(0)
+  })
+
+  test('a failed revoke surfaces the generic error', async () => {
+    const { ApiError } = await import('@/lib/api')
+    revokeMySession.mockRejectedValue(new ApiError('nope', 500))
+    renderCard()
+    await screen.findByText('Phone')
+    const rows = sessionRows()
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /Sign out/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+    expect(
+      await screen.findByText('Something went wrong — try again.'),
+    ).toBeInTheDocument()
   })
 
   test('password change gates below 10 characters and clears on success', async () => {

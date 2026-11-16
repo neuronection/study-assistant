@@ -2,10 +2,13 @@
 set -e
 
 # Modes (plan 20 Phase 4, D6 — migrations are an entrypoint/ops
-# responsibility, never `create_app`'s):
-#   entrypoint.sh migrate   one-shot: wait for the DB, apply migrations
-#                           (owner role), provision the checkpoint schema
-#   entrypoint.sh serve     (default) boot the API
+# responsibility, never `create_app`'s; ADR-0062 v7 §3 / ADR-0064):
+#   entrypoint.sh migrate   one-shot: wait for the DB, resolve the
+#                           SA_DB_SPLIT tri-state (split/unsplit/broken),
+#                           provision roles+extensions as the owner, apply
+#                           migrations, checkpoint schema
+#   entrypoint.sh serve     (default) boot the API — app DSN only, never the
+#                           owner DSN, never DDL
 # Compose runs `migrate` as a one-shot service and makes `app` depend on
 # its successful completion.
 
@@ -41,57 +44,14 @@ sys.exit(f"database not reachable at {host}:{port}")
 '
 }
 
-preflight_datastore() {
-    # A pre-0.13 volume cannot be upgraded (deliberate schema break). Refuse
-    # with guidance instead of an Alembic traceback; never auto-drop a volume.
-    PYTHONPATH=/app/backend /app/.venv/bin/python - "$1" <<'PY'
-import sys
-
-from sqlalchemy import create_engine, text
-
-from app.local import known_revisions
-
-url = sys.argv[1]
-try:
-    with create_engine(url).connect() as connection:
-        row = connection.execute(text("SELECT version_num FROM alembic_version")).first()
-except Exception:
-    raise SystemExit(0)
-if row and row[0] not in known_revisions():
-    raise SystemExit(
-        "This PostgreSQL volume predates the 0.13 schema and cannot be upgraded.\n"
-        "Recreate it with `docker compose down -v` (this deletes the volume), or\n"
-        "keep running Study Assistant 0.12.1 against it. No data was changed."
-    )
-PY
-}
-
+# app/ops/migrations (ADR-0062 v7 §3, ADR-0064): tri-state resolution
+# (split / unsplit warning / broken refusal), owner-side provisioning
+# (app role + grants + default privileges + vector/pg_trgm), Alembic as the
+# owner role, the checkpoint schema, re-grant. The serving process never
+# runs any of it.
 run_migrations() {
-    echo "Running database migrations (owner role)..."
-    cd /app/backend
-    if [ -n "${SA_MIGRATIONS_DATABASE_URL:-}" ]; then
-        # Two-role split (deployment.md): migrations run as the owner role, the
-        # app process connects as the least-privilege app role (SA_DATABASE_URL).
-        preflight_datastore "$SA_MIGRATIONS_DATABASE_URL"
-        SA_DATABASE_URL="$SA_MIGRATIONS_DATABASE_URL" PYTHONPATH=/app/backend \
-            /app/.venv/bin/alembic upgrade head
-        # langgraph's checkpoint schema is DDL too — provision it as the owner
-        # role; the app's checkpointer tolerates its existence at boot.
-        CHECKPOINT_URI="$(printf %s "$SA_MIGRATIONS_DATABASE_URL" | sed "s/+psycopg//")" PYTHONPATH=/app/backend \
-            /app/.venv/bin/python -c '
-import asyncio, os
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
-async def main() -> None:
-    async with AsyncPostgresSaver.from_conn_string(os.environ["CHECKPOINT_URI"]) as saver:
-        await saver.setup()
-
-asyncio.run(main())
-'
-    else
-        preflight_datastore "$SA_DATABASE_URL"
-        PYTHONPATH=/app/backend /app/.venv/bin/alembic upgrade head
-    fi
+    echo "Running database migrations (owner role, app/ops/migrations)..."
+    PYTHONPATH=/app/backend /app/.venv/bin/python -m app.ops.migrations
 }
 
 case "${1:-serve}" in
@@ -100,6 +60,14 @@ case "${1:-serve}" in
         run_migrations
         ;;
     serve)
+        # Owner DSN fail-closed (ADR-0064 §1/§4): a serving process never
+        # holds the owner/migrations credential — it would silently regain
+        # DDL rights. The compose files never inject it; an operator who
+        # does gets a refusal instead of a running leak.
+        if [ -n "${SA_MIGRATIONS_DATABASE_URL:-}" ]; then
+            echo "REFUSING to serve: SA_MIGRATIONS_DATABASE_URL must not be set in the serving env (ADR-0064 — the owner DSN belongs to the one-shot migrate service only)." >&2
+            exit 1
+        fi
         echo "Starting Study Assistant (web mode) on ${SA_HOST:-0.0.0.0}:${SA_PORT:-8000}"
         exec env PYTHONPATH=/app/backend \
             /app/.venv/bin/uvicorn app.main:create_app --factory \

@@ -1,3 +1,5 @@
+@layer theme, base, assistant-ui, components, utilities;
+@import '@neuronection/assistant-ui/styles.css' layer(assistant-ui);
 @import 'tailwindcss';
 @source '../node_modules/@neuronection/assistant-ui/dist';
 @import 'tw-animate-css';
@@ -110,4 +112,17 @@
   .chat-caret::after {
     animation: none;
   }
+}
+
+::highlight(sa-hl-yellow) {
+  background-color: rgb(250 204 21 / 38%);
+}
+::highlight(sa-hl-green) {
+  background-color: rgb(34 197 94 / 32%);
+}
+::highlight(sa-hl-blue) {
+  background-color: rgb(59 130 246 / 30%);
+}
+::highlight(sa-hl-pink) {
+  background-color: rgb(236 72 153 / 28%);
 }

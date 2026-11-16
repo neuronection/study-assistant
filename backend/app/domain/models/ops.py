@@ -10,6 +10,12 @@ from ...core.vocab import (
 from ...core.vocab import (
     JobType as JobType,
 )
+from ...core.vocab import (
+    PriceSource as PriceSource,
+)
+from ...core.vocab import (
+    UsageSource as UsageSource,
+)
 from ..payloads import (
     AiInteractionMetadata,
     DistractorSelection,
@@ -37,7 +43,13 @@ from .core import (
     Base as Base,
 )
 from .core import (
+    BigInteger as BigInteger,
+)
+from .core import (
     Boolean as Boolean,
+)
+from .core import (
+    CheckConstraint as CheckConstraint,
 )
 from .core import (
     DateTime as DateTime,
@@ -65,6 +77,9 @@ from .core import (
 )
 from .core import (
     Text as Text,
+)
+from .core import (
+    UniqueConstraint as UniqueConstraint,
 )
 from .core import (
     datetime as datetime,
@@ -159,8 +174,6 @@ class AiModel(Base):
     caps: Mapped[StringList] = mapped_column(JSON)
     decision_transport: Mapped[str | None] = mapped_column(String(20))
     ctx_tokens: Mapped[int | None] = mapped_column(Integer)
-    cost_in: Mapped[float | None] = mapped_column(Float)
-    cost_out: Mapped[float | None] = mapped_column(Float)
     reasoning_effort: Mapped[str | None] = mapped_column(String(20))
     temperature: Mapped[float | None] = mapped_column(Float)
     max_tokens: Mapped[int | None] = mapped_column(Integer)
@@ -388,6 +401,14 @@ class AiInteraction(Base):
     __table_args__ = (
         Index("ix_ai_interactions_context", "context_type", "context_id"),
         Index("ix_ai_interactions_task", "task"),
+        CheckConstraint(
+            "usage_source IN ('provider', 'estimated', 'partial', 'unknown')",
+            name="usage_source_allowed",
+        ),
+        CheckConstraint(
+            "price_source IN ('user', 'builtin', 'local', 'unknown')",
+            name="price_source_allowed",
+        ),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -396,11 +417,21 @@ class AiInteraction(Base):
     direction: Mapped[str | None] = mapped_column(Text)
     task: Mapped[str | None] = mapped_column(String(40))
     model: Mapped[str | None] = mapped_column(String(200))
+    model_external_id: Mapped[str | None] = mapped_column(String(200))
+    provider_key: Mapped[str | None] = mapped_column(String(40))
     skill_version_id: Mapped[str | None] = mapped_column(_UUID)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     cached_input_tokens: Mapped[int | None] = mapped_column(Integer)
-    cost_usd: Mapped[float | None] = mapped_column(Float)
+    cost_micros: Mapped[int | None] = mapped_column(BigInteger)
+    usage_source: Mapped[str] = mapped_column(
+        String(20), default=UsageSource.UNKNOWN.value, server_default="unknown"
+    )
+    estimate_method: Mapped[str | None] = mapped_column(String(40))
+    price_source: Mapped[str] = mapped_column(
+        String(20), default=PriceSource.UNKNOWN.value, server_default="unknown"
+    )
+    price_version: Mapped[str | None] = mapped_column(String(120))
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     # The mapped attribute cannot be named ``metadata`` (SQLAlchemy reserves
     # it); the schema-contract payload wall resolves the DB column to this
@@ -416,3 +447,40 @@ class AiInteraction(Base):
         SmallInteger, nullable=False, default=1, server_default="1"
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AiPriceOverride(Base):
+    """Owner-maintained price override (plan 58; admin/deployment scope)."""
+
+    __tablename__ = "ai_price_overrides"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider_key",
+            "provider_ref",
+            "model",
+            "match",
+            name="uq_ai_price_overrides_scope",
+        ),
+        CheckConstraint("match IN ('exact', 'prefix')", name="match_allowed"),
+        CheckConstraint(
+            "metering IN ('tokens', 'input_only', 'output_only')",
+            name="metering_allowed",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    provider_key: Mapped[str | None] = mapped_column(String(40))
+    provider_ref: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("providers.id", ondelete="CASCADE")
+    )
+    model: Mapped[str] = mapped_column(String(200))
+    match: Mapped[str] = mapped_column(String(10), default="exact", server_default="exact")
+    input_micros_per_million: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    output_micros_per_million: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default="0"
+    )
+    metering: Mapped[str] = mapped_column(String(20), default="tokens", server_default="tokens")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

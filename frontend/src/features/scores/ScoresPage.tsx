@@ -20,9 +20,10 @@ import {
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
 import { formatDate, formatPercent } from '@/lib/format'
+import { RetentionTab } from './RetentionTab'
 import { cn } from '@/lib/utils'
 
-const TABS = ['history', 'diagnostics', 'recommendations', 'mistakes'] as const
+const TABS = ['history', 'diagnostics', 'retention', 'recommendations', 'mistakes'] as const
 type Tab = (typeof TABS)[number]
 
 function accuracyColor(accuracy: number): string {
@@ -470,6 +471,7 @@ export function ScoresPage() {
         </div>
       ) : null}
 
+      {tab === 'retention' ? <RetentionTab /> : null}
       {tab === 'recommendations' ? (
         <Card>
           <CardHeader>

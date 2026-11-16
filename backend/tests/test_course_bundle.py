@@ -515,9 +515,9 @@ def test_export_degrades_when_blob_files_missing(tmp_path: Any) -> None:
         course_id = seed_course(client)
         app = client.app
         assert isinstance(app, FastAPI)
-        for path in sorted(app.state.settings.blobs_dir.rglob("*")):
-            if path.is_file():
-                path.unlink()
+        objects = app.state.objects
+        for item in list(objects.list("")):
+            objects.delete(item.key)
 
         exported = client.get(f"/api/v1/courses/{course_id}/export")
         assert exported.status_code == 200, exported.text

@@ -1,18 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Loader2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { CheckCircle2, Filter, Loader2, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { OneTimeTip } from '@/components/OneTimeTip'
 import { Skeleton, SkeletonText } from '@/components/ui/skeleton'
 import {
+  createReviewFilter,
+  deleteReviewFilter,
   getReviewDue,
-  reviewFlashcard,
+  listReviewFilters,
+  previewReview,
   type DueCourseGroup,
   type FlashcardInfo,
 } from '@/lib/api'
 import { useStudySession } from '@/lib/use-study-session'
 import { cn } from '@/lib/utils'
+import { submitReview } from '@/lib/review-submit'
+import { recordFirstActivation } from '@/lib/activation-events'
 
 import { ReviewQueue } from './ReviewQueue'
 
@@ -41,13 +47,67 @@ function CourseChip({ group }: { group: DueCourseGroup }) {
 export function ReviewPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const due = useQuery({ queryKey: ['review-due'], queryFn: () => getReviewDue() })
+  const [filterId, setFilterId] = useState<string | null>(null)
+  const [ahead, setAhead] = useState(false)
+  const [days, setDays] = useState(7)
+  const [reschedule, setReschedule] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const filters = useQuery({ queryKey: ['review-filters'], queryFn: listReviewFilters })
+  const due = useQuery({
+    queryKey: ['review-due', filterId, ahead, days],
+    queryFn: () =>
+      getReviewDue(
+        filterId !== null
+          ? { filterId }
+          : { includeNotDue: ahead, dueWindowDays: days }
+      ),
+  })
 
   useStudySession({ kind: 'review', entityRef: 'review:page' })
 
+  const preview = due.data?.preview === true
   const review = useMutation({
-    mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
-      reviewFlashcard(cardId, rating),
+    mutationFn: async ({
+      cardId,
+      rating,
+    }: {
+      cardId: string
+      rating: number
+    }) => {
+      if (preview && !reschedule) {
+        await previewReview(cardId, rating)
+        return 'preview'
+      }
+      return submitReview(cardId, rating)
+    },
+    onSuccess: async (result) => {
+      recordFirstActivation('first_review', { surface: 'review' })
+      if (result !== 'preview') {
+        await queryClient.invalidateQueries({ queryKey: ['review-due'] })
+      }
+    },
+  })
+  const saveFilter = useMutation({
+    mutationFn: () =>
+      createReviewFilter({
+        name: saveName.trim(),
+        include_not_due: ahead,
+        due_window_days: days,
+        limit: 50,
+        sort_order: 'due',
+      }),
+    onSuccess: async (created) => {
+      setSaveName('')
+      setFilterId(created.id)
+      await queryClient.invalidateQueries({ queryKey: ['review-filters'] })
+    },
+  })
+  const removeFilter = useMutation({
+    mutationFn: (id: string) => deleteReviewFilter(id),
+    onSuccess: async () => {
+      setFilterId(null)
+      await queryClient.invalidateQueries({ queryKey: ['review-filters'] })
+    },
   })
 
   const cards = useMemo(
@@ -88,6 +148,108 @@ export function ReviewPage() {
           <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />
         ) : null}
       </header>
+
+      <OneTimeTip id="review-buttons">{t('tips.review')}</OneTimeTip>
+
+      <div className="mb-4 flex flex-wrap items-center gap-1.5" role="group" aria-label={t('review.filters')}>
+        <button
+          type="button"
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+            filterId === null && !ahead ? 'border-primary text-primary bg-primary/10' : 'border-border'
+          }`}
+          onClick={() => {
+            setFilterId(null)
+            setAhead(false)
+          }}
+        >
+          <Filter className="size-3" aria-hidden />
+          {t('review.filterDue')}
+        </button>
+        <button
+          type="button"
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+            filterId === null && ahead ? 'border-primary text-primary bg-primary/10' : 'border-border'
+          }`}
+          onClick={() => {
+            setFilterId(null)
+            setAhead(true)
+          }}
+        >
+          <Sparkles className="size-3" aria-hidden />
+          {t('review.filterAhead', { days })}
+        </button>
+        <label className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+          {t('review.days')}
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={days}
+            onChange={(event) => setDays(Math.max(1, Math.min(90, Number(event.target.value))))}
+            className="bg-surface border-border w-14 rounded-md border px-1.5 py-0.5"
+            aria-label={t('review.days')}
+          />
+        </label>
+        {filters.data?.length ? (
+          <select
+            value={filterId ?? ''}
+            onChange={(event) => setFilterId(event.target.value || null)}
+            className="bg-surface border-border rounded-md border px-2 py-1 text-xs"
+            aria-label={t('review.savedFilters')}
+          >
+            <option value="">{t('review.savedFiltersPlaceholder')}</option>
+            {filters.data.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <input
+          value={saveName}
+          onChange={(event) => setSaveName(event.target.value)}
+          placeholder={t('review.saveFilterPlaceholder')}
+          aria-label={t('review.saveFilterPlaceholder')}
+          className="bg-surface border-border w-36 rounded-md border px-2 py-1 text-xs"
+        />
+        <button
+          type="button"
+          disabled={saveName.trim().length === 0 || saveFilter.isPending}
+          onClick={() => saveFilter.mutate()}
+          className="border-border rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+        >
+          {t('review.saveFilter')}
+        </button>
+        {filterId !== null ? (
+          <button
+            type="button"
+            onClick={() => removeFilter.mutate(filterId)}
+            className="text-danger rounded-md border border-current/30 px-2 py-1 text-xs"
+          >
+            {t('review.deleteFilter')}
+          </button>
+        ) : null}
+        {preview ? (
+          <label className="text-muted-foreground ml-auto inline-flex items-center gap-1 text-xs">
+            <input
+              type="checkbox"
+              checked={reschedule}
+              onChange={(event) => setReschedule(event.target.checked)}
+            />
+            {t('review.reschedule')}
+          </label>
+        ) : null}
+      </div>
+      {preview ? (
+        <p className="border-warning/40 bg-warning/5 text-warning mb-3 rounded-md border px-3 py-1.5 text-xs">
+          {reschedule ? t('review.rescheduleOn') : t('review.previewChip')}
+        </p>
+      ) : null}
+      {due.data?.capped ? (
+        <p className="border-warning/40 bg-warning/5 text-warning mb-3 rounded-md border px-3 py-1.5 text-xs">
+          {t('review.capped', { count: due.data.remaining_today ?? 0 })}
+        </p>
+      ) : null}
 
       {due.isLoading ? (
         <div aria-busy="true" className="space-y-3 py-4">

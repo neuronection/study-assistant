@@ -1,15 +1,46 @@
 import importlib
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.desktop import DesktopFileAccess
 from app.core.config import Settings
 from app.main import create_app
-from app.shell import find_free_port
+from app.shell import DesktopBridge, find_free_port
 
 main = importlib.import_module("studyassistant.__main__")
 resolve_mode = main.resolve_mode
+
+
+class _FakeWindow:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.calls: list[object] = []
+
+    def create_file_dialog(self, kind: object) -> tuple[str, ...]:
+        self.calls.append(kind)
+        return (str(self.path),)
+
+
+def test_pick_data_dir_does_not_register_file_root(tmp_path: Path) -> None:
+    access = DesktopFileAccess()
+    bridge = DesktopBridge(access)
+    window = _FakeWindow(tmp_path)
+    bridge._bind(cast(Any, window))
+    assert bridge.pick_data_dir() == str(tmp_path)
+    assert access.root_for(tmp_path) is None
+    assert len(window.calls) == 1
+
+
+def test_pick_folder_registers_file_root(tmp_path: Path) -> None:
+    access = DesktopFileAccess()
+    bridge = DesktopBridge(access)
+    window = _FakeWindow(tmp_path)
+    bridge._bind(cast(Any, window))
+    assert bridge.pick_folder() == str(tmp_path)
+    assert access.root_for(tmp_path.resolve()) == tmp_path.resolve()
 
 
 def test_find_free_port() -> None:

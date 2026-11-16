@@ -410,8 +410,6 @@ def test_fallback_model_answers_and_is_billed(tmp_path: object) -> None:
             label="fallback",
             caps=["text"],
             enabled=True,
-            cost_in=1.0,
-            cost_out=2.0,
         )
         session.add_all([primary, fallback])
         session.flush()

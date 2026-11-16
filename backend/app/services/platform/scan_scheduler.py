@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from ...core.vocab import WsTopic
 from ...domain.models import Material, MaterialSource
 from ...jobs.runner import JobRunner
+from ...storage.blobs import BlobStore
 from ..content.sources import SourcesError, SourcesService
 
 
@@ -18,22 +19,24 @@ class ScanScheduler:
     def __init__(
         self,
         session_factory: sessionmaker[Session],
-        blobs_dir: Path,
+        blobs: BlobStore,
         jobs: JobRunner,
         publish: Callable[[str, dict[str, Any]], None],
         interval_sec: int = 300,
         startup_delay_sec: float = 5.0,
         inbox_dir: Path | None = None,
         retrieval_alerts: Callable[[], dict[str, Any]] | None = None,
+        daily_briefs: Callable[[], int] | None = None,
     ) -> None:
         self._session_factory = session_factory
-        self._blobs_dir = Path(blobs_dir)
+        self._blobs = blobs
         self._jobs = jobs
         self._publish = publish
         self._interval = interval_sec
         self._startup_delay = startup_delay_sec
         self._inbox_dir = Path(inbox_dir) if inbox_dir is not None else None
         self._retrieval_alerts = retrieval_alerts
+        self._daily_briefs = daily_briefs
         self._inbox_last_scan: datetime | None = None
         self._inbox_signature: tuple[tuple[str, int], ...] = ()
         self._stop = threading.Event()
@@ -84,6 +87,7 @@ class ScanScheduler:
                 results[source_id] = stats
         self.scan_inbox(force=force)
         self.scan_retrieval_alerts()
+        self.scan_daily_briefs()
         return results
 
     def scan_retrieval_alerts(self) -> dict[str, Any] | None:
@@ -94,6 +98,14 @@ class ScanScheduler:
             return self._retrieval_alerts()
         except Exception:
             return None
+
+    def scan_daily_briefs(self) -> int:
+        if self._daily_briefs is None:
+            return 0
+        try:
+            return self._daily_briefs()
+        except Exception:
+            return 0
 
     def scan_inbox(self, *, force: bool = False) -> list[dict[str, Any]]:
         if self._inbox_dir is None:
@@ -147,7 +159,7 @@ class ScanScheduler:
     def _scan_one(self, profile_id: str, source_id: str) -> dict[str, int] | None:
         try:
             with self._session_factory() as session:
-                service = SourcesService(session, self._blobs_dir)
+                service = SourcesService(session, self._blobs)
                 stats = service.scan(profile_id, source_id).stats
                 pending = list(
                     session.scalars(

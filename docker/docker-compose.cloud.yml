@@ -1,0 +1,32 @@
+# Study Assistant — cloud object-storage overlay (ADR-0057 / plan 55 P1).
+#
+# Combine with the prod or standalone stack for an AWS/Azure deployment:
+#
+#   docker compose -f docker/docker-compose.prod.yml \
+#                  -f docker/docker-compose.cloud.yml up -d
+#
+# The overlay turns the "empty defaults keep local" pass-through into hard
+# interpolation guards: a cloud deployment cannot start with an unset
+# profile or backend. Provider values (SA_S3_*, SA_AZURE_STORAGE_*) stay in
+# docker/.env; the app's boot validator rejects a missing bucket/container,
+# credential pair, non-TLS endpoint or SSE=none before serving traffic.
+# Object bytes live in the provider, so the compose `backup` sidecar skips
+# its /data tar (database dumps still run).
+
+name: study-assistant
+
+services:
+  app:
+    environment:
+      SA_CLOUD_PROFILE: ${SA_CLOUD_PROFILE:?Set SA_CLOUD_PROFILE to aws, azure, gcp or cloud}
+      SA_OBJECT_STORAGE_BACKEND: ${SA_OBJECT_STORAGE_BACKEND:?Set SA_OBJECT_STORAGE_BACKEND to s3 or azure_blob}
+      SA_OBJECT_STORAGE_REQUIRED: "true"
+
+  backup:
+    # The prod sidecar skips its /data tar only when it sees a non-local
+    # backend. Inject the same required values explicitly: an overlay-only
+    # invocation must not fall back to `local` and archive a data volume
+    # that no longer holds the blob bytes.
+    environment:
+      SA_CLOUD_PROFILE: ${SA_CLOUD_PROFILE:?Set SA_CLOUD_PROFILE to aws, azure, gcp or cloud}
+      SA_OBJECT_STORAGE_BACKEND: ${SA_OBJECT_STORAGE_BACKEND:?Set SA_OBJECT_STORAGE_BACKEND to s3 or azure_blob}

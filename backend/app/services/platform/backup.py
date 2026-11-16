@@ -18,8 +18,22 @@ import structlog
 from sqlalchemy.engine import make_url
 
 from ... import __version__
+from ...storage.blobs import BlobStore
 
 logger = structlog.get_logger(__name__)
+
+
+def _local_blob_root(blobs: BlobStore | Path) -> Path:
+    """The local blob root, refusing an object-storage backend.
+
+    Backups are a desktop/self-host local-filesystem feature: they tar the
+    mounted blob tree. Under ``s3``/``azure_blob`` the provider owns
+    durability and there is no local tree to archive (or restore into).
+    """
+    if isinstance(blobs, BlobStore):
+        return blobs.local_root()
+    return Path(blobs)
+
 
 MANIFEST_NAME = "manifest.json"
 DB_NAME = "database.sqlite"
@@ -231,14 +245,18 @@ def _snapshot_database(db_path: Path) -> bytes:
     return data
 
 
-def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = None) -> bytes:
+def build_backup(
+    db_path: Path, blobs: BlobStore | Path, *, database_url: str | None = None
+) -> bytes:
     """Build a `sa-backup/v1` archive.
 
     The database member depends on the dialect: SQLite deployments get the
     online-backup snapshot as `database.sqlite`, PostgreSQL deployments a
     `pg_dump -Fc` payload as `database.dump`. Manifest and blob handling are
-    shared.
+    shared. Blob bytes are local-filesystem only; an object-storage backend
+    raises ``UnsupportedOperation``.
     """
+    blobs_dir = _local_blob_root(blobs)
     manifest = {
         "format": BACKUP_FORMAT,
         "app_version": __version__,
@@ -367,7 +385,7 @@ def validate_backup_file(path: Path) -> bool:
 
 def create_backup(
     db_path: Path,
-    blobs_dir: Path,
+    blobs: BlobStore | Path,
     target_dir: Path,
     prefix: str = "auto",
     now: datetime | None = None,
@@ -377,7 +395,7 @@ def create_backup(
     target_dir.mkdir(parents=True, exist_ok=True)
     stamp = (now or datetime.now(UTC)).strftime("%Y%m%d-%H%M%S")
     path = target_dir / f"{prefix}-{stamp}.zip"
-    data = build_backup(db_path, blobs_dir, database_url=database_url)
+    data = build_backup(db_path, blobs, database_url=database_url)
     path.write_bytes(data)
     if not validate_backup_file(path):
         path.unlink(missing_ok=True)
@@ -461,7 +479,7 @@ def _corrupt_stamp() -> str:
 def boot_integrity_check(
     db_path: Path,
     backups_dir: Path,
-    blobs_dir: Path,
+    blobs: BlobStore | Path,
     *,
     database_url: str | None = None,
 ) -> dict[str, Any] | None:
@@ -518,7 +536,7 @@ def boot_integrity_check(
     for candidate in candidates:
         try:
             payload = candidate.read_bytes()
-            database, blobs = read_archive(payload)
+            database, archive_blobs = read_archive(payload)
             manifest = read_manifest(payload)
         except (BackupError, OSError):
             continue
@@ -530,8 +548,9 @@ def boot_integrity_check(
             continue
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.write_bytes(database.data)
+        blobs_dir = _local_blob_root(blobs)
         blobs_root = blobs_dir.resolve()
-        for rel, data in blobs.items():
+        for rel, data in archive_blobs.items():
             target = (blobs_dir / rel).resolve()
             if not target.is_relative_to(blobs_root) or target == blobs_root:
                 continue
@@ -557,7 +576,7 @@ class BackupScheduler:
         self,
         settings_provider: Callable[[], EffectiveBackupSettings],
         db_path: Path,
-        blobs_dir: Path,
+        blobs: BlobStore | Path,
         backups_dir: Path,
         publish: Callable[[str, dict[str, Any]], None] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
@@ -567,7 +586,7 @@ class BackupScheduler:
     ) -> None:
         self._settings_provider = settings_provider
         self._db_path = Path(db_path)
-        self._blobs_dir = Path(blobs_dir)
+        self._blobs = blobs
         self._backups_dir = Path(backups_dir)
         self._publish = publish
         self._clock = clock
@@ -623,7 +642,7 @@ class BackupScheduler:
         with self._lock:
             path = create_backup(
                 self._db_path,
-                self._blobs_dir,
+                self._blobs,
                 self._backups_dir,
                 prefix=prefix,
                 now=self._clock(),

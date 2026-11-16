@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { UndoNotice } from '@/components/ui/undo-notice'
 import { createNote, deleteNote, getScratchpad } from '@/lib/api'
+import { recordFirstActivation } from '@/lib/activation-events'
 import { useCaptureStore } from '@/lib/capture-store'
 import { useMotionPresets } from '@/lib/motion'
 
@@ -78,6 +79,7 @@ export function QuickCapture() {
       })
     },
     onSuccess: (note) => {
+      recordFirstActivation('first_capture', { surface: 'quick_capture' })
       setSavedNoteId(note.id)
       setSavedTitle(note.title)
       setBody('')

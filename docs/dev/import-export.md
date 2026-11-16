@@ -75,7 +75,7 @@ agent self-serve `schema.json`.
 
 ---
 
-## Course bundles — `sa-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
+## Course bundles — `sa-course/v2`
 
 Whole-course sharing without personal data by default — a classmate (or
 next-semester you) receives the *content*: materials with their extractions,
@@ -95,8 +95,8 @@ date, no history).
 | `course.json` | course meta (title/subject/level/description/goals/tags/color + **`exam_date` v2**) |
 | `tree.json` | nodes (parent/title/summary/objectives/ai_hint/order) — exactly one root |
 | `concepts.json` | concepts + links + per-node coverage |
-| `materials.json` | materials incl. latest extraction, index card, node links, provenance, `folder_path` (virtual-library location), **`drawings`** (plan 29/ADR-064 — strokes + OCR + `id` per material drawing; absent in pre-29 bundles, imports cleanly; `view` export-region metadata per 0046/ADR-098 — absent in pre-46 bundles, imports cleanly); v2 questions carry their `id` (for history remapping) |
-| `folders.json` | library folders (path/name hierarchy) + folder-to-node assignments (`folder_links`, plan 25 — absent in pre-25 bundles, imports cleanly) |
+| `materials.json` | materials incl. latest extraction, index card, node links, provenance, `folder_path` (virtual-library location), **`drawings`** (strokes + OCR + `id` per material drawing; absent in pre-29 bundles, imports cleanly; `view` export-region metadata per 0046 — absent in pre-46 bundles, imports cleanly); v2 questions carry their `id` (for history remapping) |
+| `folders.json` | library folders (path/name hierarchy) + folder-to-node assignments (`folder_links`, absent in pre-25 bundles, imports cleanly) |
 | `notes.json` | notes incl. blocks (drawing refs) + drawings (strokes + OCR + optional `view`) |
 | `quizzes.json` | activities + questions (full metadata taxonomy) |
 | `exercises.json` | exercises (all kinds incl. `card_*`) + steps |
@@ -127,7 +127,7 @@ rows and their `sa-drawing://{old}` refs are remapped to the fresh ids in both
 the extraction markdown and blocks (their OCR joins the imported FTS). Title
 collision → "… (imported)".
 
-**v2 import is self-healing (ADR-109)**: every imported material with an
+**v2 import is self-healing**: every imported material with an
 extraction gets a `postprocess` job (embeddings + index card) exactly like an
 upload — imported courses no longer degrade to FTS-only search. The import
 response carries `postprocess_job_ids`; progress rides the usual `jobs:{id}`
@@ -148,7 +148,7 @@ UI: Courses page — **Export** link on each course card, **Import course** with
 dry-run preview → confirm → opens the imported workspace (postprocess progress
 in the activity rail).
 
-## Skill packs — `sa-skills/v1` (plan 50 B, ADR-110)
+## Skill packs — `sa-skills/v1`
 
 Custom skill prompts travel as plain JSON: **skill definitions (task/key/name/
 description) + their full system-scope version history** (templates, params,

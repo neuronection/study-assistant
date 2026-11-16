@@ -6,13 +6,16 @@ import {
   MatchingInput,
   OrderingInput,
 } from './StructuralInputs'
+import { DiagramLabelInput, type DiagramPlacement } from './DiagramLabelInput'
 
-export type StructuralResponse = number[] | string[]
+export type StructuralResponse = number[] | string[] | DiagramPlacement[]
 
 export function isStructuralInput(input: ExerciseStepInput | null | undefined): boolean {
   return (
     input != null &&
-    ['matching', 'ordering', 'categorize', 'fill_blank'].includes(input.widget)
+    ['matching', 'ordering', 'categorize', 'fill_blank', 'diagram_label'].includes(
+      input.widget
+    )
   )
 }
 
@@ -22,6 +25,14 @@ export function structuralResponseComplete(
 ): boolean {
   if (value === null) {
     return false
+  }
+  if (input.widget === 'diagram_label') {
+    const placements = value as DiagramPlacement[]
+    const labels = input.labels ?? []
+    return (
+      placements.length === labels.length &&
+      labels.every((label) => placements.some((entry) => entry.label === label))
+    )
   }
   if (input.widget === 'fill_blank') {
     const values = value as string[]
@@ -52,6 +63,16 @@ export function ExerciseStructuralInput({
   onChange: (next: StructuralResponse) => void
   disabled?: boolean
 }) {
+  if (input.widget === 'diagram_label') {
+    return (
+      <DiagramLabelInput
+        input={input}
+        value={value as DiagramPlacement[] | null}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    )
+  }
   if (input.widget === 'fill_blank') {
     return (
       <FillBlanksInput

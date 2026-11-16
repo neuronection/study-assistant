@@ -35,7 +35,12 @@ from ..services.study.exercise_rubric import (
     rubric_deterministic_check,
     rubric_public_input,
 )
-from ..services.study.exercise_structs import STRUCT_KINDS, check_structural, public_input
+from ..services.study.exercise_structs import (
+    STRUCT_KINDS,
+    check_structural,
+    public_input,
+    validate_structural_payload,
+)
 from ..services.study.patterns import ErrorPatternService, PatternError
 from ..services.study.tutor import TutorError, TutorService
 from .deps import get_session
@@ -50,6 +55,7 @@ class StepIn(BaseModel):
 
 class ExerciseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
+    kind: ExerciseKind = ExerciseKind.MULTI_STEP
     course_id: str
     node_id: str | None = None
     context_md: str | None = None
@@ -552,10 +558,16 @@ def create_exercise(body: ExerciseCreate, session: Session = Depends(get_session
         node_id = TreeService(session).placement_node(body.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    if body.kind is ExerciseKind.DIAGRAM_LABEL:
+        expected = body.steps[0].expected or {}
+        problems = validate_structural_payload("diagram_label", expected)
+        if problems:
+            raise HTTPException(status_code=422, detail="; ".join(problems))
     exercise = Exercise(
         profile_id=profile.id,
         course_id=body.course_id,
         node_id=node_id,
+        kind=body.kind.value,
         title=body.title.strip(),
         context=[{"type": "text", "md": body.context_md}] if body.context_md else None,
         difficulty=body.difficulty,

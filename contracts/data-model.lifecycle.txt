@@ -15,14 +15,24 @@
 # `deleted_at`/`is_deleted` soft-delete semantics; every other delete is a
 # hard delete, purge-only and cascade-complete.
 
+activation_events :: operational
 activities :: record
+artifacts :: record
 ai_interactions :: operational
+ai_price_overrides :: record
 answers :: record
 attempts :: record
 audit_events :: operational
 auth_sessions :: transient
 blobs :: operational
 calendar_event_links :: record
+capture_staging :: transient
+capture_tokens :: operational
+document_anchors :: record
+exam_papers :: record
+fsrs_settings :: record
+review_filters :: record
+course_fsrs_overrides :: record
 calendar_links :: record
 chat_messages :: record
 chat_proposal_anchors :: record
@@ -62,6 +72,9 @@ material_sources :: record
 material_study_state :: record
 material_suggestions :: record
 materials :: record
+lecture_chunks :: operational
+lecture_sessions :: record
+media_segments :: record
 mistakes :: record
 models :: record
 node_concepts :: record
@@ -87,6 +100,8 @@ skill_versions :: record
 skills :: record
 step_attempts :: record
 study_goals :: record
+solve_entries :: record
+studio_artifacts :: record
 study_sessions :: record
 task_assignments :: record
 tree_nodes :: record

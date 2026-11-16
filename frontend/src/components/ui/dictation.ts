@@ -4,6 +4,8 @@ export {
   DictationStrip,
   type DictationStripProps,
   type DictationStripLabels,
+  DictationUnavailable,
+  type DictationUnavailableProps,
   useDictation,
   type UseDictationOptions,
   type DictationStatus,

@@ -147,3 +147,11 @@ decide, not the model's confidence.
 
 **Scores** shows your attempt history (with scores) and the mistake notebook (every
 wrong answer with its error tags, linked to the quiz).
+
+
+## Exam papers
+
+For a timed, marked paper rather than a practice quiz, use **Practice → Exam
+papers**. Papers select questions from the course bank, add sections and marks,
+run in exam mode with no hints or instant feedback, and produce a per-section
+report with lost-mark topics. See [Exam papers](exams.md).

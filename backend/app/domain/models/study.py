@@ -1,4 +1,13 @@
 from ...core.vocab import (
+    ActivationEvent as ActivationEvent,
+)
+from ...core.vocab import (
+    ArtifactKind as ArtifactKind,
+)
+from ...core.vocab import (
+    ArtifactStatus as ArtifactStatus,
+)
+from ...core.vocab import (
     AttemptMode as AttemptMode,
 )
 from ...core.vocab import (
@@ -14,6 +23,18 @@ from ...core.vocab import (
     ItemFlag as ItemFlag,
 )
 from ...core.vocab import (
+    LectureRetention as LectureRetention,
+)
+from ...core.vocab import (
+    LectureStatus as LectureStatus,
+)
+from ...core.vocab import (
+    MediaSegmentSource as MediaSegmentSource,
+)
+from ...core.vocab import (
+    PaperSource as PaperSource,
+)
+from ...core.vocab import (
     PlanItemKind as PlanItemKind,
 )
 from ...core.vocab import (
@@ -23,15 +44,35 @@ from ...core.vocab import (
     QuestionType as QuestionType,
 )
 from ...core.vocab import (
+    ReviewOrder as ReviewOrder,
+)
+from ...core.vocab import (
+    ReviewSource as ReviewSource,
+)
+from ...core.vocab import (
+    SolveInputKind as SolveInputKind,
+)
+from ...core.vocab import (
+    SolveIntent as SolveIntent,
+)
+from ...core.vocab import (
+    StudioArtifactKind as StudioArtifactKind,
+)
+from ...core.vocab import (
+    StudyLeechAction as StudyLeechAction,
+)
+from ...core.vocab import (
     StudySessionKind as StudySessionKind,
 )
 from ...core.vocab import (
     StudySessionSource as StudySessionSource,
 )
 from ..payloads import (
+    ActivationProps,
     ActivityConfig,
     ActivityGeneratedFrom,
     AnswerResponse,
+    ArtifactSpec,
     AttemptMeta,
     BlockList,
     CalendarLinkOptions,
@@ -41,14 +82,18 @@ from ..payloads import (
     ExerciseCreatedFrom,
     ExpectedAnswer,
     FeedbackList,
+    GradeBandList,
     HelpEventList,
+    PaperDocument,
     QuestionAnswer,
     QuestionProvenance,
     QuestionStats,
     RubricDocument,
+    SolveResult,
     StepResponse,
     StepState,
     StringList,
+    StudioArtifactSpec,
     SympyCheck,
 )
 from ..schema_contract import vocab_check as vocab_check
@@ -66,6 +111,9 @@ from .core import (
 )
 from .core import (
     Boolean as Boolean,
+)
+from .core import (
+    CheckConstraint as CheckConstraint,
 )
 from .core import (
     Date as Date,
@@ -389,6 +437,7 @@ class FsrsState(Base):
 
 class ReviewLog(Base):
     __tablename__ = "review_log"
+    __table_args__ = (vocab_check("source", ReviewSource),)
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     card_id: Mapped[str] = mapped_column(
@@ -397,7 +446,35 @@ class ReviewLog(Base):
     rating: Mapped[int] = mapped_column(Integer)
     interval_days: Mapped[float] = mapped_column(Float)
     elapsed_days: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(20), default=ReviewSource.REVIEW.value)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ReviewFilter(Base):
+    __tablename__ = "review_filters"
+    __table_args__ = (
+        Index("ix_review_filters_profile_created", "profile_id", "created_at"),
+        vocab_check("sort_order", ReviewOrder),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(120))
+    course_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID, index=True)
+    include_not_due: Mapped[bool] = mapped_column(Boolean, default=False)
+    due_window_days: Mapped[int | None] = mapped_column(Integer)
+    limit: Mapped[int | None] = mapped_column(Integer)
+    sort_order: Mapped[str] = mapped_column(String(20), default=ReviewOrder.DUE.value)
+    kinds: Mapped[StringList | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class ErrorPattern(Base):
@@ -576,3 +653,274 @@ class CalendarEventLink(Base):
     local_hash: Mapped[str | None] = mapped_column(String(64))
     remote_hash: Mapped[str | None] = mapped_column(String(64))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FsrsSettings(Base):
+    __tablename__ = "fsrs_settings"
+    __table_args__ = (
+        Index("uq_fsrs_settings_profile", "profile_id", unique=True),
+        vocab_check("leech_action", StudyLeechAction),
+        CheckConstraint("desired_retention BETWEEN 0.70 AND 0.97", name="retention_range"),
+        CheckConstraint("maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    desired_retention: Mapped[float] = mapped_column(Float, default=0.90)
+    maximum_interval_days: Mapped[int] = mapped_column(Integer, default=365)
+    new_per_day: Mapped[int] = mapped_column(Integer, default=20)
+    reviews_per_day: Mapped[int] = mapped_column(Integer, default=200)
+    leech_threshold: Mapped[int] = mapped_column(Integer, default=8)
+    leech_action: Mapped[str] = mapped_column(String(20), default=StudyLeechAction.TAG.value)
+    bury_siblings: Mapped[bool] = mapped_column(Boolean, default=False)
+    load_balance: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CourseFsrsOverride(Base):
+    __tablename__ = "course_fsrs_overrides"
+    __table_args__ = (
+        Index("uq_course_fsrs_overrides_course", "course_id", unique=True),
+        vocab_check("leech_action", StudyLeechAction, nullable=True),
+        CheckConstraint("desired_retention BETWEEN 0.70 AND 0.97", name="retention_range"),
+        CheckConstraint("maximum_interval_days BETWEEN 30 AND 3650", name="interval_range"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    desired_retention: Mapped[float | None] = mapped_column(Float)
+    maximum_interval_days: Mapped[int | None] = mapped_column(Integer)
+    new_per_day: Mapped[int | None] = mapped_column(Integer)
+    reviews_per_day: Mapped[int | None] = mapped_column(Integer)
+    leech_threshold: Mapped[int | None] = mapped_column(Integer)
+    leech_action: Mapped[str | None] = mapped_column(String(20))
+    bury_siblings: Mapped[bool | None] = mapped_column(Boolean)
+    load_balance: Mapped[bool | None] = mapped_column(Boolean)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class ExamPaper(Base):
+    __tablename__ = "exam_papers"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_exam_papers_profile_created", "profile_id", "created_at"),
+        Index("ix_exam_papers_course", "course_id", "created_at"),
+        Index("uq_exam_papers_activity", "activity_id", unique=True),
+        CheckConstraint("duration_min > 0", name="duration_positive"),
+        CheckConstraint("total_marks > 0", name="marks_positive"),
+        vocab_check("source", PaperSource),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    activity_id: Mapped[str] = mapped_column(_UUID, ForeignKey("activities.id", ondelete="CASCADE"))
+    node_id: Mapped[str | None] = mapped_column(_UUID)
+    title: Mapped[str] = mapped_column(String(300))
+    instructions_md: Mapped[str | None] = mapped_column(Text)
+    duration_min: Mapped[int] = mapped_column(Integer, default=90)
+    total_marks: Mapped[int] = mapped_column(Integer, default=100)
+    grade_bands: Mapped[GradeBandList | None] = mapped_column(JSON)
+    document: Mapped[PaperDocument] = mapped_column(JSON)
+    source: Mapped[str] = mapped_column(String(20), default=PaperSource.BANK.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class SolveEntry(Base):
+    __tablename__ = "solve_entries"
+    __table_args__ = (
+        Index("ix_solve_entries_profile_created", "profile_id", "created_at"),
+        vocab_check("input_kind", SolveInputKind),
+        vocab_check("intent", SolveIntent),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    input_kind: Mapped[str] = mapped_column(String(20), default=SolveInputKind.TYPED.value)
+    input_text: Mapped[str] = mapped_column(Text)
+    intent: Mapped[str] = mapped_column(String(20), default=SolveIntent.UNSUPPORTED.value)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    result: Mapped[SolveResult] = mapped_column(JSON)
+    note_id: Mapped[str | None] = mapped_column(_UUID, ForeignKey("notes.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StudioArtifact(Base):
+    __tablename__ = "studio_artifacts"
+    __table_args__ = (
+        Index("ix_studio_artifacts_profile_created", "profile_id", "created_at"),
+        Index("ix_studio_artifacts_course", "course_id", "created_at"),
+        vocab_check("kind", StudioArtifactKind),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
+    kind: Mapped[str] = mapped_column(String(20), default=StudioArtifactKind.SLIDE_DECK.value)
+    title: Mapped[str] = mapped_column(String(300))
+    spec: Mapped[StudioArtifactSpec] = mapped_column(JSON)
+    source_material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="SET NULL")
+    )
+    material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class Artifact(Base):
+    __tablename__ = "artifacts"
+    __table_args__ = (
+        Index("ix_artifacts_profile_created", "profile_id", "created_at"),
+        Index("ix_artifacts_course_node_kind", "course_id", "node_id", "kind"),
+        vocab_check("kind", ArtifactKind),
+        vocab_check("status", ArtifactStatus),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
+    title: Mapped[str] = mapped_column(String(300))
+    kind: Mapped[str] = mapped_column(String(20), default=ArtifactKind.AUDIO_BRIEF.value)
+    status: Mapped[str] = mapped_column(String(20), default=ArtifactStatus.PENDING.value)
+    spec: Mapped[ArtifactSpec] = mapped_column(JSON)
+    spec_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    output_material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="SET NULL")
+    )
+    job_id: Mapped[str | None] = mapped_column(_UUID)
+    model: Mapped[str | None] = mapped_column(String(120))
+    voice: Mapped[str | None] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class MediaSegment(Base):
+    __tablename__ = "media_segments"
+    __table_args__ = (
+        Index("ix_media_segments_profile_material_order", "profile_id", "material_id", "order_idx"),
+        Index("ix_media_segments_material_order", "material_id", "order_idx"),
+        vocab_check("source", MediaSegmentSource),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="CASCADE")
+    )
+    start_ms: Mapped[int] = mapped_column(Integer, default=0)
+    end_ms: Mapped[int] = mapped_column(Integer, default=0)
+    text: Mapped[str] = mapped_column(Text, default="")
+    speaker: Mapped[str | None] = mapped_column(String(120))
+    confidence: Mapped[float | None] = mapped_column(Float)
+    order_idx: Mapped[int] = mapped_column(Integer, default=0)
+    source: Mapped[str] = mapped_column(String(20), default=MediaSegmentSource.MANUAL.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class LectureSession(Base):
+    __tablename__ = "lecture_sessions"
+    __table_args__ = (
+        Index("ix_lecture_sessions_profile_created", "profile_id", "created_at"),
+        Index("ix_lecture_sessions_course", "course_id", "created_at"),
+        vocab_check("status", LectureStatus),
+        vocab_check("retention", LectureRetention),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[str | None] = mapped_column(_UUID)
+    title: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(20), default=LectureStatus.RECORDING.value)
+    retention: Mapped[str] = mapped_column(
+        String(20), default=LectureRetention.AUDIO_AND_TEXT.value
+    )
+    mime: Mapped[str] = mapped_column(String(120), default="audio/webm")
+    consent_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    audio_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    material_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("materials.id", ondelete="SET NULL")
+    )
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class LectureChunk(Base):
+    __tablename__ = "lecture_chunks"
+    __table_args__ = (Index("uq_lecture_chunks_seq", "session_id", "seq", unique=True),)
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    session_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("lecture_sessions.id", ondelete="CASCADE"), index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ActivationEventRow(Base):
+    __tablename__ = "activation_events"
+    __table_args__ = (
+        Index("ix_activation_events_profile_at", "profile_id", "at"),
+        vocab_check("event", ActivationEvent),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    event: Mapped[str] = mapped_column(String(40))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    props: Mapped[ActivationProps | None] = mapped_column(JSON)

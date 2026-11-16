@@ -6,7 +6,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
 import uvicorn
 from app.core.config import Settings
+from app.local import run_migrations
 from app.main import create_app
+from app.storage.db import make_engine
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -23,7 +25,11 @@ def main() -> None:
         config_dir=data_dir / "config",
         spa_dist=FRONTEND_DIR / "dist",
         log_level="INFO",
+        app_env="test",
     )
+    engine = make_engine(settings.db_url)
+    run_migrations(engine)
+    engine.dispose()
     app = create_app(settings)
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
 

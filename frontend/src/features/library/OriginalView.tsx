@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { apiFetch, blobUrl, getMaterial } from '@/lib/api'
@@ -26,6 +27,42 @@ export function OriginalView({ materialId }: { materialId: string }) {
     },
     enabled: isText && Boolean(material?.blob_sha),
   })
+  const isPdf =
+    material !== undefined &&
+    (material.mime === 'application/pdf' || material.kind === 'pdf')
+  const pdfSha = isPdf ? material?.blob_sha : undefined
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfError, setPdfError] = useState(false)
+
+  useEffect(() => {
+    if (!pdfSha) {
+      setPdfUrl(null)
+      setPdfError(false)
+      return
+    }
+    let cancelled = false
+    let objectUrl: string | null = null
+    setPdfUrl(null)
+    setPdfError(false)
+    void (async () => {
+      try {
+        const response = await apiFetch(blobUrl(pdfSha))
+        if (!response.ok) {
+          throw new Error(`blob fetch failed: ${response.status}`)
+        }
+        const blob = await response.blob()
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setPdfUrl(objectUrl)
+      } catch {
+        if (!cancelled) setPdfError(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [pdfSha])
 
   if (!material?.blob_sha) {
     return (
@@ -53,9 +90,19 @@ export function OriginalView({ materialId }: { materialId: string }) {
       </pre>
     )
   }
-  if (material.mime === 'application/pdf' || material.kind === 'pdf') {
+  if (isPdf) {
+    if (pdfError) {
+      return (
+        <a href={url} className="text-primary text-sm underline" target="_blank" rel="noreferrer">
+          {t('library.openOriginal')}
+        </a>
+      )
+    }
+    if (!pdfUrl) {
+      return <p className="text-muted-foreground text-sm">{t('library.loading')}</p>
+    }
     return (
-      <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-md border-none" />
+      <iframe src={pdfUrl} title={material.title} className="h-[70vh] w-full rounded-md border-none" />
     )
   }
   return (

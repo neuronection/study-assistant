@@ -18,7 +18,7 @@ external code is T3 by shape, never imported.
 
 ## The T3 perimeter disclosure — verbatim
 
-The charter's consent copy (ADR-0040 clause 21 /
+The charter's consent copy (consent clause 21 /
 `consent.t3PerimeterDisclosure`), rendered verbatim on the connector
 card and served at `GET /api/v1/mcp/charter`; paraphrasing it away is a
 conformance failure. Byte-verified against the vendored charter by
@@ -52,7 +52,7 @@ What that means in practice, line by line:
 - Web-search **API keys** live in `search:<provider id>` slots; rows
   carry only a masked `key_hint`.
 - Keyring values are additionally **sealed at rest** by the family
-  cipher (Fernet under the keyring-held `SA_DATA_KEY`, ADR-0027) with
+  cipher (Fernet under the keyring-held `SA_DATA_KEY`) with
   plaintext-tolerant reads and rotation via `SA_DATA_KEY_PREVIOUS` —
   the runbook is in [the security model](../security.md).
 - Tests never touch the real OS keyring (an in-memory backend is

@@ -1,13 +1,17 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
-import { BookOpen, CalendarClock, Clock3, Flame, GraduationCap, History, Layers, Loader2, MessageSquare, NotebookPen, Sparkles, Target } from 'lucide-react'
+import { BookOpen, CalendarClock, CalendarPlus, Clock3, Flame, GraduationCap, History, Layers, Loader2, MessageSquare, NotebookPen, Sigma, Sparkles, Target } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
 
 import { useCurrentOrigin } from '@/lib/origin'
 import { GenesisDialog } from '@/features/ai/GenesisDialog'
+import { DailyBriefHomeCard } from './DailyBriefHomeCard'
+import { StudyCoachStrip } from './StudyCoachStrip'
+import { useWorkspaceStore } from '@/lib/workspace-store'
+import { WeekPlanDialog } from '@/features/planner/WeekPlanDialog'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -444,6 +448,27 @@ function ReviewNudgeStrip() {
   )
 }
 
+function SolveCard() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Sigma className="text-primary size-4" aria-hidden />
+          {t('solve.title')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-3">
+        <p className="text-muted-foreground min-w-0 flex-1 text-xs">{t('solve.homeBody')}</p>
+        <Button size="sm" onClick={() => void navigate({ to: '/solve' })}>
+          {t('solve.open')}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 function StudyNowCard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -725,6 +750,7 @@ export function HomePage() {
   const presets = useMotionPresets()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const workspaceCourseId = useWorkspaceStore((state) => state.courseId)
   const overview = useQuery({ queryKey: ['overview'], queryFn: getOverview })
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
   const materials = useQuery({ queryKey: ['materials', null], queryFn: () => listMaterials() })
@@ -739,6 +765,7 @@ export function HomePage() {
   const [goalUnitEdit, setGoalUnitEdit] = useState<'answers' | 'minutes' | null>(null)
   const [goalValueEdit, setGoalValueEdit] = useState<number | null>(null)
   const [genesisOpen, setGenesisOpen] = useState(false)
+  const [weekPlanOpen, setWeekPlanOpen] = useState(false)
 
   const sample = useMutation({
     mutationFn: () => createSampleCourse(),
@@ -766,7 +793,13 @@ export function HomePage() {
     <div className="mx-auto max-w-4xl p-8">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('home.title')}</h1>
-        <BackendBadge />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setWeekPlanOpen(true)}>
+            <CalendarPlus className="size-3.5" aria-hidden />
+            {t('plan.weekAction')}
+          </Button>
+          <BackendBadge />
+        </div>
       </header>
       <AnimatePresence initial={false}>
         <motion.div
@@ -936,8 +969,13 @@ export function HomePage() {
           <CardTitle className="text-sm">{t('home.nextAction')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <StudyCoachStrip />
           <ReviewNudgeStrip />
           <ExamCard />
+          <SolveCard />
+          <DailyBriefHomeCard
+            courseId={workspaceCourseId ?? (courses.data?.[0]?.id ? String(courses.data[0].id) : null)}
+          />
           <StudyNowCard />
           <ContinueReadingCard />
           <NextBestActions />
@@ -1039,6 +1077,7 @@ export function HomePage() {
         </CardContent>
       </Card>
       {genesisOpen ? <GenesisDialog onClose={() => setGenesisOpen(false)} /> : null}
+      {weekPlanOpen ? <WeekPlanDialog onClose={() => setWeekPlanOpen(false)} /> : null}
     </div>
   )
 }

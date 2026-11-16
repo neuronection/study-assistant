@@ -20,8 +20,15 @@ def no_keyring(monkeypatch: pytest.MonkeyPatch) -> fail.Keyring:
     return backend
 
 
-def test_get_secret_returns_none_without_backend(no_keyring: Any) -> None:
-    assert secrets.get_secret("provider:1") is None
+def test_get_secret_returns_none_without_backend(
+    no_keyring: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.core.config.get_settings", lambda: Settings(data_dir=tmp_path))
+    secrets.reset_secret_caches()
+    try:
+        assert secrets.get_secret("provider:1") is None
+    finally:
+        secrets.reset_secret_caches()
 
 
 def test_set_secret_falls_back_to_the_sealed_file_without_keyring(
@@ -57,8 +64,19 @@ def test_set_secret_raises_clear_error_without_any_backend(
         secrets.reset_secret_caches()
 
 
-def test_delete_secret_is_best_effort_without_backend(no_keyring: Any) -> None:
-    secrets.delete_secret("provider:1")
+def test_delete_secret_clears_the_sealed_file_without_keyring(
+    no_keyring: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The sealed-file backend can revoke: set -> delete -> absent."""
+    monkeypatch.setattr("app.core.config.get_settings", lambda: Settings(data_dir=tmp_path))
+    secrets.reset_secret_caches()
+    try:
+        secrets.set_secret("provider:1", "k")
+        assert secrets.store_backend() == "file"
+        secrets.delete_secret("provider:1")
+        assert secrets.get_secret("provider:1") is None
+    finally:
+        secrets.reset_secret_caches()
 
 
 def test_providers_api_works_without_keyring_backend(no_keyring: Any, tmp_path: Path) -> None:

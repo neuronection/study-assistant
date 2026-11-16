@@ -1,11 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, Plus } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
-import { LocalEngines } from '@/features/settings/LocalEngines'
-import { ProviderCreateFields } from '@/features/settings/ProviderCreateFields'
-import { useProviderCreate } from '@/features/settings/useProviderCreate'
+import { listProviders } from '@/lib/api'
+import { ProviderSetupConnect } from '@/features/settings/provider-setup/ProviderSetupConnect'
 
 export function ProviderStep({
   hasProvider,
@@ -16,11 +13,16 @@ export function ProviderStep({
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const advance = () => {
+  const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
+  const configured = (providers.data ?? [])
+    .map((provider) => provider.preset_key)
+    .filter((key): key is string => Boolean(key))
+
+  const handleConnected = () => {
     void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] })
     onDone()
   }
-  const state = useProviderCreate({ onCreated: advance })
+
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-sm">{t('onboarding.providerHint')}</p>
@@ -29,18 +31,15 @@ export function ProviderStep({
           {t('onboarding.providerAlready')}
         </p>
       ) : null}
-      <LocalEngines auto onCreated={advance} />
-      <ProviderCreateFields state={state} />
-      <div className="flex justify-end">
-        <Button size="sm" disabled={!state.canSave || state.submitting} onClick={state.submit}>
-          {state.submitting ? (
-            <Loader2 className="animate-spin" aria-hidden />
-          ) : (
-            <Plus aria-hidden />
-          )}
-          {t('onboarding.providerCreate')}
-        </Button>
-      </div>
+      <ProviderSetupConnect
+        showName={false}
+        showHosting={false}
+        showCountry={false}
+        showSteps={false}
+        bindDefaults
+        configured={configured}
+        onConnected={handleConnected}
+      />
     </div>
   )
 }

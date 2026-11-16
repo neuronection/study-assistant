@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { WorkingDirEditor } from './WorkingDirEditor'
 
@@ -27,7 +27,12 @@ const INFO = {
   restart_pending: false,
 }
 
-const PENDING = { ...INFO, custom: true, restart_pending: true, path: '/home/u/.local/share/StudyAssistant' }
+const PENDING = {
+  ...INFO,
+  custom: true,
+  restart_pending: true,
+  path: '/home/u/.local/share/StudyAssistant',
+}
 
 function renderEditor() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -38,21 +43,34 @@ function renderEditor() {
   )
 }
 
+async function enterEdit() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Change folder…' }))
+  return screen.findByDisplayValue(INFO.path)
+}
+
 describe('WorkingDirEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    delete window.pywebview
     getWorkingDir.mockResolvedValue(INFO)
     setWorkingDir.mockResolvedValue({ path: '/tmp/elsewhere', restart_required: true })
     resetWorkingDir.mockResolvedValue({ restart_required: true })
   })
 
-  test('shows the current path and the default hint', async () => {
-    renderEditor()
-    expect(await screen.findByDisplayValue(INFO.path)).toBeInTheDocument()
-    expect(screen.getByText(/Default location:/)).toBeInTheDocument()
+  afterEach(() => {
+    delete window.pywebview
   })
 
-  test('validates a changed path and saves it, showing the restart banner', async () => {
+  test('shows the current path read-only with the default hint', async () => {
+    renderEditor()
+    const input = await screen.findByDisplayValue(INFO.path)
+    expect(input).toHaveAttribute('readonly')
+    expect(screen.getByText(/Default location:/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change folder…' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
+  })
+
+  test('enters edit explicitly and saves a validated path', async () => {
     getWorkingDir.mockResolvedValueOnce(INFO).mockResolvedValue(PENDING)
     validateWorkingDir.mockResolvedValue({
       valid: true,
@@ -62,7 +80,8 @@ describe('WorkingDirEditor', () => {
       has_app_db: false,
     })
     renderEditor()
-    const input = await screen.findByDisplayValue(INFO.path)
+    const input = await enterEdit()
+    expect(input).not.toHaveAttribute('readonly')
     fireEvent.change(input, { target: { value: '/tmp/elsewhere' } })
     fireEvent.blur(input)
     expect(await screen.findByText('Empty folder — ready to use.')).toBeInTheDocument()
@@ -71,8 +90,35 @@ describe('WorkingDirEditor', () => {
     expect(save).not.toBeDisabled()
     fireEvent.click(save)
     await waitFor(() => expect(setWorkingDir).toHaveBeenCalledWith('/tmp/elsewhere'))
-    expect(await screen.findByText(/read its data from/i)).toBeInTheDocument()
+    expect(await screen.findByText(/data-location change is pending/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
+  })
+
+  test('uses the desktop data-directory picker when the bridge exposes it', async () => {
+    const pickDataDir = vi.fn().mockResolvedValue('/tmp/elsewhere')
+    window.pywebview = {
+      api: { pick_folder: vi.fn(), pick_data_dir: pickDataDir },
+    }
+    validateWorkingDir.mockResolvedValue({
+      valid: true,
+      reason: null,
+      exists: true,
+      empty: true,
+      has_app_db: false,
+    })
+    renderEditor()
+    await enterEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'Browse…' }))
+    await waitFor(() => expect(pickDataDir).toHaveBeenCalled())
+    await waitFor(() => expect(validateWorkingDir).toHaveBeenCalledWith('/tmp/elsewhere'))
+    expect(await screen.findByText('Empty folder — ready to use.')).toBeInTheDocument()
+  })
+
+  test('falls back to manual editing when no desktop bridge exists', async () => {
+    renderEditor()
+    const input = await enterEdit()
+    expect(input).not.toHaveAttribute('readonly')
+    expect(screen.queryByRole('button', { name: 'Browse…' })).not.toBeInTheDocument()
   })
 
   test('shows the reason for an invalid path and keeps save disabled', async () => {
@@ -84,7 +130,7 @@ describe('WorkingDirEditor', () => {
       has_app_db: false,
     })
     renderEditor()
-    const input = await screen.findByDisplayValue(INFO.path)
+    const input = await enterEdit()
     fireEvent.change(input, { target: { value: '/tmp/junk' } })
     fireEvent.blur(input)
     expect(

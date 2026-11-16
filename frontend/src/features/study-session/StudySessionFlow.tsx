@@ -13,12 +13,12 @@ import { Skeleton, SkeletonText } from '@/components/ui/skeleton'
 import {
   getReviewDue,
   getStudyNext,
-  reviewFlashcard,
   updatePlanItem,
   type StudyNext,
   type StudyWeakCell,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { submitReview } from '@/lib/review-submit'
 
 type Phase = 'review' | 'plan' | 'practice'
 
@@ -191,7 +191,7 @@ function ReviewPhase({
   const due = useQuery({ queryKey: ['review-due'], queryFn: () => getReviewDue() })
   const review = useMutation({
     mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
-      reviewFlashcard(cardId, rating),
+      submitReview(cardId, rating),
   })
   const [answered, setAnswered] = useState(0)
 

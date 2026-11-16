@@ -1,54 +1,26 @@
-import de from '@/locales/de.json'
-import el from '@/locales/el.json'
-import en from '@/locales/en.json'
 import { findLanguage } from '@neuronection/assistant-ui/languages'
 
 export interface LocaleOption {
   code: string
   name: string
+  flag?: string
 }
 
 export const MAX_MISSING_RATIO = 0.02
 
-/** Locale registry: which dictionaries ship. Display names come from
- * the shared language catalog (ADR-0024) — endonyms, no local list. */
-export const LOCALES: LocaleOption[] = (['en', 'el', 'de'] as const).map((code) => ({
-  code,
-  name: findLanguage(code)?.nativeName ?? code,
-}))
-
-const catalogs: Record<string, unknown> = { en, el, de }
-
-function flattenKeys(value: unknown, prefix = ''): string[] {
-  if (typeof value !== 'object' || value === null) return []
-  const keys: string[] = []
-  for (const [key, child] of Object.entries(value)) {
-    const path = prefix ? `${prefix}.${key}` : key
-    if (typeof child === 'string') {
-      if (child.trim() !== '') keys.push(path)
-    } else if (typeof child === 'object' && child !== null) {
-      keys.push(...flattenKeys(child, path))
-    } else {
-      keys.push(path)
-    }
+/** Locale registry: which dictionaries ship. Display names and flags come
+ * from the shared language catalog (ADR-0024) — endonyms, no local list.
+ * Completeness is enforced by `i18n-audit.test.ts`; the shell must not
+ * import the dictionaries themselves (plan 101-D). */
+export const LOCALES: LocaleOption[] = (['en', 'el', 'de'] as const).map((code) => {
+  const language = findLanguage(code)
+  return {
+    code,
+    name: language?.nativeName ?? code,
+    flag: language?.flag,
   }
-  return keys
-}
-
-const SOURCE_KEYS = new Set(flattenKeys(en))
-
-export function missingRatio(code: string): number {
-  if (!SOURCE_KEYS.size) return 0
-  const present = new Set(flattenKeys(catalogs[code] ?? {}))
-  let missing = 0
-  for (const key of SOURCE_KEYS) {
-    if (!present.has(key)) missing += 1
-  }
-  return missing / SOURCE_KEYS.size
-}
+})
 
 export function availableLocales(): LocaleOption[] {
-  return LOCALES.filter(
-    (locale) => locale.code === 'en' || missingRatio(locale.code) <= MAX_MISSING_RATIO,
-  )
+  return [...LOCALES]
 }

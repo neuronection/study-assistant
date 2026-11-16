@@ -25,10 +25,18 @@ def _validate_decision_transport(value: str | None) -> str | None:
     return value
 
 
+class StorageHealthResponse(BaseModel):
+    backend: str
+    status: Literal["ok", "degraded", "unavailable"]
+    required: bool
+    detail: str | None = None
+
+
 class HealthResponse(BaseModel):
-    status: Literal["ok"]
+    status: Literal["ok", "degraded", "unhealthy"]
     version: str
     db: Literal["ok"]
+    storage: StorageHealthResponse
 
 
 class FolderCreate(BaseModel):

@@ -8,7 +8,7 @@ profile) whose declared capabilities gate what it may do, never probed.
 The subsystem lives at `backend/app/extensions/` — the vendored family
 contract modules (`contract.py`, `polite_http.py`, `conformance.py`),
 the registry that validates every bundled manifest at registration, the
-ADR-0035 web-search trio under `search/`, the bundled connectors under
+the web-search trio under `search/`, the bundled connectors under
 `builtin/`, and the MCP instance lifecycle (`mcp_servers.py`,
 `runtime/mcp_parse.py`).
 
@@ -35,7 +35,7 @@ The mental model in three bullets:
 | Extension | id (kind `connector`) | What it does |
 |---|---|---|
 | External web sources | `external-sources` | Bundled: RSS/Atom feeds, YouTube channels/playlists, site-filtered searches — polled into suggestions on a schedule (declares `sync`). |
-| Discovery | `discovery` | Bundled: one normalized-result registry over pluggable providers — web (the ADR-0035 trio), YouTube flat search, site presets, external MCP servers (declares `chat-tools`, the read-only DISCOVER tool). |
+| Discovery | `discovery` | Bundled: one normalized-result registry over pluggable providers — web (the search trio), YouTube flat search, site presets, external MCP servers (declares `chat-tools`, the read-only DISCOVER tool). |
 | MCP servers | `mcp` | The T3 instance surface: every registered external MCP server is one *instance* of this connector — its own transport config, a keyring-sealed token/env slot, a per-tool allowlist with declared contracts (declares `secrets`). |
 
 Beside the bundles, **two configuration-only families** use the same

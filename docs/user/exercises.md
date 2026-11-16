@@ -134,3 +134,12 @@ rather than statements.
 When you finish an exercise, you can save a **session summary** — a note
 recapping which steps went wrong and how many hints you needed. It's created
 in the exercise's course, tagged, and linked from the completion screen.
+
+
+## Diagram questions
+
+**Diagram question** on the Practice tab opens a visual authoring dialog:
+choose an image material, drag rectangles over the parts to label, name each
+one and save. The player shows the image with numbered regions and a shuffled
+label bank; tap a label, then its region. Grading is deterministic (each label
+must land on its region), with the expected mapping revealed after submit.

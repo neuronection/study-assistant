@@ -1,6 +1,6 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {Link} from '@tanstack/react-router'
-import {BookOpen, ClipboardList, FolderClosed, GitBranch, Loader2, MessageSquare, Plus, ScrollText, Sparkles, X} from 'lucide-react'
+import {BookOpen, ClipboardList, FolderClosed, GitBranch, Loader2, MessageSquare, Plus, ScrollText, Sparkles, Volume2, X} from 'lucide-react'
 import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {BlockRenderer} from '@/components/blocks/BlockRenderer'
@@ -11,6 +11,7 @@ import {ErrorBanner} from '@/components/ErrorBanner'
 import {TabActionBar, type TabAction} from '@/components/layout/TabActionBar'
 import {type PopoverMenuItem} from '@/components/ui/popover-menu'
 import {GenerateDialog as AIGenerateDialog} from '@/features/ai/GenerateDialog'
+import {NarrateDialog} from '@/features/artifacts/NarrateDialog'
 import {addNode, getMaterial, getNodeArtifacts, outlineCommit, outlineDraft, reviewNode, type ComposeKind, type Material, type NodeInfo, type OrganizerFinding, type OutlineDraftChapter, type WorkspaceChild} from '@/lib/api'
 import {NodeRecentStrip} from '@/features/courses/NodeRecentStrip'
 import type { WorkspaceData } from './shared'
@@ -336,6 +337,7 @@ function OrganizerCard({
     kind?: ComposeKind
     preview: boolean
   } | null>(null)
+  const [narrateOpen, setNarrateOpen] = useState(false)
 
   const artifacts = useQuery({
     queryKey: ['node-artifacts', nodeId],
@@ -408,6 +410,11 @@ function OrganizerCard({
             label: t('chapter.cheatsheet'),
             icon: ScrollText,
             menu: cheatSheetMenu,
+          },
+          {
+            label: t('workspace.narrate'),
+            icon: Volume2,
+            onAction: () => setNarrateOpen(true),
           },
           ...(extraActions ?? []),
         ]}
@@ -495,6 +502,13 @@ function OrganizerCard({
             <BlockRenderer blocks={[{ type: 'text', md: cheatsheet }] as Block[]} />
           </CardContent>
         </Card>
+      ) : null}
+      {narrateOpen ? (
+        <NarrateDialog
+          courseId={courseId}
+          nodeId={nodeId}
+          onClose={() => setNarrateOpen(false)}
+        />
       ) : null}
     </div>
   )

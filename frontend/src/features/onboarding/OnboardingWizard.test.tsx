@@ -8,8 +8,11 @@ import { useWizardStore } from './wizardStore'
 import { storageKeys } from '@/lib/constants'
 
 const getOnboardingState = vi.fn()
+const getInstanceConfig = vi.fn()
 const getWorkingDir = vi.fn()
 const listPresets = vi.fn()
+const listProviders = vi.fn()
+const setupProviderPreset = vi.fn()
 const createProvider = vi.fn()
 const detectLocalEngines = vi.fn()
 const listModels = vi.fn()
@@ -26,8 +29,11 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     getOnboardingState: () => getOnboardingState(),
+    getInstanceConfig: () => getInstanceConfig(),
     getWorkingDir: () => getWorkingDir(),
     listPresets: () => listPresets(),
+    listProviders: () => listProviders(),
+    setupProviderPreset: (key: string, body: unknown) => setupProviderPreset(key, body),
     createProvider: (body: unknown) => createProvider(body),
     detectLocalEngines: () => detectLocalEngines(),
     listModels: () => listModels(),
@@ -89,9 +95,29 @@ describe('OnboardingWizard', () => {
     window.localStorage.clear()
     useWizardStore.setState({ open: false })
     getOnboardingState.mockResolvedValue(FRESH_STATE)
+    getInstanceConfig.mockResolvedValue({ identity_mode: 'desktop' })
     getWorkingDir.mockResolvedValue(WORKING_DIR)
     listPresets.mockResolvedValue({
-      google: { name: 'Google', type: 'google', base_url: '' },
+      gemini: {
+        name: 'Google',
+        type: 'google',
+        base_url: 'https://generativelanguage.googleapis.com',
+        fixed_base: true,
+        local: false,
+        key_url: null,
+        preferred_model: null,
+        curated_models: null,
+        stt_model: null,
+        steps: null,
+        free_tier_note: null,
+      },
+    })
+    listProviders.mockResolvedValue([])
+    setupProviderPreset.mockResolvedValue({
+      ok: true,
+      provider: { id: '3', name: 'Google', type: 'google', base_url: '' },
+      catalog_count: 1,
+      curated_missed: false,
     })
     detectLocalEngines.mockResolvedValue([])
     listModels.mockResolvedValue([MODEL])
@@ -108,6 +134,25 @@ describe('OnboardingWizard', () => {
   test('auto-opens on a fresh install', async () => {
     renderWizard()
     expect(await screen.findByText('Welcome to Study Assistant')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument()
+  })
+
+  test('desktop identity exposes the working-directory step', async () => {
+    renderWizard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
+    expect(await screen.findByText('Where should your data live?')).toBeInTheDocument()
+  })
+
+  test('server identity omits the working-directory step and local-first copy', async () => {
+    getInstanceConfig.mockResolvedValue({ identity_mode: 'server' })
+    renderWizard()
+    expect(await screen.findByText('Welcome to Study Assistant')).toBeInTheDocument()
+    expect(
+      screen.getByText(/This wizard connects an AI provider/i)
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/everything stays on this machine/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }))
+    expect(screen.queryByText('Where should your data live?')).not.toBeInTheDocument()
   })
 
   test('welcome step offers a language picker that applies instantly', async () => {
@@ -116,13 +161,16 @@ describe('OnboardingWizard', () => {
     expect(screen.getByRole('combobox', { name: 'Language' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Language' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Ελληνικά' }))
+    const greek = await screen.findByRole('option', { name: /Ελληνικά/ })
+    expect(greek.textContent).toContain('🇬🇷')
+    fireEvent.click(greek)
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('el')
     })
     expect(localStorage.getItem(storageKeys.locale)).toBe('el')
     expect(screen.getByRole('combobox', { name: 'Γλώσσα' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Καλώς ήρθατε' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Παράλειψη προς το παρόν' })).toBeInTheDocument()
   })
 
@@ -170,6 +218,7 @@ describe('OnboardingWizard', () => {
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Local engines' }))
     expect(await screen.findByText('Ollama (local)')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /add ollama \(local\)/i }))
     await waitFor(() =>
@@ -185,16 +234,30 @@ describe('OnboardingWizard', () => {
   })
 
   test('provider creation advances to the models step', async () => {
-    createProvider.mockResolvedValue({ id: '3', name: 'Google' })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
     expect(await screen.findByText('Where should your data live?')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-    fireEvent.change(await screen.findByLabelText('Name', { selector: 'input' }), {
-      target: { value: 'Google' },
+    fireEvent.click(await screen.findByRole('button', { name: /Google/ }))
+    expect(screen.queryByLabelText('Connection name')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hosting')).not.toBeInTheDocument()
+    expect(screen.queryByText('Country')).not.toBeInTheDocument()
+    fireEvent.change(await screen.findByLabelText('API key'), {
+      target: { value: 'sk-test' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Add provider' }))
-    await waitFor(() => expect(createProvider).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
+    await waitFor(() => expect(setupProviderPreset).toHaveBeenCalled())
+    expect(setupProviderPreset).toHaveBeenCalledWith(
+      'gemini',
+      expect.objectContaining({
+        options: expect.objectContaining({
+          bind_chat: true,
+          bind_vision: true,
+          bind_stt: true,
+          bind_embeddings: true,
+        }),
+      })
+    )
     expect(await screen.findByText('Choose your models')).toBeInTheDocument()
   })
 

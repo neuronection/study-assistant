@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { AI_TAB_SECTIONS, SETTINGS_TABS, TOOLS_TAB_SECTIONS } from './SettingsPage'
+import {
+  AI_TAB_SECTIONS,
+  DEVELOPER_TAB_SECTIONS,
+  SETTINGS_TABS,
+  TOOLS_TAB_SECTIONS,
+} from './SettingsPage'
 
 // Settings-structure conformance wall (ADR-0033 / plan 27): the settings
 // nav in this app must match the family contract vendored at
@@ -17,6 +22,8 @@ const map = JSON.parse(
   domains: {
     id: string
     scope?: string
+    secrets?: string
+    home?: { tab: string; section?: string }
     adopters?: Record<string, string>
   }[]
   products: Record<
@@ -41,6 +48,10 @@ describe('settings-map contract', () => {
 
   test("the declared tools tab sections match the app's tools sections", () => {
     expect(declaredSections('tools')).toEqual([...TOOLS_TAB_SECTIONS])
+  })
+
+  test("the declared developer tab sections match the app's developer sections", () => {
+    expect(declaredSections('developer')).toEqual([...DEVELOPER_TAB_SECTIONS])
   })
 
   // INV-1/INV-2 (enforced part): every aligned section hosts only its own
@@ -90,5 +101,21 @@ describe('settings-map contract', () => {
       .find((tab) => tab.id === 'tools')
       ?.sections?.find((section) => section.id === 'indexing')
     expect(indexing?.domains).toEqual(['tools.indexing', 'tools.retrieval'])
+  })
+
+  test('app.storage is aligned for study and hosted by the developer storage section', () => {
+    const storage = map.domains.find((domain) => domain.id === 'app.storage')
+    expect(storage).toBeDefined()
+    expect(storage!.adopters?.['study-assistant']).toBe('aligned')
+    expect(storage!.scope).toBe('instance (admin)')
+    expect(storage!.secrets).toBe('none')
+    expect(storage!.home).toEqual({ tab: 'developer', section: 'storage' })
+
+    const developer = declared.find((tab) => tab.id === storage!.home!.tab)
+    expect(developer).toBeDefined()
+    const hosted = developer!.sections?.find(
+      (section) => section.id === storage!.home!.section
+    )
+    expect(hosted?.domains).toEqual(['app.storage'])
   })
 })

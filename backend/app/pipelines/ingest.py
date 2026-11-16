@@ -21,6 +21,7 @@ from ..jobs.cancellation import (
 from ..jobs.payloads import IngestPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
+from ..services.content.annotations import reanchor_material
 from ..services.content.materials import extraction_to_blocks
 from ..services.retrieval.chunk_profile import chunk_texts_for_space
 from ..storage.blobs import BlobStore
@@ -106,6 +107,7 @@ def _store_extraction(
     )
     session.add(extraction)
     session.flush()
+    reanchor_material(session, material.id)
 
     ocr = _embedded_ocr_text(material)
     chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown

@@ -1,15 +1,21 @@
 from fastapi import APIRouter
 
 from . import (
+    activation,
     ai,
+    ai_pricing,
     ai_settings,
     analytics,
+    annotations,
+    artifacts,
     backup,
     calendar,
+    capture,
     chat,
     config,
     courses,
     discovery,
+    exams,
     exercises,
     extensions,
     external_sources,
@@ -20,7 +26,9 @@ from . import (
     health,
     instance,
     jobs,
+    lectures,
     materials,
+    media,
     nodes,
     notes,
     notifications,
@@ -32,7 +40,10 @@ from . import (
     review,
     search,
     skills,
+    solve,
     sources,
+    storage,
+    studio,
     study,
     study_sessions,
     trash,
@@ -44,6 +55,9 @@ api_router.include_router(instance.router)
 api_router.include_router(jobs.router)
 api_router.include_router(materials.router)
 api_router.include_router(materials.blobs_router)
+api_router.include_router(media.router)
+api_router.include_router(lectures.router)
+api_router.include_router(annotations.router)
 api_router.include_router(search.router)
 api_router.include_router(discovery.router)
 api_router.include_router(external_sources.router)
@@ -56,7 +70,12 @@ api_router.include_router(genesis.router)
 api_router.include_router(nodes.router)
 api_router.include_router(plan.courses_plan_router)
 api_router.include_router(chat.router)
+api_router.include_router(ai_pricing.router)
 api_router.include_router(quiz.router)
+api_router.include_router(exams.router)
+api_router.include_router(solve.router)
+api_router.include_router(studio.router)
+api_router.include_router(artifacts.router)
 api_router.include_router(review.router)
 api_router.include_router(exercises.router)
 api_router.include_router(notes.router)
@@ -66,9 +85,11 @@ api_router.include_router(study.router)
 api_router.include_router(study_sessions.router)
 api_router.include_router(notifications.router)
 api_router.include_router(backup.router)
+api_router.include_router(capture.router)
 api_router.include_router(calendar.router)
 api_router.include_router(profiles.router)
 api_router.include_router(retrieval.router)
+api_router.include_router(storage.router)
 api_router.include_router(plan.router)
 api_router.include_router(plan.upcoming_router)
 api_router.include_router(config.router)
@@ -77,5 +98,6 @@ api_router.include_router(fs.router)
 api_router.include_router(skills.router)
 api_router.include_router(onboarding.router)
 api_router.include_router(ai_settings.router)
+api_router.include_router(activation.router)
 api_router.include_router(ai.router)
 api_router.include_router(trash.router)

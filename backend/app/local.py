@@ -163,7 +163,6 @@ def run_migrations(engine: Any | None = None) -> None:
     engine's database (restore flows, test fixtures); without, alembic
     resolves the URL from `Settings` (entrypoint boots).
     """
-
     from alembic import command
 
     config = _config()
@@ -175,3 +174,20 @@ def run_migrations(engine: Any | None = None) -> None:
     else:
         command.upgrade(config, "head")
     logger.info("Migrations applied (%s)", find_alembic_ini())
+
+
+def migrate_datastore(url: str) -> None:
+    """Apply migrations to a specific datastore URL (the deploy/ops path).
+
+    The docker `migrate` mode connects as the owner role (ADR-0064), so it
+    hands the owner URL here instead of mutating `Settings`. Same
+    connection-scoped path as `run_migrations(engine)` — `app.local` stays
+    the single migration home (reference-architecture §4).
+    """
+    from sqlalchemy import create_engine
+
+    engine = create_engine(url)
+    try:
+        run_migrations(engine)
+    finally:
+        engine.dispose()

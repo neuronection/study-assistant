@@ -43,11 +43,35 @@ export async function dueFlashcards(
   return json<FlashcardInfo[]>(response)
 }
 
-export async function reviewFlashcard(cardId: string, rating: number): Promise<ReviewResult> {
+export async function createFlashcard(body: {
+  kind?: string
+  front_md: string
+  back_md: string
+  course_id: string
+  node_id?: string | null
+}): Promise<FlashcardInfo> {
+  const response = await apiFetch('/api/v1/flashcards', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<FlashcardInfo>(response)
+}
+
+export async function reviewFlashcard(
+  cardId: string,
+  rating: number,
+  reviewedAt?: number
+): Promise<ReviewResult> {
   const response = await apiFetch(`/api/v1/flashcards/${cardId}/review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rating }),
+    body: JSON.stringify({
+      rating,
+      ...(reviewedAt === undefined
+        ? {}
+        : { reviewed_at: new Date(reviewedAt).toISOString() }),
+    }),
   })
   return json<ReviewResult>(response)
 }

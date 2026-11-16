@@ -145,10 +145,10 @@ def test_seeder_seeds_demo_workspace_idempotently_only_in_the_demo_instance(
     seeded = db_counts(demo_dir)
     assert seeded["users"] == 3
     assert seeded["profiles"] == 9
-    assert seeded["courses"] == 9
-    assert seeded["materials"] == 11
-    assert seeded["notes"] == 10
-    assert seeded["exercises"] == 27
+    assert seeded["courses"] == 11
+    assert seeded["materials"] == 19
+    assert seeded["notes"] == 15
+    assert seeded["exercises"] == 41
     assert seeded["demo_mode"] == 1
 
     second = run_seeder("--demo-dir", str(demo_dir))

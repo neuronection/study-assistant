@@ -19,12 +19,14 @@ from .cancellation import (
     is_cancel_requested,
 )
 from .payloads import (
+    ArtifactRenderPayload,
     ChatTurnPayload,
     ComposePayload,
     DrawingOcrPayload,
     GenesisPayload,
     ImageOcrPayload,
     IngestPayload,
+    LectureTranscribePayload,
     PostprocessPayload,
     UrlImportPayload,
 )
@@ -337,6 +339,8 @@ class JobRunner:
         | ImageOcrPayload
         | GenesisPayload
         | ComposePayload
+        | ArtifactRenderPayload
+        | LectureTranscribePayload
         | UrlImportPayload,
     ) -> Job:
         job = Job(type=job_type, payload=dict(payload), status=JobStatus.QUEUED, progress=0)

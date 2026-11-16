@@ -14,7 +14,7 @@ longer active (or past its TTL) has its ``dedup_key`` released, so a later
 recurrence is a new alert. The event history is kept.
 
 Study has **no token-denominated embed budget** yet (its only budget is the
-monetary `TaskAssignment.params.monthly_cap_usd`). ``retrieval.budget_exhausted``
+monetary `TaskAssignment.params.monthly_cap_micros`). ``retrieval.budget_exhausted``
 therefore reports ``unavailable`` rather than inventing a token budget; the
 kind is still boot-seeded so adoption only needs the real budget later.
 """

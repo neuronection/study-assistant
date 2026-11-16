@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   Bot,
   Camera,
@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next'
 import {
   DictationButton,
   DictationStrip,
+  DictationUnavailable,
   useDictation,
 } from '@/components/ui/dictation'
 import { ChatComposer } from '@/components/ui/chat-composer'
@@ -68,6 +69,7 @@ import {
   listCourses,
   listFolders,
   listMaterials,
+  listTasks,
   renameFolder,
   selectChatVariant,
   updateChatSessionEmbeddings,
@@ -79,6 +81,7 @@ import {
   classifyDictationError,
 } from '@/lib/dictation'
 import { useChatStore } from '@/lib/chat-store'
+import { useInterfacePrefs } from '@/lib/interface-prefs'
 import { useRailResize } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
@@ -134,6 +137,7 @@ export function StudyChatPanel({
   layoutWidth?: number
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const chat = useStudyChatContext()
   const stream = chat.stream
@@ -442,7 +446,15 @@ export function StudyChatPanel({
     onResult: (text) => insertIntoDraft(`${text} `),
   })
 
+  const prefs = useInterfacePrefs()
   const [historyClose, setHistoryClose] = useState(0)
+  const tasks = useQuery({ queryKey: ['tasks'], queryFn: listTasks })
+  const sttTask = (tasks.data ?? []).find((task) => task.requires === 'stt')
+  const sttAssigned =
+    sttTask === undefined ||
+    sttTask.model_id !== null ||
+    sttTask.fallback_model_id !== null ||
+    sttTask.default_model_label !== null
 
   const activeTitle = activeSession === null
     ? t('chat.newSession')
@@ -530,6 +542,10 @@ export function StudyChatPanel({
   const viewMessages = useMemo(
     () => (messages.data ?? []).map(toChatMessageView),
     [messages.data],
+  )
+  const lastAssistantId = useMemo(
+    () => [...viewMessages].reverse().find((view) => view.role === 'assistant')?.id ?? null,
+    [viewMessages],
   )
 
   // Uniform family turn-error card (ADR-0023 chat error display): renders
@@ -714,6 +730,7 @@ export function StudyChatPanel({
                 onRegenerate={handleRegenerate}
                 onSwitchVariant={(messageId) => branchSelect.mutate(messageId)}
                 actionPending={sending}
+                autoSpeak={prefs.autoSpeak && !sending && view.id === lastAssistantId}
               />
             )
           }}
@@ -869,11 +886,27 @@ export function StudyChatPanel({
             </Popover>
           }
           toolbarEnd={
-            <DictationButton
-              status={dictation.status}
-              onStart={() => void dictation.start()}
-              label={t('dictation.start')}
-            />
+            tasks.data !== undefined && !sttAssigned ? (
+              <DictationUnavailable
+                label={t('dictation.unavailable')}
+                detail={t('dictation.unassigned')}
+                action={{
+                  label: t('dictation.assignModel'),
+                  onClick: () => {
+                    void navigate({ to: '/settings', search: { tab: 'ai', section: 'tasks' } })
+                  },
+                }}
+              />
+            ) : (
+              <DictationButton
+                status={dictation.status}
+                onStart={() => {
+                  window.speechSynthesis?.cancel()
+                  void dictation.start()
+                }}
+                label={t('dictation.start')}
+              />
+            )
           }
           attachments={
             attachments.length > 0 ? (

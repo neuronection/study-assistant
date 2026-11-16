@@ -12,12 +12,18 @@ import {
 import { useReviewNudgeSetting } from '@/lib/review-nudges'
 import { useInterfacePrefsStore, type InterfacePrefKey } from '@/lib/interface-prefs'
 import { AccountCard } from './AccountCard'
+import { SecureConnectionCard } from './SecureConnectionCard'
+import { FsrsSettingsCard } from './FsrsSettingsCard'
+import { VoiceAudioCard } from './VoiceAudioCard'
+import { UsageInsightsCard } from './UsageInsightsCard'
+import { DailyBriefCard } from './DailyBriefCard'
 
 const INTERFACE_TOGGLES: { key: InterfacePrefKey; labelKey: string }[] = [
   { key: 'homeContinue', labelKey: 'settings.interfaceHomeContinue' },
   { key: 'paletteRecent', labelKey: 'settings.interfacePaletteRecent' },
   { key: 'courseJumpBackIn', labelKey: 'settings.interfaceCourseJumpBackIn' },
   { key: 'courseCardMeta', labelKey: 'settings.interfaceCourseCardMeta' },
+  { key: 'autoSpeak', labelKey: 'settings.interfaceAutoSpeak' },
 ]
 
 export function GeneralTab() {
@@ -37,6 +43,7 @@ export function GeneralTab() {
           <p className="text-muted-foreground text-[11px]">{t('settings.languageHint')}</p>
         </CardContent>
       </Card>
+      <FsrsSettingsCard />
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">{t('settings.remindersTitle')}</CardTitle>
@@ -80,6 +87,10 @@ export function GeneralTab() {
           ))}
         </CardContent>
       </Card>
+      <DailyBriefCard />
+      <UsageInsightsCard />
+      <VoiceAudioCard />
+      <SecureConnectionCard />
       <AccountCard />
     </div>
   )

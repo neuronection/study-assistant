@@ -13,6 +13,7 @@ export function useCreateMaterialMenu({
   onNewFolder,
   onNewUrl,
   onDiscover,
+  onCaptureFiles,
   prepend = [],
   append = [],
 }: {
@@ -21,6 +22,7 @@ export function useCreateMaterialMenu({
   onNewFolder: () => void
   onNewUrl?: () => void
   onDiscover?: () => void
+  onCaptureFiles?: (files: FileList) => void
   prepend?: ContextMenuItem[]
   append?: ContextMenuItem[]
 }): { items: ContextMenuItem[]; inputs: ReactNode } {
@@ -28,6 +30,7 @@ export function useCreateMaterialMenu({
   const accept = useAcceptedTypes()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
+  const cameraInput = useRef<HTMLInputElement>(null)
 
   const items: ContextMenuItem[] = [
     ...prepend,
@@ -69,6 +72,15 @@ export function useCreateMaterialMenu({
       label: t('library.uploadFiles'),
       onSelect: () => fileInput.current?.click(),
     },
+    ...(onCaptureFiles
+      ? [
+          {
+            key: 'capture',
+            label: t('captureInbox.menuEntry'),
+            onSelect: () => cameraInput.current?.click(),
+          },
+        ]
+      : []),
     {
       key: 'upload-folder',
       label: t('library.uploadFolderMenu'),
@@ -93,6 +105,23 @@ export function useCreateMaterialMenu({
           event.target.value = ''
         }}
       />
+      {onCaptureFiles ? (
+        <input
+          ref={cameraInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          hidden
+          aria-label={t('captureInbox.cameraInput')}
+          onChange={(event) => {
+            if (event.target.files && event.target.files.length > 0) {
+              onCaptureFiles(event.target.files)
+            }
+            event.target.value = ''
+          }}
+        />
+      ) : null}
       <input
         ref={folderInput}
         type="file"

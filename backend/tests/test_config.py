@@ -40,6 +40,60 @@ def test_ensure_dirs(tmp_path: Path) -> None:
     assert settings.backups_dir.is_dir()
 
 
+def test_storage_bootstrap_uses_settings_not_os_environ(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`.env`-populated Settings reach the contract without `os.environ`."""
+    from app.storage.bootstrap import resolve_storage_config, storage_env
+
+    monkeypatch.delenv("SA_S3_BUCKET", raising=False)
+    settings = settings_from_env_file(
+        None,
+        data_dir=tmp_path,
+        object_storage_backend="s3",
+        s3_bucket="from-settings",
+        s3_region="eu-central-1",
+        s3_access_key_id="AKIA",
+        s3_secret_access_key="secret",
+    )
+    env = storage_env(settings)
+    assert env["SA_S3_BUCKET"] == "from-settings"
+    assert env["SA_S3_REGION"] == "eu-central-1"
+    config = resolve_storage_config(settings)
+    assert config.backend == "s3"
+    assert config.s3 is not None
+    assert config.s3.bucket == "from-settings"
+
+
+def test_storage_defaults_to_local_under_data_dir(tmp_path: Path) -> None:
+    from app.storage.bootstrap import resolve_storage_config
+
+    settings = settings_from_env_file(None, data_dir=tmp_path)
+    config = resolve_storage_config(settings)
+    assert config.backend == "local"
+    assert config.local_root == settings.blobs_dir
+
+
+def test_blank_storage_env_values_are_unset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Compose passes unset knobs through as empty strings."""
+    for name in (
+        "SA_OBJECT_STORAGE_BACKEND",
+        "SA_OBJECT_STORAGE_MAX_MB",
+        "SA_OBJECT_STORAGE_LOCAL_ROOT",
+        "SA_S3_VERIFY_TLS",
+        "SA_S3_MAX_ATTEMPTS",
+    ):
+        monkeypatch.setenv(name, "")
+    settings = settings_from_env_file(None, data_dir=tmp_path)
+    assert settings.object_storage_backend is None
+    assert settings.object_storage_max_mb is None
+    assert settings.object_storage_local_root is None
+    assert settings.s3_verify_tls is None
+    assert settings.s3_max_attempts is None
+
+
 def test_data_dir_linux(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))

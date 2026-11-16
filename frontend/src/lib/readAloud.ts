@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { speakText } from '@/lib/api'
+import { storageKeys } from '@/lib/constants'
 
 export const MAX_SPEECH_CHARS = 9000
 
@@ -126,10 +127,23 @@ export interface ReadAloudState {
 
 const RATES = [1, 1.25, 1.5, 0.75] as const
 
+export function readSpeechRate(): number {
+  try {
+    const value = Number(window.localStorage.getItem(storageKeys.speechRate))
+    return RATES.includes(value as (typeof RATES)[number]) ? value : 1
+  } catch {
+    return 1
+  }
+}
+
 export function useReadAloud(markdown: string): ReadAloudState {
   const [speaking, setSpeaking] = useState(false)
   const [active, setActive] = useState(false)
-  const [rateIndex, setRateIndex] = useState(0)
+  const [rateIndex, setRateIndex] = useState(() => {
+    const stored = readSpeechRate()
+    const index = RATES.indexOf(stored as (typeof RATES)[number])
+    return index === -1 ? 0 : index
+  })
   const [providerReady, setProviderReady] = useState(false)
   const browserAvailable = useSpeechAvailable()
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -196,6 +210,16 @@ export function useReadAloud(markdown: string): ReadAloudState {
         }
         const utterance = new SpeechSynthesisUtterance(chunks[index])
         utterance.rate = rate
+        try {
+          const preferred = window.localStorage.getItem(storageKeys.browserVoice)
+          const voice =
+            preferred === null
+              ? undefined
+              : synth.getVoices().find((entry) => entry.voiceURI === preferred)
+          if (voice !== undefined) utterance.voice = voice
+        } catch {
+          void 0
+        }
         utterance.onend = () => speakChunk(index + 1)
         utterance.onerror = () => {
           if (!stoppedRef.current) {
@@ -250,11 +274,14 @@ export function useReadAloud(markdown: string): ReadAloudState {
     }
     const text = stripMathForSpeech(markdown)
     if (!text) return
-    rateRef.current = RATES[rateIndex]
+    const stored = readSpeechRate()
+    rateRef.current = RATES.includes(stored as (typeof RATES)[number])
+      ? stored
+      : RATES[rateIndex]
     if (providerReady) {
       void playProvider(text)
     } else if (browserAvailable) {
-      playBrowser(text, RATES[rateIndex])
+      playBrowser(text, rateRef.current)
     }
   }, [
     active,
@@ -271,6 +298,11 @@ export function useReadAloud(markdown: string): ReadAloudState {
     setRateIndex((index) => {
       const next = (index + 1) % RATES.length
       rateRef.current = RATES[next]
+      try {
+        window.localStorage.setItem(storageKeys.speechRate, String(RATES[next]))
+      } catch {
+        void 0
+      }
       return next
     })
   }, [])

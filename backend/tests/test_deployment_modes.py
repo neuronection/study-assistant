@@ -82,6 +82,38 @@ def test_no_usable_store_fails_closed_never_silently(
         secrets.reset_secret_caches()
 
 
+def test_delete_fails_closed_when_no_backend_can_revoke(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A revocation no backend performed must not report success."""
+    monkeypatch.setenv("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
+    _reinit_keyring()
+    monkeypatch.setattr(
+        "app.core.config.get_settings",
+        lambda: Settings(data_dir=Path("/proc/definitely-not-writable")),
+    )
+    secrets.reset_secret_caches()
+    try:
+        assert secrets.store_backend() == "none"
+        with pytest.raises(RuntimeError, match="fail closed"):
+            secrets.delete_secret("calendar:web-mode:never")
+    finally:
+        secrets.reset_secret_caches()
+
+
+def test_stored_empty_value_resolves_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Adoption delta: ``""`` used to read back as ``""``, now as ``None``."""
+    monkeypatch.setenv("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
+    _reinit_keyring()
+    monkeypatch.setattr("app.core.config.get_settings", lambda: Settings(data_dir=tmp_path))
+    secrets.reset_secret_caches()
+    try:
+        secrets.set_secret("calendar:web-mode:empty", "")
+        assert secrets.get_secret("calendar:web-mode:empty") is None
+    finally:
+        secrets.reset_secret_caches()
+
+
 def test_redirect_is_loopback_on_desktop(monkeypatch: pytest.MonkeyPatch) -> None:
     """Desktop/local: RFC 8252 loopback — browser and app share a machine."""
     from app.services.study import calendar_sync

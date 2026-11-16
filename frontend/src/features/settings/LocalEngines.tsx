@@ -8,15 +8,27 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   createProvider,
   detectLocalEngines,
+  listPresets,
+  setupProviderPreset,
   type LocalEngineHit,
   type Provider,
 } from '@/lib/api'
 
+const BIND_LESS = {
+  bind_chat: false,
+  bind_vision: false,
+  bind_stt: false,
+  bind_embeddings: false,
+  bind_decision: false,
+}
+
 export function LocalEngines({
   auto = false,
+  bindDefaults = false,
   onCreated,
 }: {
   auto?: boolean
+  bindDefaults?: boolean
   onCreated?: (provider: Provider) => void
 }) {
   const { t } = useTranslation()
@@ -33,16 +45,38 @@ export function LocalEngines({
     staleTime: 30_000,
     retry: false,
   })
+  const presets = useQuery({
+    queryKey: ['presets'],
+    queryFn: listPresets,
+    staleTime: Infinity,
+  })
 
   const add = useMutation({
-    mutationFn: (hit: LocalEngineHit) =>
-      createProvider({
+    mutationFn: async (hit: LocalEngineHit) => {
+      if (presets.data?.[hit.preset_id]) {
+        const result = await setupProviderPreset(hit.preset_id, {
+          api_key: null,
+          name: hit.name,
+          options: bindDefaults
+            ? {
+                bind_chat: true,
+                bind_vision: true,
+                bind_stt: true,
+                bind_embeddings: true,
+                bind_decision: true,
+              }
+            : BIND_LESS,
+        })
+        return result.provider
+      }
+      return createProvider({
         name: hit.name,
         type: 'openai_compatible',
         base_url: hit.base_url,
         api_key: null,
         is_local: true,
-      }),
+      })
+    },
     onSuccess: async (provider) => {
       await queryClient.invalidateQueries({ queryKey: ['providers'] })
       await queryClient.invalidateQueries({ queryKey: ['models'] })

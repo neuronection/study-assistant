@@ -10,11 +10,13 @@ import {
   RefreshCw,
   Star,
   X,
+  Camera,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { OneTimeTip } from '@/components/OneTimeTip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { patchMaterial } from '@/lib/api'
@@ -103,6 +105,8 @@ import { MaterialTile } from '@/components/materials/MaterialTile'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
+import { CaptureInboxDialog } from '@/features/capture/CaptureInboxDialog'
+import { useCaptureInbox } from '@/features/capture/useCaptureInbox'
 import { DiscoverDialog } from '@/features/discovery/DiscoverDialog'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
@@ -511,6 +515,8 @@ export function LibraryPage() {
     },
   })
   useWindowDropRegistration(courseId !== null, dropTargetLabel, () => upload)
+
+  const capture = useCaptureInbox({ courseId, folderId, nodeId: null })
 
 
   useEffect(() => () => clearJobHideTimer(), [])
@@ -1217,6 +1223,7 @@ export function LibraryPage() {
   const createMenu = useCreateMaterialMenu({
     upload,
     onNewText: (kind) => setTextDialog(kind),
+    onCaptureFiles: capture.openFiles,
     onNewFolder: () => setCreating(true),
     onDiscover: () => setDiscoverOpen(true),
     prepend: pasteable
@@ -1479,6 +1486,7 @@ export function LibraryPage() {
   return (
     <WorkspaceGate>
       <div className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-6">
+        <OneTimeTip id="library-split-view">{t('tips.library')}</OneTimeTip>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
@@ -1505,6 +1513,17 @@ export function LibraryPage() {
             }
           />
           <div className="ml-auto flex items-center gap-2">
+            {capture.queued.length > 0 || capture.items.some((item) => item.status === 'staged') ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={capture.show}
+                title={t('captureInbox.show')}
+              >
+                <Camera className="size-4" aria-hidden />
+                {capture.queued.length + capture.items.filter((item) => item.status === 'staged').length}
+              </Button>
+            ) : null}
             {createMenu.inputs}
             {courseId !== null && !inLink ? (
               <Button
@@ -2207,6 +2226,7 @@ className={cn(
           onCancel={() => setFolderDeleteTarget(null)}
         />
       ) : null}
+      <CaptureInboxDialog state={capture} courseId={courseId} />
       {confirmElement}
     </WorkspaceGate>
   )

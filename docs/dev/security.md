@@ -4,7 +4,7 @@ Study Assistant is a **dual-mode product** (family identity class D): a
 local-first desktop app and a self-hosted web/server deployment, both with
 accounts — sessions, profiles, and admin user management come from the
 family auth-kit mounted at `/api/v1/auth/*`, `/api/v1/me/*`, and
-`/api/v1/admin/*` (family plan 16, ADR-0013). The security work is about
+`/api/v1/admin/*`. The security work is about
 protecting local and in-transit secrets, enforcing user → profile
 ownership, treating AI output as untrusted, and keeping user data and
 tests isolated. This page is the map; the secrets rule is also in the
@@ -20,20 +20,26 @@ page's sections below in sync with it when security behavior changes.
 
 ## Secrets
 
-- API keys live **only in the OS keyring**, accessed through
-  `backend/app/core/secrets.py` (`keyring`, service `StudyAssistant`). They are
-  never written to files, env blocks or the database.
-- Values are **sealed with the family at-rest cipher** (`nx_auth.atrest`,
-  ADR-0027 / plan 19): every write stores an `enc::<fernet-token>` string
-  sealed under the KeyRing `SA_DATA_KEY`, so a keyring dump alone no longer
-  exposes plaintext. Reads are plaintext-tolerant (plan 19 D4): study's
-  values are keyring-held — there is no DB ciphertext surface — so
-  pre-adoption plaintext entries return verbatim (no backfill script is
-  needed; that is the recorded D4 ruling) and ciphertext that does not
+- API keys live **only in study's secret store**, accessed through
+  `backend/app/core/secrets.py` — a thin adapter over `nx_auth.secrets`
+  with the frozen keyring service `StudyAssistant`. The OS
+  keyring is the desktop backend; the server/Docker backend is the sealed
+  file `<data_dir>/secrets.json` (0600). Values are never written to env
+  blocks or the database, and an empty stored value reads as absent.
+- Values are **sealed with the family at-rest cipher** (`nx_auth.atrest`
+  via `nx_auth.secrets`): every write stores an
+  `enc::<fernet-token>` string sealed under the KeyRing `SA_DATA_KEY`, so a
+  keyring (or file) dump alone no longer exposes plaintext. Backend order is
+  keyring → sealed file; the keyring is trusted only after a round-trip
+  probe (a null backend accepts and discards writes) and writes fail closed
+  when neither is writable. Reads are plaintext-tolerant:
+  study's values are keyring/file-held — there is no DB ciphertext surface
+  — so pre-adoption plaintext entries return verbatim (no backfill script
+  is needed) and ciphertext that does not
   verify under the key ring reads as `None` — never a guess.
 - Secrets are masked in every API response (for example `••••1234`); the full
-  value never leaves the keyring except on the outbound provider call.
-- **Connected-source credentials use the same store** (plan 86, ADR-215):
+  value never leaves the secret store except on the outbound provider call.
+- **Connected-source credentials use the same store**:
   token providers declare keyring slots (`source:<id>:<slot>`); OAuth
   providers run an authorization-code + PKCE flow whose redirect is
   loopback-only (`http://127.0.0.1:<port>/oauth/callback`) and seal the token
@@ -78,19 +84,19 @@ ciphertext loss** — nothing recovers it):
 
 Plaintext tolerance is a migration affordance, not a steady state: a
 keyring writer who swaps a stored secret for chosen plaintext bypasses
-Fernet's authentication (plan 19 D4). Study's surfaces are keyring-held
+Fernet's authentication. Study's surfaces are keyring-held
 (ruled 2026-10-09: no DB ciphertext, no backfill script); a strict flip
-would require a full keyring census first and stays tracked with plan
-19's per-product D4 ledger.
+would require a full keyring census first and stays tracked in the
+per-product plaintext-tolerance ledger.
 
-## Identity glue & boot guards (ADR-0028, plan 20)
+## Identity glue & boot guards
 
 - **One §4 implementation.** Instance init (`instance_settings.auth_mode`
   / `demo_mode`) runs through `nx_auth.instance.initialize_instance` —
   §4.4 coerces `SA_AUTH_MODE=open` on a server entrypoint to
   `authenticated` with a loud warning, unknown values fail closed, and
   post-init env flips are ignored loudly (mode changes are admin actions,
-  `PATCH /api/v1/admin/instance`). The pre-plan-20 inline copy seeded an
+  `PATCH /api/v1/admin/instance`). The earlier inline copy seeded an
   open server on `SA_AUTH_MODE=open` (bug B1) — fixed and pinned by
   `tests/test_contract_identity_glue.py`.
 - **§16 knobs are Settings-routed (bug B2, fixed).** The kit config is
@@ -99,7 +105,7 @@ would require a full keyring census first and stays tracked with plan
   `SA_REGISTRATION_ENABLED`, `SA_TRUSTED_PROXY_COUNT`, `SA_RATELIMIT_*`)
   reach the kit exactly like OS-environment ones (OS env wins per key).
   Pinned by `tests/test_sec16_env.py` (§18.14).
-- **App-level rate limiting + hardened response headers (plan 21).** The
+- **App-level rate limiting + hardened response headers.** The
   kit's family limiter (`nx_auth.ratelimit`) mounts with study's policy:
   in-memory counter (single-process topology), Settings-routed
   `SA_RATELIMIT_{ENABLED,AUTH,AUTH_EMAIL,AI,MCP,DEFAULT}` ceilings read
@@ -155,7 +161,8 @@ would require a full keyring census first and stays tracked with plan
   per-boot `X-Shell-Token`; the Docker stack runs `SA_HOST=0.0.0.0` behind
   nginx and terminates there. The shipped `nginx.conf` is HTTP-only
   (loopback/VPN/dev); internet-facing deployments use `nginx-TLS.conf`
-  (certbot ACME + HSTS) and `SA_COOKIE_SECURE=true`.
+  (certbot ACME + HSTS) and declare `SA_PUBLIC_URL=https://…` — cookie
+  `Secure` derives from the public scheme (never a static true).
 - **Every `/api/` route requires a session** (family `SessionAuthMiddleware`,
   deny-by-default 401) except the explicitly exempt auth/health/docs/shell
   prefixes; `/ws` requires the `Origin` gate and a valid access cookie.
@@ -198,15 +205,41 @@ Model output is **untrusted input**. The rules:
 - The data directory (`~/.local/share/StudyAssistant/` by default) holds the
   SQLite database (`study.sqlite3`, desktop/tests), blobs, cache, thumbnails
   and backups; `SA_DATA_DIR` and the working-directory setting relocate it.
-  Web mode runs PostgreSQL 16 (`neuronection_study`) instead — see ADR-0022 in
+  Web mode runs PostgreSQL 16 (`neuronection_study`) instead — see
   [architecture.md](architecture.md).
 
-## Network surface & access roots (family plan 16, S1; ADR-0013/0022)
+## Browser storage (offline audio and local insights)
+
+Both browser stores are scoped by the resolved `(user, profile)` identity and
+treat a shared browser/device as hostile between profiles.
+
+| Surface | Risk | Control |
+|---|---|---|
+| Offline audio Cache Storage | another user/profile replays cached audio | cache name `sa-audio-offline-v1:<scope>` where the scope is `u:<user-id>:p:<profile-id>`; downloads go through `apiFetch` (profile header/CSRF) and `cache.put`, never `cache.add`; logout, 401/`UNAUTHENTICATED_EVENT` and account deletion purge the scoped namespace; profile switch keeps explicit downloads but releases in-memory object URLs |
+| `sa-audio-state:<scope>` | a stale title/position leaks across scopes | only read after the scope resolves; written per scope; removed on logout/session loss; `stop()` removes the current scope's entry |
+| legacy `sa-audio-offline-v1` cache and unscoped `sa-audio-state` key | unscoped pre-hardening bytes/state | deleted on first boot, never adopted (a shared bucket cannot prove ownership) |
+| activation counters | content/PII in props or a cross-profile read | closed `ActivationEvent`/`ActivationStep`/`ActivationSurface` vocabularies and a bounded numeric `value`; unknown or extra keys and out-of-vocabulary values are 422; profile-scoped queries/export/clear; per-scope `sa-first-event.<scope>.<event>` keys removed with the API clear; deployment-aware disclosure (device vs instance) and no third-party client |
+
+Audio cache and player state are deleted on logout/session loss only — never
+on a profile switch, where the previous profile's explicit downloads stay
+available. Cleanup failures never block logout; they surface in Settings →
+Developer's audio-cache diagnostics.
+
+Security review (2026-11-12): the cache/session tests cover
+logout, failed refresh (401/`UNAUTHENTICATED_EVENT`), account deletion, a
+profile switch that keeps downloads, a second user/profile that cannot read
+the first scope's bytes, stale boot state before scope resolution, `stop()`
+object-URL revocation and the legacy cache/state deletion; the activation tests
+cover unknown/extra props, out-of-vocabulary step/surface, numeric bounds,
+profile-scoped export/clear and client first-event key cleanup. No durable
+data (blobs, database rows) is deleted by either change.
+
+## Network surface & access roots
 
 - **Bind:** the API binds `127.0.0.1` (`SA_HOST` overrides); desktop mode
   (`pnpm app`) additionally listens on a random loopback port.
 - **Filesystem browsing (`GET /api/v1/fs/dirs`) is confined to granted
-  roots** (ADR-0011): the data dir and the user's home always, plus
+  roots:** the data dir and the user's home always, plus
   anything listed in `SA_FS_ROOTS` (comma-separated). Resolve first, then
   check — paths outside every root ⇒ 403, symlinked targets resolve before
   the check, and the returned `parent` never points outside the roots.
@@ -217,7 +250,7 @@ Model output is **untrusted input**. The rules:
   §10): same-origin or an explicit `SA_CORS_ORIGINS` entry, otherwise the
   handshake is refused before accept (cross-site WebSocket hijack); then
   the access cookie must verify through the same path as the HTTP
-  middleware (landed with plan 16 S4a/S6, `backend/app/api/ws.py`) —
+  middleware (see `backend/app/api/ws.py`) —
   requests **without** an Origin (non-browser clients) pass the origin
   check but still need a valid session cookie. Known gap: bus topics are
   authenticated but not owner-scoped per subscriber.

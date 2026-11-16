@@ -21,12 +21,12 @@ byte-identical here via the sync script.
 | `SearchError` | the one error type: `.kind` (taxonomy below), `.message`, `.http_status` |
 | normalized hit | `{"title", "url", "content"}` — title falls back to the url, content caps at 800 chars |
 
-App-side policy (`search/provider.py` — the ADR-0031 local half):
+App-side policy (`search/provider.py` — the local half):
 persistence in `Profile.preferences["search_providers"]`, keyring slots
 `search:<id>`, the ordered-fallback `search_with_fallback*` (first
 enabled that answers wins; all failing raises the last error as
 `unreachable`), `perform_fetch` (http(s)-only FETCH with HTML→markdown,
-capped), and the lazy migration from the pre-plan-28 single-provider
+capped), and the lazy migration from the earlier single-provider
 preference.
 
 ## The error taxonomy and its charter projection

@@ -43,7 +43,7 @@ done
 
 DB_NAME="${SA_DB_NAME:-neuronection_study}"
 DB_OWNER="${SA_DB_OWNER:-neuronection_study_owner}"
-DB_PASSWORD="${SA_DB_PASSWORD:?Set SA_DB_PASSWORD (env or docker/.env)}"
+DB_PASSWORD="${SA_DB_OWNER_PASSWORD:-${SA_DB_PASSWORD:?Set SA_DB_OWNER_PASSWORD (env or docker/.env)}}"
 PROJECT="${SA_COMPOSE_PROJECT:-study-assistant}"
 COMPOSE_FILE="${SA_COMPOSE_FILE:-docker/docker-compose.standalone.yml}"
 COMPOSE=(docker compose -f "$ROOT/$COMPOSE_FILE")
@@ -69,9 +69,29 @@ echo "==> Restoring database '$DB_NAME' (drops existing rows)"
   env PGPASSWORD="$DB_PASSWORD" pg_restore -U "$DB_OWNER" \
   -d "$DB_NAME" --clean --if-exists < "$WORK/database.dump"
 
+# ADR-0063/ADR-0064: a restore must leave the app role usable — the dump
+# carries table data and ownership, not the runtime grants. Re-run the
+# DML-only grant set (kept in sync with docker/init-db.sh / app.ops.migrations).
+APP_USER="${SA_DB_USER:-neuronection_study_app}"
+echo "==> Re-granting DML-only privileges on '$DB_NAME' to '$APP_USER'"
+"${COMPOSE[@]}" exec -T db \
+  env PGPASSWORD="$DB_PASSWORD" psql -U "$DB_OWNER" -d "$DB_NAME" <<SQL
+GRANT CONNECT ON DATABASE "$DB_NAME" TO "$APP_USER";
+GRANT USAGE ON SCHEMA public TO "$APP_USER";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "$APP_USER";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO "$APP_USER";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "$APP_USER";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "$APP_USER";
+SQL
+
 echo "==> Restoring data volume"
 docker run --rm -v "${PROJECT}_data":/data -v "$WORK":/in:ro alpine \
   sh -c "rm -rf /data/* && tar xzf /in/data.tar.gz -C /data"
 
 echo "==> Done. Restart the app to re-run migrations if needed:"
 echo "    ${COMPOSE[*]} up -d"
+echo "    Restore drill (ADR-0063, docs/dev/deployment.md → 'Restore drill'):"
+echo "    rehearse into a throwaway database/volume first, then verify named"
+echo "    counts and one known record before calling the drill passed."

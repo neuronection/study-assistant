@@ -79,6 +79,62 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         yield test_client
 
 
+def test_upload_at_host_cap_is_accepted_and_over_cap_is_413(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The storage cap must track MAX_UPLOAD_BYTES, not the contract's 100 MB.
+
+    Lower both to 1 MiB so the boundary stays cheap to exercise; the
+    bootstrap reads the service constant at app construction time.
+    """
+    import app.services.content.materials as materials
+
+    monkeypatch.setattr(materials, "MAX_UPLOAD_BYTES", 1024 * 1024)
+    monkeypatch.setattr("app.storage.bootstrap.MAX_UPLOAD_MB", 1)
+    app = create_app(
+        Settings(data_dir=tmp_path, log_level="WARNING"),
+        gateway=QuietGateway(),
+    )
+    with TestClient(app) as client:
+        course_id = client.post("/api/v1/courses", json={"title": "Cap"}).json()["id"]
+        at_cap = b"x" * (1024 * 1024)
+        accepted = client.post(
+            "/api/v1/materials",
+            params={"course_id": course_id},
+            files={"file": ("at-cap.txt", at_cap, "text/plain")},
+        )
+        assert accepted.status_code == 200, accepted.text
+
+        over_cap = at_cap + b"x"
+        rejected = client.post(
+            "/api/v1/materials",
+            params={"course_id": course_id},
+            files={"file": ("over-cap.txt", over_cap, "text/plain")},
+        )
+        assert rejected.status_code == 413, rejected.text
+        assert "exceeds" in rejected.json()["detail"]
+
+
+def test_upload_offloads_the_store_call(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[int] = []
+
+    async def fake_to_thread(func: Any, /, *args: Any, **kwargs: Any) -> Any:
+        calls.append(1)
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr("app.api.materials.asyncio.to_thread", fake_to_thread)
+    course_id = client.post("/api/v1/courses", json={"title": "Offload"}).json()["id"]
+    response = client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id},
+        files={"file": ("offload.txt", b"offload body", "text/plain")},
+    )
+    assert response.status_code == 200, response.text
+    assert calls == [1]
+
+
 def test_upload_unsupported_returns_machine_422_and_writes_nothing(
     client: TestClient,
 ) -> None:

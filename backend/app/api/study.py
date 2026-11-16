@@ -1,14 +1,15 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core.vocab import CourseOrigin, GoalUnit
-from ..domain.models import Course, Exercise, FsrsState, PlanItem, utcnow
+from ..core.vocab import CourseOrigin, GoalUnit, StudyLeechAction
+from ..domain.models import Course, CourseFsrsOverride, Exercise, FsrsState, PlanItem, utcnow
 from ..services.platform import metrics
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study import fsrs_settings
 from ..services.study.exercise_kinds import CARD_KINDS
 from .deps import get_session
 
@@ -172,3 +173,128 @@ def study_next(
         "goal_target": goal_target,
         "streak": int(overview["streak"]),
     }
+
+
+class FsrsSettingsIn(BaseModel):
+    desired_retention: float | None = Field(default=None, ge=0.70, le=0.97)
+    maximum_interval_days: int | None = Field(default=None, ge=30, le=3650)
+    new_per_day: int | None = Field(default=None, ge=0, le=999)
+    reviews_per_day: int | None = Field(default=None, ge=0, le=9999)
+    leech_threshold: int | None = Field(default=None, ge=1, le=20)
+    leech_action: StudyLeechAction | None = None
+    bury_siblings: bool | None = None
+    load_balance: bool | None = None
+
+
+class FsrsSettingsOut(BaseModel):
+    desired_retention: float
+    maximum_interval_days: int
+    new_per_day: int
+    reviews_per_day: int
+    leech_threshold: int
+    leech_action: str
+    bury_siblings: bool
+    load_balance: bool
+    inherited: bool = True
+
+
+def _fsrs_out(values: object, inherited: bool) -> FsrsSettingsOut:
+    from ..services.study.fsrs_settings import FsrsValues
+
+    assert isinstance(values, FsrsValues)
+    return FsrsSettingsOut(
+        desired_retention=values.desired_retention,
+        maximum_interval_days=values.maximum_interval_days,
+        new_per_day=values.new_per_day,
+        reviews_per_day=values.reviews_per_day,
+        leech_threshold=values.leech_threshold,
+        leech_action=values.leech_action,
+        bury_siblings=values.bury_siblings,
+        load_balance=values.load_balance,
+        inherited=inherited,
+    )
+
+
+def _course_for(session: Session, course_id: str, profile_id: str) -> Course:
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile_id:
+        raise ValueError("course not found")
+    return course
+
+
+@router.get("/fsrs", response_model=FsrsSettingsOut)
+def get_fsrs_settings(session: Session = Depends(get_session)) -> FsrsSettingsOut:
+    profile = ensure_default_profile(session)
+    return _fsrs_out(fsrs_settings.get_profile(session, profile.id), inherited=True)
+
+
+@router.put("/fsrs", response_model=FsrsSettingsOut)
+def put_fsrs_settings(
+    body: FsrsSettingsIn,
+    session: Session = Depends(get_session),
+) -> FsrsSettingsOut:
+    profile = ensure_default_profile(session)
+    values = fsrs_settings.update_profile(
+        session,
+        profile.id,
+        values={
+            field: getattr(body, field)
+            for field in body.model_fields_set
+            if getattr(body, field) is not None
+        },
+    )
+    session.commit()
+    return _fsrs_out(values, inherited=True)
+
+
+@router.get("/courses/{course_id}/fsrs", response_model=FsrsSettingsOut)
+def get_course_fsrs(
+    course_id: str,
+    session: Session = Depends(get_session),
+) -> FsrsSettingsOut:
+    profile = ensure_default_profile(session)
+    try:
+        _course_for(session, course_id, profile.id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    override = session.scalar(
+        select(CourseFsrsOverride).where(CourseFsrsOverride.course_id == course_id)
+    )
+    return _fsrs_out(
+        fsrs_settings.resolve(session, profile.id, course_id),
+        inherited=override is None,
+    )
+
+
+@router.put("/courses/{course_id}/fsrs", response_model=FsrsSettingsOut)
+def put_course_fsrs(
+    course_id: str,
+    body: FsrsSettingsIn,
+    session: Session = Depends(get_session),
+) -> FsrsSettingsOut:
+    profile = ensure_default_profile(session)
+    try:
+        _course_for(session, course_id, profile.id)
+        values = fsrs_settings.set_course(
+            session,
+            course_id,
+            values={field: getattr(body, field) for field in body.model_fields_set},
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    session.commit()
+    return _fsrs_out(values, inherited=False)
+
+
+@router.delete("/courses/{course_id}/fsrs", status_code=204)
+def delete_course_fsrs(
+    course_id: str,
+    session: Session = Depends(get_session),
+) -> None:
+    profile = ensure_default_profile(session)
+    try:
+        _course_for(session, course_id, profile.id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    fsrs_settings.clear_course(session, course_id)
+    session.commit()

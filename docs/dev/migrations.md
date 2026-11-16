@@ -2,7 +2,7 @@
 
 Study Assistant's schema is SQLAlchemy 2 models managed by Alembic on a single
 linear revision chain. **Migrations are an entrypoint/ops responsibility
-(ADR-0028, plan 20 Phase 4) — `create_app` never runs them**: the desktop
+— `create_app` never runs them**: the desktop
 entrypoint (`app/local.py:run_migrations`, via `python -m studyassistant`),
 the docker one-shot `migrate` service (`entrypoint.sh migrate`, owner role),
 `scripts/run-dev.sh`, and the test fixtures each apply
@@ -11,14 +11,14 @@ downgrade. This page is the working discipline; the tables themselves are
 documented in [data-model.md](data-model.md), whose "Migration notes" section
 records each revision.
 
-## Forward policy (ADR-196, plan 81 F)
+## Forward policy
 
 The schema is **one squashed baseline plus forward-only history** from here:
 
 - **Model-first, always.** Edit `backend/app/domain/models/`, then write the
   revision to match. The model⇄DB drift gate (`tests/test_model_db_drift.py`)
   fails any database shape the models do not declare. The first forward
-  revision after the baseline is `0002_vocab_sweep` (plan 82 C): the model
+  revision after the baseline is `0002_vocab_sweep`: the model
   gained `questions.type` / `exercises.kind` CHECK twins and the revision
   adds them, on SQLite through `batch_alter_table(recreate="always")`.
 - **One migration per change, batched per round.** A feature round lands its
@@ -43,7 +43,7 @@ The schema is **one squashed baseline plus forward-only history** from here:
 
 ## Revision scheme
 
-The chain starts at the squashed **`0001_baseline`** (plan 81 F). New
+The chain starts at the squashed **`0001_baseline`**. New
 revisions are files in `backend/alembic/versions/` named `00NN_slug.py`,
 where **`NN` is the current head number + 1** (after `0001_baseline` comes
 `0002_…`). `revision = "00NN_slug"` and `down_revision` is the previous
@@ -67,7 +67,7 @@ are dropped; data migrations reverse best-effort. Downgrades are tested.
 **One sanctioned exception — a declared destructive baseline squash**
 (the family migration rules, §3). `0001_baseline`'s `downgrade()` restores an *empty*
 schema (it drops every table) instead of a previous chain shape; the header,
-[data-model.md](data-model.md) and ADR-196 declare it. Every revision after
+[data-model.md](data-model.md) declare it. Every revision after
 the baseline stays under the normal rule.
 
 ## Closed sets are database contracts
@@ -156,11 +156,11 @@ new revision must keep the fresh-DB path green (CI and app startup both run
 it): verify against a fresh database, not only an upgraded one.
 
 **Pre-baseline databases are rebuilt, not migrated.** No data-migration
-tooling exists for the deleted chain (ADR-196, non-goal): delete the SQLite
+tooling exists for the deleted chain (non-goal): delete the SQLite
 file and reseed (`scripts/seed-demo.py`), or re-provision the PostgreSQL
 database.
 
-## PostgreSQL chain (plan 51 Q3c1)
+## PostgreSQL chain
 
 The chain is green from `0001_baseline` to
 `0017_vector_token_schema` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
@@ -197,7 +197,7 @@ document/record backfill shape, rowid parity, content hashes, absence of a
 fabricated coverage snapshot, model/dim agreement with `vec_meta`, the Q3b
 partial indexes, and a downgrade/upgrade that leaves `chunk_vecs` intact.
 
-## Vector-space provisioning (plan 51 Q3c2a)
+## Vector-space provisioning
 
 `0013_vector_space_provisioning` performs the one-time physical move from the
 legacy `chunk_vecs` store to the provisioned `vec_<8hex>` table:
@@ -225,7 +225,7 @@ application code) and shares its shape with
 derived from the space id (`vec_dfbcce9b` for `v1-chunk-vecs`). The
 migration tests pin both the table name and the copied rows.
 
-## Retrieval alerts and generation tags (plan 51 Q3c3a)
+## Retrieval alerts and generation tags
 
 `0015_retrieval_alerts` adds the ledger's `metadata`/`metadata_schema_version`
 columns and the two notification-funnel tables. The `metadata` column is
@@ -237,7 +237,7 @@ partial index, including downgrade/upgrade. A revision id longer than 32
 characters would overflow Alembic's `alembic_version.version_num` on
 PostgreSQL; the short `0015_retrieval_alerts` id is deliberate.
 
-## Stored space key + token schema (plan 52 T5b1)
+## Stored space key + token schema
 
 `0016_vector_space_stored_key` adds `vector_spaces.space_key` and stamps every
 populated row once with the frozen v1 pre-image (the hash is inlined in the
@@ -252,7 +252,7 @@ covered by populated SQLite round-trips
 asymmetry: 0017 drops its token columns but keeps the stored `space_key`.
 Revision ids stay under 32 characters.
 
-## Vector record chunk identity (plan 51 Q3c2b1)
+## Vector record chunk identity
 
 `0014_vector_record_chunk_id` adds
 `vector_records.chunk_id` (nullable `String(80)`), an index and the unique

@@ -39,8 +39,8 @@ class ResolvedModel:
     label: str
     caps: list[str]
     api_key: str | None
-    cost_in: float | None = None
-    cost_out: float | None = None
+    provider_key: str | None = None
+    is_local: bool = False
     reasoning_effort: str | None = None
     temperature: float | None = None
     max_tokens: int | None = None

@@ -37,6 +37,30 @@ def folders_in(client: TestClient, course_id: str) -> list[dict[str, Any]]:
     return listing
 
 
+def test_source_ingest_over_storage_cap_returns_413(tmp_path: Path) -> None:
+    from conftest import AuthedTestClient
+
+    from app.core.config import Settings
+    from app.main import create_app
+
+    app = create_app(
+        Settings(
+            data_dir=tmp_path,
+            log_level="WARNING",
+            app_env="test",
+            object_storage_max_mb=1,
+        )
+    )
+    with AuthedTestClient(app) as client:
+        course_id = make_course(client, "Storage cap")
+        target = tmp_path / "big"
+        target.mkdir()
+        (target / "big.txt").write_bytes(b"x" * (1024 * 1024 + 1))
+        source_id = add_source(client, course_id, target, "Big files")
+        response = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "big.txt"})
+        assert response.status_code == 413, response.text
+
+
 def test_source_create_makes_link_node_and_unlink_keeps_materials(
     client: TestClient, tmp_path: Path
 ) -> None:
@@ -192,7 +216,7 @@ def test_text_file_create_rename_delete(client: TestClient) -> None:
     assert hits == []
 
 
-def test_blob_served_with_guessed_mime_inline(client: TestClient, tmp_path: Path) -> None:
+def test_blob_served_with_guessed_mime_as_attachment(client: TestClient, tmp_path: Path) -> None:
     from fastapi import FastAPI
 
     course_id = make_course(client, "Mime")
@@ -208,7 +232,7 @@ def test_blob_served_with_guessed_mime_inline(client: TestClient, tmp_path: Path
     served = client.get(f"/api/v1/blobs/{sha}")
     assert served.status_code == 200
     assert served.headers["content-type"].startswith("text/plain")
-    assert served.headers["content-disposition"] == "inline"
+    assert served.headers["content-disposition"].startswith("attachment")
 
     app = client.app
     assert isinstance(app, FastAPI)
@@ -251,7 +275,7 @@ def test_blob_served_with_non_ascii_filename(client: TestClient, tmp_path: Path)
     served = client.get(f"/api/v1/blobs/{sha}")
     assert served.status_code == 200
     disposition = served.headers["content-disposition"]
-    assert disposition.startswith("inline")
+    assert disposition.startswith("attachment")
     assert "filename*=UTF-8''" in disposition
     assert "Σημειώσεις" not in disposition.split("filename*=")[0]
 
@@ -302,7 +326,7 @@ def test_scan_scheduler_cycles_sources(tmp_path: Path) -> None:
     published: list[tuple[str, dict[str, Any]]] = []
     scans = ScanScheduler(
         app.state.session_factory,
-        settings.blobs_dir,
+        app.state.blobs,
         app.state.jobs,
         lambda topic, payload: published.append((topic, payload)),
         startup_delay_sec=0,

@@ -22,6 +22,7 @@ const COVERED_SURFACES = [
   'planner',
   'chat',
   'settings',
+  'onboarding',
   'print',
 ] as const
 

@@ -11,7 +11,8 @@ from ..jobs.runner import JobRunner
 from ..services.content.materials import UnsupportedMaterialError, accepted_suffixes
 from ..services.content.sources import SourcesError, SourcesService
 from ..services.platform.profiles import ensure_default_profile
-from .deps import get_session
+from ..storage.object_storage import StorageError
+from .deps import get_session, storage_http_exception
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -118,7 +119,7 @@ class ScanResult(BaseModel):
 @router.get("", response_model=list[SourceOut])
 def list_sources(request: Request, session: Session = Depends(get_session)) -> list[SourceOut]:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     result: list[SourceOut] = []
     for source in service.list_sources(profile.id):
         count = len(
@@ -136,7 +137,7 @@ def add_source(
     session: Session = Depends(get_session),
 ) -> SourceOut:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         source = service.create_source(
             profile.id,
@@ -162,7 +163,7 @@ def delete_source(
     session: Session = Depends(get_session),
 ) -> None:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     if not service.delete_source(profile.id, source_id):
         raise HTTPException(status_code=404, detail="source not found")
     session.commit()
@@ -176,7 +177,7 @@ def browse_source(
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         return service.browse(profile.id, source_id, subdir)
     except SourcesError as error:
@@ -201,7 +202,7 @@ def ingest_source_file(
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         material, deduped = service.ingest_file(profile.id, source_id, body.relpath)
     except UnsupportedMaterialError as error:
@@ -213,6 +214,8 @@ def ingest_source_file(
                 "accepted": accepted_suffixes(),
             },
         ) from error
+    except StorageError as error:
+        raise storage_http_exception(error) from error
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     job_id: str | None = None
@@ -236,7 +239,7 @@ def relink_source(
     session: Session = Depends(get_session),
 ) -> SourceOut:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         source = service.relink(profile.id, source_id, body.path)
     except SourcesError as error:
@@ -253,7 +256,7 @@ def set_source_mirror(
     session: Session = Depends(get_session),
 ) -> SourceOut:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     source = service._get(profile.id, source_id)
     source.mirror_subdirs = body.mirror_subdirs
     session.commit()
@@ -267,7 +270,7 @@ def mirror_backfill_source(
     session: Session = Depends(get_session),
 ) -> ScanResult:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         source = service._get(profile.id, source_id)
         source.mirror_subdirs = True
@@ -290,7 +293,7 @@ def reveal_source(
     session: Session = Depends(get_session),
 ) -> None:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         service.reveal(profile.id, source_id)
     except SourcesError as error:
@@ -331,12 +334,15 @@ def scan_source(
     session: Session = Depends(get_session),
 ) -> ScanResult:
     profile = ensure_default_profile(session)
-    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    service = SourcesService(session, request.app.state.blobs)
     try:
         report = service.scan(profile.id, source_id)
+    except StorageError as error:
+        session.rollback()
+        raise storage_http_exception(error) from error
     except SourcesError as error:
         session.rollback()
-        failure = SourcesService(session, request.app.state.settings.blobs_dir)
+        failure = SourcesService(session, request.app.state.blobs)
         try:
             failing = failure._get(profile.id, source_id)
             failing.last_scan_error = str(error)

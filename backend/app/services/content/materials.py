@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ...core.limits import MAX_UPLOAD_BYTES
 from ...core.urls import normalize_url
 from ...core.vocab import DeriveOutcome, MaterialKind
 from ...domain.models import (
@@ -28,6 +29,7 @@ from ...jobs.runner import JobRunner
 from ...services.retrieval.chunk_profile import chunk_texts_for_space
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
+from ...storage.object_storage import ObjectTooLarge
 from ...storage.vector_store import StudyVectorStore
 from .discovery import revert_suggestions_for_material
 from .drawings import (
@@ -70,8 +72,6 @@ AV_SUFFIXES: dict[str, str] = {
     ".mp4": MaterialKind.VIDEO,
     ".mpeg": MaterialKind.VIDEO,
 }
-
-MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 
 TRANSCRIBE_SIZE_LIMIT_BYTES = 25 * 1024 * 1024
 
@@ -167,7 +167,7 @@ class MaterialsService:
         dedup_exclude_id: str | None = None,
     ) -> tuple[Material, bool]:
         if len(data) > MAX_UPLOAD_BYTES:
-            raise ValueError("file exceeds upload size limit")
+            raise ObjectTooLarge("file exceeds upload size limit")
         if not data:
             raise ValueError("empty file")
         course = self._session.get(Course, course_id)

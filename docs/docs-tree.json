@@ -2,7 +2,7 @@
   "version": 1,
   "project": "study",
   "title": "Study Assistant",
-  "description": "Local-first, AI-powered study workbench — ingest your material, structure it into courses, and learn it with quizzes, flashcards, exercises and a grounded tutor.",
+  "description": "Local-first, AI-powered study workbench \u2014 ingest your material, structure it into courses, and learn it with quizzes, flashcards, exercises and a grounded tutor.",
   "audiences": [
     {
       "id": "user",
@@ -18,7 +18,7 @@
               "id": "overview",
               "file": "user/README.md",
               "title": "User guide overview",
-              "description": "How to use Study Assistant — the guided tour and the full list of user guides."
+              "description": "How to use Study Assistant \u2014 the guided tour and the full list of user guides."
             },
             {
               "id": "getting-started",
@@ -30,13 +30,13 @@
               "id": "features",
               "file": "user/features.md",
               "title": "Feature catalog",
-              "description": "Everything Study Assistant ships, as built — ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
+              "description": "Everything Study Assistant ships, as built \u2014 ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
             },
             {
               "id": "visual-tour",
               "file": "SCREENSHOTS.md",
               "title": "Visual tour",
-              "description": "Screenshots of Study Assistant — the Today screen, courses, library, review, tutor chat and settings, generated from a seeded demo workspace."
+              "description": "Screenshots of Study Assistant \u2014 the Today screen, courses, library, review, tutor chat and settings, generated from a seeded demo workspace."
             }
           ]
         },
@@ -54,7 +54,7 @@
             {
               "id": "exploring",
               "file": "user/exploring.md",
-              "title": "Exploring topics — the Scratchpad",
+              "title": "Exploring topics \u2014 the Scratchpad",
               "description": "A private playground for capturing ideas and material before they become a course."
             },
             {
@@ -118,6 +118,24 @@
               "file": "user/exercises.md",
               "title": "Exercises and the tutor",
               "description": "Multi-step guided problems with a hint ladder that never reveals the answer."
+            },
+            {
+              "id": "exams",
+              "file": "user/exams.md",
+              "title": "Exam papers",
+              "description": "Assemble a timed mock paper from your question bank and read a marked report by section and topic."
+            },
+            {
+              "id": "solve",
+              "file": "user/solve.md",
+              "title": "Problem Desk",
+              "description": "Solve one math problem from typing, pasting or a photo; see verified steps and practise similar problems."
+            },
+            {
+              "id": "studio",
+              "file": "user/studio.md",
+              "title": "Studio",
+              "description": "Turn a chapter into a printable slide deck or handout and keep the generated material in the library."
             }
           ]
         },
@@ -141,7 +159,7 @@
             {
               "id": "local-ai",
               "file": "user/local-ai.md",
-              "title": "Local AI — fully offline setup",
+              "title": "Local AI \u2014 fully offline setup",
               "description": "Run every AI feature against local models with no cloud calls."
             }
           ]
@@ -180,13 +198,13 @@
               "id": "add-a-search-provider",
               "file": "user/add-a-search-provider.md",
               "title": "Add a search provider",
-              "description": "The web search behind chat research and Discover — Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring, ordered fallback."
+              "description": "The web search behind chat research and Discover \u2014 Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring, ordered fallback."
             },
             {
               "id": "add-an-mcp-connector",
               "file": "user/add-an-mcp-connector.md",
               "title": "Add an MCP connector",
-              "description": "Register an external MCP server, refresh its tools, declare discovery or parser contracts — and the external-process disclosure explained."
+              "description": "Register an external MCP server, refresh its tools, declare discovery or parser contracts \u2014 and the external-process disclosure explained."
             },
             {
               "id": "manage-web-sources",
@@ -213,6 +231,12 @@
               "description": "Automatic backups, the trash, and restoring your data."
             },
             {
+              "id": "usage-and-cost",
+              "file": "user/usage-and-cost.md",
+              "title": "Usage and cost",
+              "description": "Local model-call usage, built-in list prices, custom overrides and the estimate disclaimer."
+            },
+            {
               "id": "desktop-app",
               "file": "user/desktop-app.md",
               "title": "Desktop app",
@@ -228,13 +252,13 @@
               "id": "extension-troubleshooting",
               "file": "user/extension-troubleshooting.md",
               "title": "Extension troubleshooting",
-              "description": "Fixes for the Tools tab surfaces — search providers, web sources, MCP connectors and discovery suggestions."
+              "description": "Fixes for the Tools tab surfaces \u2014 search providers, web sources, MCP connectors and discovery suggestions."
             },
             {
               "id": "troubleshooting",
               "file": "user/troubleshooting.md",
               "title": "Troubleshooting",
-              "description": "Common problems and fixes — AI setup, OCR, uploads, blank window, backups."
+              "description": "Common problems and fixes \u2014 AI setup, OCR, uploads, blank window, backups."
             }
           ]
         }
@@ -272,7 +296,7 @@
               "id": "history",
               "file": "dev/history.md",
               "title": "Project history (archive)",
-              "description": "Round as-builts, the dated changelog and incident post-mortems moved out of STATUS — how the app got here, including the invariants recorded in post-mortems."
+              "description": "Round as-builts, the dated changelog and incident post-mortems moved out of STATUS \u2014 how the app got here, including the invariants recorded in post-mortems."
             },
             {
               "id": "visual-tour",
@@ -327,7 +351,7 @@
               "id": "cloud-calendars",
               "file": "dev/cloud-calendars.md",
               "title": "Cloud calendars",
-              "description": "Study host map for ADR-0052: vendored engines, mapping law, persistence, sync, OAuth fallback and tests."
+              "description": "Study host map for the cloud calendar/files contract: vendored engines, mapping law, persistence, sync, OAuth fallback and tests."
             }
           ]
         },
@@ -367,16 +391,28 @@
               "description": "The durable job runner, job types, retries, cancellation and the schedulers."
             },
             {
+              "id": "model-pricing",
+              "file": "dev/model-pricing.md",
+              "title": "Model pricing and cost",
+              "description": "The vendored resolver, cost/provenance ledger fields, price overrides and the Data & Cost surface."
+            },
+            {
               "id": "retrieval-ops",
               "file": "dev/retrieval-ops.md",
               "title": "Retrieval operations",
-              "description": "Plan 51 Q3a: the vendored retrieval contract, VECTOR_* jobs over the legacy store, bounded telemetry and the admin read surface — plus the explicit Q3b gaps."
+              "description": "The vendored retrieval contract, VECTOR_* jobs over the legacy store, bounded telemetry and the admin read surface \u2014 plus the explicit gaps."
             },
             {
               "id": "migrations",
               "file": "dev/migrations.md",
               "title": "Migrations",
               "description": "Alembic discipline: sequential ids, model-first changes, tested downgrades and SQLite pitfalls."
+            },
+            {
+              "id": "storage",
+              "file": "dev/storage.md",
+              "title": "Storage and blobs",
+              "description": "The vendored family object-storage contract, BlobStore keys, SA_* configuration, processors, and the desktop-only backup boundary."
             }
           ]
         },
@@ -389,19 +425,19 @@
               "id": "sdk-overview",
               "file": "dev/sdk/overview.md",
               "title": "Extension SDK: overview",
-              "description": "What the extension surface is — connectors feeding discovery and import on a dual-mode desktop product — and when to build an extension."
+              "description": "What the extension surface is \u2014 connectors feeding discovery and import on a dual-mode desktop product \u2014 and when to build an extension."
             },
             {
               "id": "sdk-quickstart",
               "file": "dev/sdk/quickstart.md",
               "title": "Extension SDK: quickstart",
-              "description": "Register an MCP server modeled on the family template and watch DISCOVER use it — real transcript, CI-pinned pipeline."
+              "description": "Register an MCP server modeled on the family template and watch DISCOVER use it \u2014 real transcript, CI-pinned pipeline."
             },
             {
               "id": "sdk-core-concepts",
               "file": "dev/sdk/core-concepts.md",
               "title": "Extension SDK: core concepts",
-              "description": "Extension, instance, tool contract, provider, source, suggestion, consent — and the vendored-contract discipline."
+              "description": "Extension, instance, tool contract, provider, source, suggestion, consent \u2014 and the vendored-contract discipline."
             },
             {
               "id": "sdk-installation",
@@ -437,13 +473,13 @@
               "id": "sdk-versioning",
               "file": "dev/sdk/versioning-and-migration.md",
               "title": "Extension SDK: versioning & migration",
-              "description": "extension/v1 policy, append-only vocabularies, the no-shims doctrine, and the ADR-0035 sync law."
+              "description": "extension/v1 policy, append-only vocabularies, the no-shims doctrine, and the contract sync law."
             },
             {
               "id": "sdk-troubleshooting",
               "file": "dev/sdk/troubleshooting-and-faq.md",
               "title": "Extension SDK: developer diagnostics & FAQ",
-              "description": "Every wall-tested failure mode decoded — spawn errors, contract violations, provider taxonomy — plus the FAQ."
+              "description": "Every wall-tested failure mode decoded \u2014 spawn errors, contract violations, provider taxonomy \u2014 plus the FAQ."
             }
           ]
         },
@@ -459,6 +495,12 @@
               "description": "The standalone Docker stack, nginx and TLS, the data volume, upgrades and backups."
             },
             {
+              "id": "tls-and-secure-context",
+              "file": "dev/tls-and-secure-context.md",
+              "title": "TLS and secure contexts",
+              "description": "What needs HTTPS, the bundled nginx TLS stack, Caddy, local CAs and the live capability report."
+            },
+            {
               "id": "desktop-packaging",
               "file": "dev/desktop-packaging.md",
               "title": "Desktop packaging",
@@ -469,6 +511,12 @@
               "file": "dev/adding-features.md",
               "title": "Adding features",
               "description": "End-to-end recipes: a new endpoint, a job, an AI task, a UI page and a schema change."
+            },
+            {
+              "id": "backup-timer",
+              "file": "dev/backup-timer.md",
+              "title": "Off-host backup timer",
+              "description": "systemd timer that runs scripts/backup.sh with an off-host target and a ledger row."
             }
           ]
         }

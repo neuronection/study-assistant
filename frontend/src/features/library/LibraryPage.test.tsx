@@ -1469,6 +1469,17 @@ describe('MaterialDetailPage', () => {
   })
 
   test('original and side-by-side views switch via the view menu', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:pdf-original'),
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    apiFetchMock.mockResolvedValue(
+      new Response(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), { status: 200 }),
+    )
     listCourses.mockResolvedValue(COURSES)
     getMaterial.mockResolvedValue(DETAIL)
     getMaterialLinks.mockResolvedValue([])
