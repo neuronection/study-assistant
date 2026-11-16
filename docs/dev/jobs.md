@@ -17,7 +17,7 @@ schedulers. Progress surfaces in the UI on the `/jobs` activity page.
   (default 4). Workers poll the `jobs` table, claim a queued row, run its
   registered handler, and update status.
 - Handlers are registered in `app/jobs/registry.py` keyed by **`JobType`
-  members** (plan 82 C, ADR-204) — the enum is the single vocabulary, so a
+  members** — the enum is the single vocabulary, so a
   typo'd key cannot silently drop jobs. `tests/test_job_registry.py` asserts
   every `JobType` member has a registered handler and vice versa. Each
   handler is `(Session, Job, ProgressReporter) -> None`.
@@ -54,7 +54,7 @@ The closed vocabulary of job statuses is `JobStatus` in `core/vocab.py`:
   retriable iff its type has a registered handler and it is not a chat turn
   (`runner.py` computes the retriable set from the handler map). Retrying resets
   status to `queued` and clears the error/stage.
-- **Cancellation** (ADR-126): `jobs/cancellation.py` adds a terminal
+- **Cancellation**: `jobs/cancellation.py` adds a terminal
   `cancelled` status. Cancel-on-purge, cooperative checkpoints inside handlers,
   and commit-time stale re-checks prevent a cancelled job from writing after
   its target is gone.
@@ -70,7 +70,7 @@ Three long-lived threads start with the app (`main.py` lifespan):
   `SA_SOURCE_SCAN_INTERVAL_SEC` (default 300 s) and enqueues `ingest` for new
   files.
 - **`ExternalSourceScheduler`** — polls enabled `external_sources` on per-source
-  due times (minimum 15 min). Since plan 86 the same loop dispatches through
+  due times (minimum 15 min). The same loop now dispatches through
   the provider seam: RSS/Atom, YouTube and site search keep their legs, while
   WebDAV/Nextcloud, Google Drive, Dropbox, OneDrive, Zotero and AnkiConnect
   reconcile through the `SourceAdapter` engine. New items land as `suggested`

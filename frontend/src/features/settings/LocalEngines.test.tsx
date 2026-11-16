@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { LocalEngines } from './LocalEngines'
 
 const detectLocalEngines = vi.fn()
 const createProvider = vi.fn()
+const listPresets = vi.fn()
+const setupProviderPreset = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -13,6 +15,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     detectLocalEngines: () => detectLocalEngines(),
     createProvider: (...args: unknown[]) => createProvider(...(args as [object])),
+    listPresets: () => listPresets(),
+    setupProviderPreset: (key: string, body: unknown) => setupProviderPreset(key, body),
   }
 })
 
@@ -33,6 +37,11 @@ function renderDetector(props: Parameters<typeof LocalEngines>[0] = {}) {
 }
 
 describe('LocalEngines', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    listPresets.mockResolvedValue({})
+  })
+
   test('probes on demand and offers one-click add', async () => {
     detectLocalEngines.mockResolvedValue([HIT])
     const onCreated = vi.fn()
@@ -51,6 +60,34 @@ describe('LocalEngines', () => {
       api_key: null,
       is_local: true,
     })
+  })
+
+  test('routes a known local preset through the shared preset setup', async () => {
+    listPresets.mockResolvedValue({ ollama: { name: 'Ollama' } })
+    detectLocalEngines.mockResolvedValue([HIT])
+    const onCreated = vi.fn()
+    setupProviderPreset.mockResolvedValue({
+      provider: { id: '8', name: HIT.name, base_url: HIT.base_url },
+    })
+    renderDetector({ auto: true, onCreated })
+    fireEvent.click(await screen.findByRole('button', { name: /add ollama \(local\)/i }))
+    await waitFor(() =>
+      expect(setupProviderPreset).toHaveBeenCalledWith('ollama', {
+        api_key: null,
+        name: HIT.name,
+        options: {
+          bind_chat: false,
+          bind_vision: false,
+          bind_stt: false,
+          bind_embeddings: false,
+          bind_decision: false,
+        },
+      })
+    )
+    await waitFor(() =>
+      expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: '8' }))
+    )
+    expect(createProvider).not.toHaveBeenCalled()
   })
 
   test('auto mode probes on mount without a click', async () => {

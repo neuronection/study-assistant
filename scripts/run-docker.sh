@@ -14,7 +14,8 @@
 #   ./scripts/run-docker.sh -h|--help    # print this help and exit
 #
 # Run from the Study Assistant project root. Requires docker/.env
-# (cp docker/.env.production.example docker/.env and set SA_DB_PASSWORD).
+# (cp docker/.env.production.example docker/.env and set
+# SA_DB_OWNER_PASSWORD + SA_DB_PASSWORD — ADR-0064).
 
 print_help() {
   awk 'FNR==1 { next }

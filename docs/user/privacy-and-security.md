@@ -10,7 +10,8 @@ see the [developer security page](../dev/security.md).
 
 Everything is stored under your data directory — `~/.local/share/StudyAssistant/`
 on Linux (the platform equivalent on Windows/macOS), or wherever you point the
-**working directory** in Settings → Data:
+desktop **working directory** in Settings → Data. In web/server deployments the
+data root is configured by the operator, not by a signed-in user:
 
 | Item | Where |
 |---|---|

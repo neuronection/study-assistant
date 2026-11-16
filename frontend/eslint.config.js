@@ -5,7 +5,15 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules', 'e2e'] },
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      'e2e',
+      'scripts/check-bundle-budget.mjs',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -30,6 +38,12 @@ export default tseslint.config(
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: globals.serviceworker,
     },
   },
   {

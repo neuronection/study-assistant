@@ -2,6 +2,7 @@ import sys
 from functools import lru_cache
 from os import environ
 from pathlib import Path
+from urllib.parse import urlparse
 
 from nx_auth.instance import IdentityMode, parse_identity_mode
 from pydantic import Field, field_validator
@@ -113,6 +114,14 @@ class Settings(BaseSettings):
     # sets it so the provider redirects to the server's callback route
     # instead of the user's own localhost.
     app_url: str | None = None
+    # Public scheme derivation (ADR-0062 v7 §9 / plan 64 §1.6): cookie
+    # `Secure` follows the *public* scheme, never a static compose value.
+    # `SA_PUBLIC_URL` states the scheme the outside world uses (nginx/certbot
+    # TLS or a BYO proxy); `SA_TLS=1` is the explicit override when TLS
+    # terminates elsewhere (a cloud LB). An explicit `SA_COOKIE_SECURE`
+    # still wins — LAN/VPN operators can force either way.
+    public_url: str | None = None
+    tls: bool | None = None
     source_scan_interval_sec: int = Field(default=300, ge=15)
     auto_backup: bool = True
     backup_interval_hours: int = Field(default=24, ge=1, le=168)
@@ -129,6 +138,40 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5434
 
+    # --- Family object storage (ADR-0057 / plan 55) --------------------
+    # Pydantic loads these from `.env`/OS env with the `SA_` prefix; the
+    # storage bootstrap maps the resolved values into the contract (it
+    # never reads `os.environ` directly, so `.env` values reach it).
+    cloud_profile: str | None = None
+    object_storage_backend: str | None = None
+    object_storage_required: bool | None = None
+    object_storage_local_root: Path | None = None
+    object_storage_max_mb: int | None = None
+    object_storage_presign_ttl: int | None = None
+    s3_bucket: str | None = None
+    s3_region: str | None = None
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_session_token: str | None = None
+    s3_path_style: bool | None = None
+    s3_sse: str | None = None
+    s3_kms_key_id: str | None = None
+    s3_prefix: str | None = None
+    s3_verify_tls: bool | None = None
+    s3_connect_timeout: float | None = None
+    s3_read_timeout: float | None = None
+    s3_max_attempts: int | None = None
+    azure_storage_container: str | None = None
+    azure_storage_connection_string: str | None = None
+    azure_storage_account_url: str | None = None
+    azure_storage_account_name: str | None = None
+    azure_storage_credential: str | None = None
+    azure_storage_prefix: str | None = None
+    azure_connect_timeout: float | None = None
+    azure_read_timeout: float | None = None
+    azure_max_attempts: int | None = None
+
     # --- §16 auth knobs (ADR-0028) -------------------------------------
     # Routed into the auth-kit config via nx_auth.config.knob_overrides
     # so `.env`-file values reach the kit exactly like OS-environment
@@ -141,7 +184,9 @@ class Settings(BaseSettings):
     auth_lockout_minutes: int = 15
     auth_password_min_length: int = 10
     registration_enabled: bool = True
-    cookie_secure: bool = False
+    # None = derive from the public scheme (`effective_cookie_secure`);
+    # an explicit `SA_COOKIE_SECURE` wins over every derivation.
+    cookie_secure: bool | None = None
     trusted_proxy_count: int = 0
     # §16 rate-limit ceilings (plan 21: the kit's family limiter; units
     # are requests per minute, 0 disables a bucket, ENABLED stops all).
@@ -168,6 +213,71 @@ class Settings(BaseSettings):
     def _fail_closed_identity_mode(cls, value: object) -> IdentityMode:
         """Unknown entrypoint values fail closed to `server` (§4)."""
         return parse_identity_mode(None if value is None else str(value))
+
+    @field_validator(
+        "public_url",
+        "tls",
+        "cookie_secure",
+        "cloud_profile",
+        "object_storage_backend",
+        "object_storage_required",
+        "object_storage_local_root",
+        "object_storage_max_mb",
+        "object_storage_presign_ttl",
+        "s3_bucket",
+        "s3_region",
+        "s3_endpoint_url",
+        "s3_access_key_id",
+        "s3_secret_access_key",
+        "s3_session_token",
+        "s3_path_style",
+        "s3_sse",
+        "s3_kms_key_id",
+        "s3_prefix",
+        "s3_verify_tls",
+        "s3_connect_timeout",
+        "s3_read_timeout",
+        "s3_max_attempts",
+        "azure_storage_container",
+        "azure_storage_connection_string",
+        "azure_storage_account_url",
+        "azure_storage_account_name",
+        "azure_storage_credential",
+        "azure_storage_prefix",
+        "azure_connect_timeout",
+        "azure_read_timeout",
+        "azure_max_attempts",
+        mode="before",
+    )
+    @classmethod
+    def _empty_storage_values_are_unset(cls, value: object) -> object:
+        """Compose passes ``${VAR:-}`` as an empty string; treat it as unset."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @property
+    def effective_cookie_secure(self) -> bool:
+        """Cookie `Secure`, derived from the public scheme (plan 64 §1.6).
+
+        Priority: an explicit `SA_COOKIE_SECURE`, then `SA_TLS`, then the
+        scheme of `SA_PUBLIC_URL` (falling back to `SA_APP_URL`), else
+        False. HTTP (LAN/VPN) logins keep working: derivation never forces
+        `Secure` on without a public https:// or explicit TLS flag.
+        """
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        if self.tls is not None:
+            return self.tls
+        for raw in (self.public_url, self.app_url):
+            if not raw:
+                continue
+            scheme = urlparse(raw.strip()).scheme.lower()
+            if scheme in ("https", "wss"):
+                return True
+            if scheme == "http":
+                return False
+        return False
 
     @property
     def db_path(self) -> Path:

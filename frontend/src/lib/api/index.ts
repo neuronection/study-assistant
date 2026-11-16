@@ -36,8 +36,10 @@ export type {
   MatrixCell,
   Overview,
   Recommendation,
+  RetentionReport,
   SpeedAccuracyEntry,
   TaskCost,
+  WorkloadReport,
 } from './analytics'
 
 export {
@@ -48,6 +50,8 @@ export {
   getItems,
   getOverview,
   getRecommendations,
+  getRetention,
+  getWorkload,
   setDailyGoal,
 } from './analytics'
 
@@ -65,17 +69,37 @@ export type {
   StudySessionSummary,
 } from './study-sessions'
 
-export { planIcsUrl } from './plan'
+export {
+  commitWeekPlan,
+  getPlannerCapacity,
+  planIcsUrl,
+  previewWeekPlan,
+  updatePlannerCapacity,
+} from './plan'
 
-export { getReviewDue } from './review'
+export {
+  createReviewFilter,
+  deleteReviewFilter,
+  getReviewDue,
+  listReviewFilters,
+  previewReview,
+} from './review'
 
-export type { DueCourseGroup, ReviewDue } from './review'
+export type {
+  DueCourseGroup,
+  ReviewDue,
+  ReviewFilter,
+  ReviewFilterInput,
+  ReviewQuery,
+} from './review'
 
 export { getNotifications } from './notifications'
 
-export { getStudyNext } from './study'
+export { getFsrsSettings, getStudyNext, updateFsrsSettings } from './study'
 
 export type {
+  FsrsSettings,
+  FsrsSettingsInput,
   StudyNext,
   StudyPlanRow,
   StudyWeakCell,
@@ -279,6 +303,7 @@ export type {
 
 export {
   ankiExportUrl,
+  createFlashcard,
   dueFlashcards,
   generateFlashcards,
   importAnkiDeck,
@@ -426,7 +451,11 @@ export type {
   IcsPreview,
   PlanItem,
   PlanItemKind,
+  PlannerCapacity,
   UpcomingItem,
+  WeekPlanDay,
+  WeekPlanItem,
+  WeekPlanPreview,
 } from './plan'
 
 export {
@@ -451,6 +480,111 @@ export {
   updateDrawing,
   updateNote,
 } from './notes'
+
+export type {
+  Lecture,
+  LectureChunk,
+} from './lectures'
+
+export {
+  cancelLecture,
+  createLecture,
+  finalizeLecture,
+  getLecture,
+  listLectures,
+  patchLecture,
+  uploadLectureChunk,
+} from './lectures'
+
+export type {
+  MediaInfo,
+  MediaSegment,
+} from './media'
+
+export {
+  createMediaSegment,
+  deleteMediaSegment,
+  getMaterialMedia,
+  mergeMediaSegments,
+  patchMediaSegment,
+  splitMediaSegment,
+} from './media'
+
+export type {
+  ActivationExport,
+  ActivationSummary,
+} from './activation'
+
+export {
+  clearActivation,
+  exportActivation,
+  getActivationSummary,
+  recordActivation,
+} from './activation'
+
+export type {
+  Artifact,
+  NarrationCreate,
+} from './artifacts'
+
+export {
+  createNarration,
+  getArtifact,
+  listArtifacts,
+  retryArtifact,
+} from './artifacts'
+
+export type {
+  StudioArtifact,
+  StudioCreate,
+  StudioMarkdown,
+  StudioUpdate,
+} from './studio'
+
+export {
+  createStudioArtifact,
+  deleteStudioArtifact,
+  getStudioArtifact,
+  listStudioArtifacts,
+  studioMarkdown,
+  updateStudioArtifact,
+} from './studio'
+
+export type {
+  SolveCheck,
+  SolveEntry,
+  SolveRecognize,
+  SolveVariant,
+} from './solve'
+
+export {
+  checkSolveVariant,
+  deleteSolve,
+  getSolve,
+  recognizeSolve,
+  saveSolveNote,
+  solveHistory,
+  solveProblem,
+  solveVariants,
+} from './solve'
+
+export type {
+  Paper,
+  PaperCreate,
+  PaperReport,
+  PaperReportSection,
+  PaperSection,
+  PaperSectionCreate,
+  PaperTopic,
+} from './papers'
+
+export {
+  createPaper,
+  deletePaper,
+  getPaper,
+  listPapers,
+  paperReport,
+} from './papers'
 
 export type {
   ImportResult,
@@ -595,6 +729,7 @@ export type {
   SearchProviderCatalogEntry,
   SearchProviderCatalogField,
   SearchProviderProbe,
+  StorageStatus,
   UpdateCheck,
   WorkingDirInfo,
   WorkingDirValidation,
@@ -611,6 +746,7 @@ export {
   getOnboardingState,
   getProfilePreferences,
   getSearchProviderCatalog,
+  getStorageStatus,
   getUpdateCheck,
   getWorkingDir,
   listDeletedItems,
@@ -716,7 +852,7 @@ export {
   updateMcpServer,
 } from './mcp-servers'
 
-export type { ExerciseOrderingItem } from './hand-types'
+export type { DiagramHotspot, ExerciseOrderingItem } from './hand-types'
 export { HAND_TYPE_REGISTER } from './hand-types'
 
 export type {
@@ -756,3 +892,24 @@ export {
   retireRetrievalSpace,
   retryRetrievalRun,
 } from './retrieval'
+
+export {
+  assembleCaptures,
+  commitCapture,
+  discardCapture,
+  listCaptures,
+  stageCaptures,
+  type CaptureCommit,
+  type CaptureSourceKind,
+  type CaptureStaging,
+} from './capture'
+
+export {
+  createMaterialAnchor,
+  deleteAnchor,
+  listMaterialAnchors,
+  patchAnchor,
+  type Anchor,
+  type AnchorCreate,
+  type AnchorPatch,
+} from './annotations'

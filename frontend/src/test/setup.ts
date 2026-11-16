@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom/vitest'
 
 import { cleanup, configure } from '@testing-library/react'
+import i18next from 'i18next'
 import { afterEach } from 'vitest'
 
+import de from '@/locales/de.json'
+import el from '@/locales/el.json'
 import { initI18n } from '@/lib/i18n'
 
 configure({ asyncUtilTimeout: 20_000 })
@@ -53,7 +56,9 @@ if (typeof document.elementFromPoint !== 'function') {
   })
 }
 
-void initI18n()
+await initI18n()
+i18next.addResourceBundle('de', 'translation', de, true, true)
+i18next.addResourceBundle('el', 'translation', el, true, true)
 
 afterEach(() => {
   cleanup()

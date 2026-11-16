@@ -101,10 +101,12 @@ export function TranscriptMessage({
   onEditResend,
   onRegenerate,
   onSwitchVariant,
+  autoSpeak,
 }: {
   message: ChatMessageRow
   view: ChatMessageView
   actionPending?: boolean
+  autoSpeak?: boolean
   onOpenGenerate?: (request: GenerateRequest) => void
   onEditResend?: (messageId: string, content: string) => void
   onRegenerate?: (userMessageId: string) => void
@@ -139,7 +141,9 @@ export function TranscriptMessage({
 
   const turnFailed = !isUser ? messageTurnFailure(message.state) : null
 
-  const readAloud = !isUser ? <ReadAloudButton markdown={message.markdown} /> : null
+  const readAloud = !isUser ? (
+    <ReadAloudButton markdown={message.markdown} autoPlay={autoSpeak} />
+  ) : null
   const meta =
     hasMessageMeta(message) || readAloud !== null ? (
       <span className="flex items-center gap-2">

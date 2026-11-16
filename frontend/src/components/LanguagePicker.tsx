@@ -9,7 +9,7 @@ export function LanguagePicker({ className }: { className?: string }) {
   const current = i18n.resolvedLanguage ?? 'en'
   const options: ComboboxOption[] = availableLocales().map((locale) => ({
     value: locale.code,
-    label: locale.name,
+    label: locale.flag ? `${locale.flag} ${locale.name}` : locale.name,
   }))
 
   return (

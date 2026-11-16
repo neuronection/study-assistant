@@ -1,9 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { CommandPalette } from './CommandPalette'
+import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { useCaptureStore } from '@/lib/capture-store'
+import { useImportUrlStore } from '@/lib/import-url-store'
 import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
@@ -38,11 +41,52 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
 }))
 
-function renderPalette(open = true) {
+function renderPalette(open = true, onClose: () => void = () => undefined) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <CommandPalette open={open} onClose={() => undefined} />
+      <CommandPalette open={open} onClose={onClose} />
+    </QueryClientProvider>
+  )
+}
+
+function PaletteHarness() {
+  const palette = useCommandPaletteOpen()
+  return <CommandPalette open={palette.open} onClose={palette.close} />
+}
+
+function renderHarness() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <PaletteHarness />
+    </QueryClientProvider>
+  )
+}
+
+function ControlledPalette({ onClose }: { onClose: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open palette
+      </button>
+      <CommandPalette
+        open={open}
+        onClose={() => {
+          onClose()
+          setOpen(false)
+        }}
+      />
+    </>
+  )
+}
+
+function renderControlled(onClose: () => void) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <ControlledPalette onClose={onClose} />
     </QueryClientProvider>
   )
 }
@@ -63,6 +107,8 @@ describe('CommandPalette', () => {
     search.mockResolvedValue({ query: '', hits: [] })
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
+    useImportUrlStore.setState({ open: false })
+    useCaptureStore.setState({ open: false, snapOpen: false })
     window.localStorage.removeItem('sa-recent-nodes.default')
     window.localStorage.removeItem('sa-interface-prefs')
     window.localStorage.removeItem('sa-interface-prefs')
@@ -72,6 +118,7 @@ describe('CommandPalette', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
   })
@@ -92,7 +139,7 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Quiz')).not.toBeInTheDocument()
     expect(screen.queryByText('Exercises')).not.toBeInTheDocument()
 
-    const input = screen.getByRole('textbox', { name: /type a command/i })
+    const input = screen.getByRole('combobox', { name: /type a command/i })
     fireEvent.change(input, { target: { value: 'libr' } })
     expect(screen.getByText('Library')).toBeInTheDocument()
     expect(screen.queryByText('Scores')).not.toBeInTheDocument()
@@ -102,15 +149,14 @@ describe('CommandPalette', () => {
     listCourses.mockResolvedValue([])
     renderPalette()
     await screen.findByText('New note')
-    const input = screen.getByRole('textbox', { name: /type a command/i })
-    const pane = input.closest('div[class*="rounded-xl"]')!
+    const input = screen.getByRole('combobox', { name: /type a command/i })
     expect(screen.getByText('Quick capture')).toBeInTheDocument()
     expect(screen.getByText('Snap a region into note')).toBeInTheDocument()
     expect(screen.getByText('Import from URL')).toBeInTheDocument()
     for (let index = 0; index < 7; index += 1) {
-      fireEvent.keyDown(pane, { key: 'ArrowDown' })
+      fireEvent.keyDown(input, { key: 'ArrowDown' })
     }
-    fireEvent.keyDown(pane, { key: 'Enter' })
+    fireEvent.keyDown(input, { key: 'Enter' })
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/courses' }))
   })
 
@@ -137,7 +183,8 @@ describe('CommandPalette', () => {
       },
     ])
     createNote.mockResolvedValue({ id: '12', body: [], drawings: [], tags: [] })
-    renderPalette()
+    const onClose = vi.fn()
+    renderPalette(true, onClose)
     await screen.findByText('Go to Calculus I')
     fireEvent.click(screen.getByText('New note'))
     await waitFor(() =>
@@ -149,6 +196,7 @@ describe('CommandPalette', () => {
         params: { noteId: '12' },
       })
     )
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 
   test('note search lists matching notes and opens the standalone editor', async () => {
@@ -181,7 +229,7 @@ describe('CommandPalette', () => {
       next_cursor: null,
     })
     renderPalette()
-    const input = screen.getByRole('textbox', { name: /type a command/i })
+    const input = screen.getByRole('combobox', { name: /type a command/i })
     fireEvent.change(input, { target: { value: 'chain' } })
     fireEvent.click(await screen.findByText('note: Chain rule note'))
     await waitFor(() =>
@@ -193,7 +241,7 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('note: U-substitution walkthrough')).not.toBeInTheDocument()
   })
 
-  test('new note action without a resolvable course shows a hint instead of creating', async () => {
+  test('new note action without a resolvable course keeps the palette open with a live notice', async () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
@@ -217,11 +265,24 @@ describe('CommandPalette', () => {
         material_count: 0,
       },
     ])
-    renderPalette()
+    const onClose = vi.fn()
+    renderPalette(true, onClose)
     await screen.findByText('Go to Calculus I')
     fireEvent.click(screen.getByText('New note'))
-    expect(await screen.findByText(/Open a course first/i)).toBeInTheDocument()
+    expect(
+      await screen.findByRole('option', { name: /Open a course first/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/Open a course first/i)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
     expect(createNote).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByRole('combobox', { name: /type a command/i }), {
+      target: { value: 'zzzz-no-match' },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(/No matching commands/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/Open a course first/i)
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
   })
 
   test('courses appear as actions that switch the workspace', async () => {
@@ -281,7 +342,7 @@ describe('CommandPalette', () => {
       },
     ])
     renderPalette()
-    const input = screen.getByRole('textbox', { name: /type a command/i })
+    const input = screen.getByRole('combobox', { name: /type a command/i })
     fireEvent.change(input, { target: { value: 'der' } })
     fireEvent.click(await screen.findByText('quiz: Derivatives quiz'))
     await waitFor(() =>
@@ -464,7 +525,7 @@ describe('CommandPalette', () => {
       ])
     })
     renderPalette()
-    fireEvent.change(screen.getByRole('textbox', { name: /type a command/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /type a command/i }), {
       target: { value: 'laplace' },
     })
     const option = await screen.findByText('Open Laplace expansion')
@@ -590,7 +651,7 @@ describe('CommandPalette', () => {
       },
     ])
     renderPalette()
-    fireEvent.change(screen.getByRole('textbox', { name: /type a command/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /type a command/i }), {
       target: { value: 'determ' },
     })
     expect(await screen.findByText('Open Cofactor identities')).toBeInTheDocument()
@@ -603,6 +664,7 @@ describe('CommandPalette', () => {
         paletteRecent: false,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
     window.localStorage.setItem(
@@ -732,11 +794,86 @@ describe('CommandPalette', () => {
     ])
     const view = renderPalette()
     expect(await view.findByText('Derivatives')).toBeInTheDocument()
-    const list = view.getByRole('listbox')
-    expect(list.querySelectorAll('li')[0]).toHaveTextContent('Derivatives')
-    expect(list.querySelectorAll('li')[0]).toHaveTextContent('Calculus I')
+    const options = view.getAllByRole('option')
+    expect(options[0]).toHaveTextContent('Derivatives')
+    expect(options[0]).toHaveTextContent('Calculus I')
     window.localStorage.removeItem('sa-recent-nodes.default')
     view.unmount()
+  })
+
+  test('selecting an action closes the palette', async () => {
+    listCourses.mockResolvedValue([])
+    const onClose = vi.fn()
+    renderPalette(true, onClose)
+    fireEvent.click(await screen.findByText('Library'))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+  })
+
+  test('import opens the URL import flow', async () => {
+    listCourses.mockResolvedValue([])
+    renderPalette()
+    fireEvent.click(await screen.findByText('Import from URL'))
+    await waitFor(() => expect(useImportUrlStore.getState().open).toBe(true))
+  })
+
+  test('quick capture opens the capture flow', async () => {
+    listCourses.mockResolvedValue([])
+    renderPalette()
+    fireEvent.click(await screen.findByText('Quick capture'))
+    await waitFor(() => expect(useCaptureStore.getState().open).toBe(true))
+  })
+
+  test('Escape closes the palette and restores focus to the trigger', async () => {
+    listCourses.mockResolvedValue([])
+    const onClose = vi.fn()
+    renderControlled(onClose)
+    const trigger = screen.getByRole('button', { name: 'Open palette' })
+    trigger.focus()
+    await userEvent.click(trigger)
+    expect(
+      await screen.findByRole('dialog', { name: 'Command palette' }),
+    ).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  test('backdrop click closes the palette', async () => {
+    listCourses.mockResolvedValue([])
+    const onClose = vi.fn()
+    renderPalette(true, onClose)
+    await userEvent.click(document.querySelector('[data-as="modal-overlay"]')!)
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+  })
+
+  test('Ctrl+K toggles the global palette', async () => {
+    listCourses.mockResolvedValue([])
+    renderHarness()
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument(),
+    )
+  })
+
+  test('content search reports progress while the async query is pending', async () => {
+    listCourses.mockResolvedValue([])
+    let resolveSearch: (value: { query: string; hits: never[] }) => void = () => undefined
+    search.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSearch = resolve
+      }),
+    )
+    renderPalette()
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
+      target: { value: '?limits' },
+    })
+    expect(await screen.findByText('Searching all course content…')).toBeInTheDocument()
+    resolveSearch({ query: 'limits', hits: [] })
+    await waitFor(() =>
+      expect(screen.queryByText('Searching all course content…')).not.toBeInTheDocument(),
+    )
   })
 })
 
@@ -768,11 +905,31 @@ describe('CommandPalette content search', () => {
       ],
     })
     renderPalette()
-    const input = screen.getByRole('textbox', { name: /search/i })
+    const input = screen.getByRole('combobox', { name: /search/i })
     fireEvent.change(input, { target: { value: '?chain rule' } })
     expect(await screen.findByText(/In "Lecture 3"/)).toBeInTheDocument()
     expect(search).toHaveBeenCalledWith('chain rule')
     expect(screen.queryByRole('button', { name: /new note/i })).not.toBeInTheDocument()
+  })
+
+  test('async content hits are not re-filtered by the palette query', async () => {
+    search.mockResolvedValue({
+      query: 'zzz',
+      hits: [
+        {
+          material_id: '9',
+          title: 'Lecture 3',
+          snippet: 'unrelated snippet',
+          score: 0.1,
+        },
+      ],
+    })
+    renderPalette()
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
+      target: { value: '?zzz' },
+    })
+    expect(await screen.findByText(/In "Lecture 3"/)).toBeInTheDocument()
+    expect(search).toHaveBeenCalledWith('zzz')
   })
 
   test('content hits with node placements offer open-in-node deep links', async () => {
@@ -789,7 +946,7 @@ describe('CommandPalette content search', () => {
       ],
     })
     renderPalette()
-    fireEvent.change(screen.getByRole('textbox', { name: /search/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
       target: { value: '?chain rule' },
     })
     const action = await screen.findByText('Open in Series')
@@ -811,11 +968,11 @@ describe('CommandPalette content search', () => {
       ],
     })
     renderPalette()
-    fireEvent.change(screen.getByRole('textbox', { name: /search/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
       target: { value: '?limits' },
     })
     const option = await screen.findByText(/In "Limits handout"/)
-    fireEvent.click(option.closest('button')!)
+    fireEvent.click(option)
     expect(navigate).toHaveBeenCalledWith(
       expect.objectContaining({
         to: '/library/$materialId',
@@ -827,14 +984,14 @@ describe('CommandPalette content search', () => {
   test('content mode with no hits shows the empty state, plain mode shows the hint', async () => {
     search.mockResolvedValue({ query: 'zzz', hits: [] })
     renderPalette()
-    fireEvent.change(screen.getByRole('textbox', { name: /search/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
       target: { value: '?zzz' },
     })
     await waitFor(() => expect(search).toHaveBeenCalledWith('zzz'))
     expect(await screen.findByText(/No matching commands/i)).toBeInTheDocument()
     expect(screen.queryByText(/Type \? before your query/i)).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('textbox', { name: /search/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /search/i }), {
       target: { value: '' },
     })
     expect(screen.getByText(/Type \? before your query/i)).toBeInTheDocument()

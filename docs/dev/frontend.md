@@ -95,9 +95,14 @@ with an exit hatch — not local copies. Check the library first; if its API doe
 not fit, propose the change upstream and adopt the new release rather than
 re-implementing locally. Styling uses `--as-*` tokens and `data-as-*`
 attributes; app identity (brand colors, fonts) lives in
-`frontend/src/theme.css`.
+`frontend/src/theme.css`. `index.css` imports the library's prebuilt
+`styles.css` into a dedicated `assistant-ui` cascade layer **before** Tailwind's
+utilities, then loads `theme.css` last. Keep that layer: the library stylesheet
+is compiled Tailwind and, if imported unlayered, its `.flex`/`.hidden` rules win
+over every app `md:*`/`lg:*` utility (the symptom was a hidden desktop sidebar
+and a visible mobile bottom bar at desktop widths).
 
-**No app file may shadow a library export** (plan 82 A, ADR-202): the library's
+**No app file may shadow a library export**: the library's
 `audit-usage.mjs` scans `frontend/src` for filenames matching a library
 component and fails on a local copy that does not import from
 `@neuronection/assistant-ui`. Mermaid diagrams render through the library
@@ -113,6 +118,18 @@ copies.
 so vitest transforms the library graph: without it, `vi.mock('mermaid')` and
 friends cannot intercept dynamic imports made inside a published library chunk
 (the renderer ran for real in jsdom and every mermaid test timed out).
+
+Command discovery is library composition too:
+`components/layout/ShortcutsDialog.tsx` is one library `Modal` containing the
+library `ShortcutList` and a `CommandList` feature map (`tabBehavior="focus"`;
+`?` open, Escape/backdrop close and focus return stay app-wired), and
+`components/layout/CommandPalette.tsx` wraps the library `CommandPalette`
+while the app keeps the catalog, async `?`-prefixed content search
+(`filter: 'none'`), recents/course-tree ordering and action execution. The
+chat composer renders the library `DictationUnavailable` when no
+speech-to-text assignment exists, with the task-resolution predicate and
+settings action app-side. Shims: `command-list`, `command-palette`,
+`shortcut-list`; the `dictation` shim also exports `DictationUnavailable`.
 
 ## Feature layout
 
@@ -137,8 +154,7 @@ format described in [architecture.md](architecture.md).
 
 ## Lazy loading
 
-Heavy renderers never sit in the initial route chunk. The rule (plan 84 D,
-ADR-210) is **the component wrapper may be static; the heavy library must be
+Heavy renderers never sit in the initial route chunk. The rule is **the component wrapper may be static; the heavy library must be
 dynamically imported at the point of use**:
 
 - **Plotly** (`plotly.js-dist-min`), **JSXGraph**, **mermaid** (via the library

@@ -2,10 +2,12 @@ import json
 import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from object_store_stub import UnavailableObjectStore
 
 from app.core.config import Settings
 from app.main import create_app
@@ -15,11 +17,14 @@ from app.services.platform.backup import (
     EffectiveBackupSettings,
     apply_retention,
     boot_integrity_check,
+    build_backup,
     create_backup,
     database_is_healthy,
     list_backups,
     read_archive,
 )
+from app.storage.blobs import BlobStore
+from app.storage.object_storage import UnsupportedOperation
 
 
 class NoAI:
@@ -55,6 +60,38 @@ def _settings(client: TestClient) -> Settings:
 def _write_flag_backup(target_dir: Path, name: str) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
     (target_dir / name).write_bytes(b"not a real backup")
+
+
+def test_backup_refuses_an_object_backend(tmp_path: Path) -> None:
+    store = BlobStore(UnavailableObjectStore())
+    db_path = tmp_path / "study.sqlite3"
+    with pytest.raises(UnsupportedOperation):
+        build_backup(db_path, store)
+    with pytest.raises(UnsupportedOperation):
+        create_backup(db_path, store, tmp_path / "backups", prefix="manual")
+    scheduler = BackupScheduler(
+        lambda: EffectiveBackupSettings(
+            auto=True, interval_hours=24, keep_daily=14, keep_weekly=8, sync_dir=None
+        ),
+        db_path,
+        store,
+        tmp_path / "backups",
+    )
+    with pytest.raises(UnsupportedOperation):
+        scheduler.run_once(prefix="manual")
+
+
+def test_backup_routes_refuse_an_object_backend(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    with client:
+        client.post("/api/v1/courses", json={"title": "Course"})
+        state = cast(Any, client.app).state
+        state.blobs = BlobStore(UnavailableObjectStore())
+        assert client.get("/api/v1/backup/export").status_code == 409
+        assert client.get("/api/v1/backup/status").status_code == 409
+        assert client.post("/api/v1/backup/create").status_code == 409
+        state.blobs = None
+        assert client.get("/api/v1/backup/export").status_code == 409
 
 
 def test_create_backup_writes_validated_archive(tmp_path: Path) -> None:

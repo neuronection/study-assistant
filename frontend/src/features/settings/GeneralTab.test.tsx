@@ -10,12 +10,18 @@ import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 import { GeneralTab } from './GeneralTab'
 
 const listMySessions = vi.fn()
+const listTasks = vi.fn()
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+}))
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
     listMySessions: () => listMySessions(),
+    listTasks: () => listTasks(),
   }
 })
 
@@ -36,6 +42,7 @@ describe('GeneralTab', () => {
   beforeEach(() => {
     listMySessions.mockReset()
     listMySessions.mockResolvedValue([])
+    listTasks.mockReset().mockResolvedValue([])
   })
 
   afterEach(async () => {
@@ -47,8 +54,12 @@ describe('GeneralTab', () => {
     renderGeneral()
     openPicker()
     for (const locale of availableLocales()) {
-      expect(await screen.findByRole('option', { name: locale.name })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('option', { name: new RegExp(locale.name) }),
+      ).toBeInTheDocument()
     }
+    const greek = screen.getByRole('option', { name: /Ελληνικά/ })
+    expect(greek.textContent).toContain('🇬🇷')
   })
 
   test('search filters the language list', async () => {
@@ -57,15 +68,15 @@ describe('GeneralTab', () => {
     const search = screen.getByPlaceholderText('Search languages…')
     fireEvent.change(search, { target: { value: 'Ελλ' } })
     await waitFor(() => {
-      expect(screen.queryByRole('option', { name: 'Deutsch' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: /Deutsch/ })).not.toBeInTheDocument()
     })
-    expect(screen.getByRole('option', { name: 'Ελληνικά' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Ελληνικά/ })).toBeInTheDocument()
   })
 
   test('picking a language applies instantly, persists and updates html lang', async () => {
     renderGeneral()
     openPicker()
-    fireEvent.click(await screen.findByRole('option', { name: 'Deutsch' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Deutsch/ }))
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('de')
@@ -75,7 +86,7 @@ describe('GeneralTab', () => {
     expect(screen.getByRole('combobox', { name: 'Sprache' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Sprache' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'English' }))
+    fireEvent.click(await screen.findByRole('option', { name: /English/ }))
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en')
     })
@@ -99,6 +110,7 @@ describe('GeneralTab', () => {
         paletteRecent: false,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       })
     )
 

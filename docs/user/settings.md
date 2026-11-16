@@ -97,6 +97,15 @@ The Tools tab gathers every web-facing and indexing surface:
   [Retrieval operations](../dev/retrieval-ops.md).
 - **Skills** — the prompt library; see [Skills & prompt library](skills.md).
 
+## Account and users
+
+Your account card lists the devices signed in to your account. The
+device you are using is marked; **Sign out** asks for confirmation and
+signs that one device out, and **Sign out everywhere** is the admin
+view. Sessions you have already signed out stay in the list with a
+**Signed out** badge and offer no **Sign out** button. See
+[Privacy and security](privacy-and-security.md) for where keys live.
+
 ## Users
 
 Admin-only (appears for admin accounts): manage the instance's users,
@@ -104,9 +113,10 @@ sessions and admin rights.
 
 ## Data
 
-- **Working directory** — where your database, blobs, cache and backups live.
-  The change is stored in a pointer file and **applies on the next app start**;
-  a banner shows while it is pending, with Undo. See
+- **Working directory** — desktop only; where your database, blobs, cache and
+  backups live. The path is read-only until you choose **Change folder…** (the
+  system folder picker). The change is stored in a pointer file and **applies on
+  the next app start**; a banner shows while it is pending, with Undo. See
   [Getting started](getting-started.md#changing-the-working-directory).
 - **Automatic backups** — enable/disable, set the interval, and set how many
   daily and weekly backups to keep. Optionally copy each backup to a sync

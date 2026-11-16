@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorBanner } from '@/components/ErrorBanner'
+import { DataCostCard } from './DataCostCard'
 import { TrashCard } from './TrashCard'
 import { WorkingDirEditor } from './WorkingDirEditor'
 import {
@@ -20,6 +21,7 @@ import {
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import { useConfirm } from '@/lib/use-confirm'
+import { useIdentityMode } from '@/lib/use-identity-mode'
 
 function formatSize(size: number): string {
   if (size >= 1024 * 1024 * 1024) {
@@ -34,6 +36,7 @@ function formatSize(size: number): string {
 export function DataTab() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { isDesktop } = useIdentityMode()
   const fileInput = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -113,18 +116,21 @@ export function DataTab() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <FolderCog className="size-4" aria-hidden />
-            {t('settings.workingDirTitle')}
-          </CardTitle>
-          <CardDescription>{t('settings.workingDirHint')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <WorkingDirEditor />
-        </CardContent>
-      </Card>
+      <DataCostCard />
+      {isDesktop ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FolderCog className="size-4" aria-hidden />
+              {t('settings.workingDirTitle')}
+            </CardTitle>
+            <CardDescription>{t('settings.workingDirHint')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WorkingDirEditor />
+          </CardContent>
+        </Card>
+      ) : null}
       <TrashCard />
       <Card>
         <CardHeader>

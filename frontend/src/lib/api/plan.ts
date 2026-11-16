@@ -6,6 +6,10 @@ type Schemas = components['schemas']
 export type PlanItem = Schemas['PlanItemOut']
 export type PlanItemKind = Schemas['PlanItemKind']
 export type UpcomingItem = Schemas['UpcomingItemOut']
+export type WeekPlanPreview = Schemas['WeekPlanPreviewOut']
+export type WeekPlanDay = Schemas['WeekPlanDayOut']
+export type WeekPlanItem = Schemas['WeekPlanItemOut']
+export type PlannerCapacity = Schemas['CapacityOut']
 
 export async function listPlanItems(courseId: string): Promise<PlanItem[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/plan`)
@@ -93,4 +97,39 @@ export async function importIcs(
     { method: 'POST', body: form }
   )
   return json<IcsImportResult>(response)
+}
+
+
+export async function previewWeekPlan(start?: string): Promise<WeekPlanPreview> {
+  const response = await apiFetch('/api/v1/plan/week/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(start === undefined ? {} : { start }),
+  })
+  return json<WeekPlanPreview>(response)
+}
+
+export async function commitWeekPlan(start?: string): Promise<{ created: number; replaced: number }> {
+  const response = await apiFetch('/api/v1/plan/week/commit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(start === undefined ? {} : { start }),
+  })
+  return json<{ created: number; replaced: number }>(response)
+}
+
+export async function getPlannerCapacity(): Promise<PlannerCapacity> {
+  const response = await apiFetch('/api/v1/plan/capacity')
+  return json<PlannerCapacity>(response)
+}
+
+export async function updatePlannerCapacity(
+  body: PlannerCapacity
+): Promise<PlannerCapacity> {
+  const response = await apiFetch('/api/v1/plan/capacity', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<PlannerCapacity>(response)
 }

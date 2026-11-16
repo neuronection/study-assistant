@@ -481,7 +481,7 @@ def usage(session: Session, *, window: str | None = None) -> dict[str, Any]:
             "and are reported as unattributed, not guessed."
         )
     notes.append(
-        "Study has no token-denominated embed budget; TaskAssignment.monthly_cap_usd "
+        "Study has no token-denominated embed budget; TaskAssignment.params.monthly_cap_micros "
         "is monetary and is not reported as a token budget."
     )
     return {

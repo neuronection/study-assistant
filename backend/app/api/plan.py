@@ -9,6 +9,7 @@ from ..core.vocab import PlanItemKind, PlanItemOrigin
 from ..domain.models import Course, PlanItem, utcnow
 from ..services.knowledge.tree import TreeService
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study import adaptive_plan
 from ..services.study.ics_import import (
     IcsEvent,
     IcsImportError,
@@ -314,3 +315,154 @@ def generate_course_plan(
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
     return PlanGenerateOut(created=len(items), items=[_item_out(item) for item in items])
+
+
+class WeekPlanItemOut(BaseModel):
+    day: date
+    course_id: str
+    course_title: str
+    kind: str
+    title: str
+    detail: str | None
+    minutes: int
+    evidence: str
+    fixed: bool
+
+
+class WeekPlanDayOut(BaseModel):
+    day: date
+    minutes: int
+    items: list[WeekPlanItemOut]
+
+
+class WeekPlanPreviewOut(BaseModel):
+    start: date
+    end: date
+    capacity_minutes: list[int]
+    light_week: bool
+    days: list[WeekPlanDayOut]
+    overflow: int
+    existing_generated: int
+    total_minutes: int
+
+
+class WeekPlanCommitOut(BaseModel):
+    created: int
+    replaced: int
+
+
+class WeekPlanIn(BaseModel):
+    start: date | None = None
+
+
+class CapacityIn(BaseModel):
+    minutes: list[int] = Field(min_length=7, max_length=7)
+    blackout_dates: list[str] = Field(default_factory=list)
+    light_week: bool = False
+
+
+class CapacityOut(CapacityIn):
+    pass
+
+
+def _week_out(preview: adaptive_plan.WeekPreview) -> WeekPlanPreviewOut:
+    return WeekPlanPreviewOut(
+        start=preview.start,
+        end=preview.end,
+        capacity_minutes=preview.capacity.minutes,
+        light_week=preview.capacity.light_week,
+        days=[
+            WeekPlanDayOut(
+                day=day,
+                minutes=sum(item.minutes for item in items),
+                items=[
+                    WeekPlanItemOut(
+                        day=item.day,
+                        course_id=item.course_id,
+                        course_title=item.course_title,
+                        kind=item.kind,
+                        title=item.title,
+                        detail=item.detail,
+                        minutes=item.minutes,
+                        evidence=item.evidence,
+                        fixed=item.fixed,
+                    )
+                    for item in items
+                ],
+            )
+            for day, items in preview.days
+        ],
+        overflow=preview.overflow,
+        existing_generated=preview.existing_generated,
+        total_minutes=preview.total_minutes,
+    )
+
+
+@router.post("/week/preview", response_model=WeekPlanPreviewOut)
+def preview_week_plan(
+    body: WeekPlanIn | None = None,
+    session: Session = Depends(get_session),
+) -> WeekPlanPreviewOut:
+    profile = ensure_default_profile(session)
+    preview = adaptive_plan.preview_week(
+        session,
+        profile.id,
+        start=body.start if body is not None else None,
+        preferences=dict(profile.preferences or {}),
+    )
+    return _week_out(preview)
+
+
+@router.post("/week/commit", response_model=WeekPlanCommitOut)
+def commit_week_plan(
+    body: WeekPlanIn | None = None,
+    session: Session = Depends(get_session),
+) -> WeekPlanCommitOut:
+    profile = ensure_default_profile(session)
+    preview = adaptive_plan.preview_week(
+        session,
+        profile.id,
+        start=body.start if body is not None else None,
+        preferences=dict(profile.preferences or {}),
+    )
+    created, replaced = adaptive_plan.commit_week(session, profile.id, preview)
+    session.commit()
+    return WeekPlanCommitOut(created=created, replaced=replaced)
+
+
+@router.get("/capacity", response_model=CapacityOut)
+def get_planner_capacity(session: Session = Depends(get_session)) -> CapacityOut:
+    profile = ensure_default_profile(session)
+    capacity = adaptive_plan.load_capacity(
+        session, profile.id, dict(profile.preferences or {})
+    )
+    return CapacityOut(
+        minutes=capacity.minutes,
+        blackout_dates=[day.isoformat() for day in sorted(capacity.blackout_dates)],
+        light_week=capacity.light_week,
+    )
+
+
+@router.put("/capacity", response_model=CapacityOut)
+def put_planner_capacity(
+    body: CapacityIn,
+    session: Session = Depends(get_session),
+) -> CapacityOut:
+    profile = ensure_default_profile(session)
+    if any(minute < 0 or minute > 720 for minute in body.minutes):
+        raise HTTPException(status_code=422, detail="minutes must be between 0 and 720")
+    prefs = dict(profile.preferences or {})
+    prefs["planner_capacity"] = {
+        "minutes": body.minutes,
+        "blackout_dates": body.blackout_dates,
+        "light_week": body.light_week,
+    }
+    from ..domain.preferences import PreferencesError, validate_preferences
+
+    try:
+        validate_preferences(prefs)
+    except PreferencesError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    profile.preferences = prefs
+    session.commit()
+    return CapacityOut(**body.model_dump())

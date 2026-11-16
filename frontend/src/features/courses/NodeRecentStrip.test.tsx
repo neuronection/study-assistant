@@ -16,6 +16,7 @@ const ALL_ON = {
   paletteRecent: true,
   courseJumpBackIn: true,
   courseCardMeta: true,
+        autoSpeak: false,
 }
 
 const TREE: NodeInfo[] = [

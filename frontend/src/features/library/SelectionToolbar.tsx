@@ -1,4 +1,4 @@
-import { Quote, Sparkles } from 'lucide-react'
+import { Highlighter, Quote, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { SelectionCapture } from '@/lib/useTextSelection'
@@ -7,10 +7,12 @@ export function SelectionToolbar({
   capture,
   onAsk,
   onQuote,
+  onHighlight,
 }: {
   capture: SelectionCapture
   onAsk: () => void
   onQuote?: () => void
+  onHighlight?: () => void
 }) {
   const { t } = useTranslation()
   return (
@@ -28,6 +30,16 @@ export function SelectionToolbar({
         <Sparkles className="size-3.5" aria-hidden />
         {t('library.askSelection')}
       </button>
+      {onHighlight !== undefined ? (
+        <button
+          type="button"
+          className="hover:bg-subtle flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors"
+          onClick={onHighlight}
+        >
+          <Highlighter className="size-3.5" aria-hidden />
+          {t('library.highlightSelection')}
+        </button>
+      ) : null}
       {onQuote !== undefined ? (
         <button
           type="button"

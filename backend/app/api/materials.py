@@ -1,10 +1,13 @@
+import asyncio
 import base64
 import mimetypes
 import re
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -58,8 +61,9 @@ from ..services.content.materials import (
 from ..services.knowledge.courses import CourseError, StructureService
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
+from ..storage.object_storage import ObjectNotFound, StorageError
 from .courses_schemas import ViaFolderOut
-from .deps import content_disposition, get_session
+from .deps import content_disposition, get_session, storage_http_exception
 from .schemas import (
     CitationAuthorOut,
     DrawingIn,
@@ -259,7 +263,10 @@ async def upload_material(
     service = _service(request, session)
     profile = ensure_default_profile(session)
     try:
-        material, deduped = service.upload(
+        # The store is synchronous (local stdlib, boto3 or Azure); keep a
+        # real S3 upload off the event loop.
+        material, deduped = await asyncio.to_thread(
+            service.upload,
             profile_id=profile.id,
             filename=file.filename or "upload",
             data=data,
@@ -276,6 +283,8 @@ async def upload_material(
                 "accepted": accepted_suffixes(),
             },
         ) from error
+    except StorageError as error:
+        raise storage_http_exception(error) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if node_id is not None:
@@ -1241,6 +1250,9 @@ def edit_extraction(
         extraction, replaced_chunk_ids = service.edit_extraction(material, body.markdown)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    from ..services.content.annotations import reanchor_material
+
+    reanchor_material(session, material.id)
     JobRunner.enqueue(
         session,
         "postprocess",
@@ -1453,9 +1465,7 @@ def get_blob(
     blob_row = service.blob_row(sha256)
     if blob_row is None:
         raise HTTPException(status_code=404, detail="blob not found")
-    data = request.app.state.blobs.get(sha256)
-    if data is None:
-        raise HTTPException(status_code=404, detail="blob content missing")
+    blobs = request.app.state.blobs
     mime = blob_row.mime
     filename: str | None = None
     if not mime or mime == "application/octet-stream":
@@ -1465,11 +1475,32 @@ def get_blob(
             guessed = mimetypes.guess_type(material.filename)[0]
             if guessed:
                 mime = guessed
-    headers = {"Content-Disposition": "inline"}
+    inline = bool(mime and mime.lower().startswith("image/"))
+    disposition = "inline" if inline else "attachment"
+    headers = {
+        "Content-Disposition": disposition,
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    }
     if filename is not None:
-        headers["Content-Disposition"] = content_disposition(filename, kind="inline")
-    return Response(
-        content=data,
+        headers["Content-Disposition"] = content_disposition(filename, kind=disposition)
+    iterator = blobs.stream(sha256)
+    try:
+        first = next(iterator)
+    except StopIteration:
+        first = b""
+    except ObjectNotFound as error:
+        # TOCTOU: the DB row exists but the object vanished between the
+        # ownership check and the stream open.
+        raise HTTPException(status_code=404, detail="blob content missing") from error
+
+    def body() -> Iterator[bytes]:
+        if first:
+            yield first
+        yield from iterator
+
+    return StreamingResponse(
+        body(),
         media_type=mime or "application/octet-stream",
         headers=headers,
     )

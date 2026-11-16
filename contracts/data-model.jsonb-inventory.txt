@@ -13,7 +13,9 @@
 # The schema wall (`backend/tests/test_schema_contract.py`) asserts this file
 # covers exactly the JSON columns the models declare, with no stale keep-open
 # rows. D5 in `scripts/check-data-model.sh` consumes the same format.
+activation_events.props :: keep-open bounded activation props (closed ActivationStep/ActivationSurface + schema_version + numeric value; no content)
 activities.config :: keep-open activity generator settings
+artifacts.spec :: keep-open typed artifact spec (ArtifactSpec)
 activities.generated_from :: keep-open import provenance
 answers.error_tags :: keep-open tag list
 answers.feedback :: keep-open feedback document list
@@ -21,6 +23,9 @@ answers.help_events :: keep-open help audit trail
 answers.response :: keep-open graded response document
 ai_interactions.metadata :: keep-open caller-supplied embedding tags (space_id/kind/view/chunk_index; schema version sibling; never text)
 attempts.meta :: keep-open attempt metadata
+capture_staging.meta :: keep-open capture metadata (client/page_count/note; CaptureMeta)
+document_anchors.payload :: keep-open typed anchor payload (AnchorPayload; kind decides required keys)
+review_filters.kinds :: keep-open card-kind filter list
 calendar_links.options :: keep-open sync options (mapping, acceptance, policy)
 calendar_links.scopes :: keep-open granted OAuth scope list
 chat_messages.blocks :: keep-open rendering blocks behind blocks_schema_version
@@ -48,6 +53,8 @@ exercise_steps.expected :: keep-open expected answer document
 exercise_steps.hints_pregenerated :: keep-open hint document list
 exercise_steps.prompt :: keep-open prompt document list
 exercise_steps.rubric :: keep-open rubric document
+exam_papers.document :: keep-open paper sections, marks and snapshot question ids
+exam_papers.grade_bands :: keep-open user-defined grade boundaries
 exercises.context :: keep-open generation context document list
 exercises.created_from :: keep-open creation provenance
 external_sources.cursor :: keep-open extension-owned scan cursor
@@ -98,6 +105,8 @@ questions.tags :: keep-open tag list
 retrieval_query_rollups.latency_histogram :: keep-open bounded latency histogram (le buckets + overflow; TTL 30d)
 skill_versions.contract :: keep-open skill contract knobs
 skill_versions.params :: keep-open skill parameter knobs
+solve_entries.result :: keep-open typed verified-step result (SolveResult)
+studio_artifacts.spec :: keep-open typed slide-deck/handout spec (StudioArtifactSpec)
 step_attempts.feedback :: keep-open feedback document list
 step_attempts.response :: keep-open step response document
 step_attempts.state :: keep-open step state document

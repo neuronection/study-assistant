@@ -105,8 +105,7 @@ AUDIO_HITS_PY="$(grep -rEn "['\"]audio['\"]" "$ROOT/backend/app" 2>/dev/null \
   | grep -v "backend/app/core/vocab.py" \
   | grep -v "backend/app/pipelines/url_import.py" \
   | grep -v "backend/app/api/materials.py" \
-  | grep -v "backend/app/services/content/external_sources.py" \
-  | grep -v "backend/app/extensions/builtin/external_sources/" || true)"
+  | grep -v "backend/app/services/content/external_sources.py" || true)"
 if [ -n "$AUDIO_HITS_PY" ]; then
   bad "R2 legacy 'audio' capability literals found in backend (vocabulary is stt/tts):"
   echo "$AUDIO_HITS_PY" >&2

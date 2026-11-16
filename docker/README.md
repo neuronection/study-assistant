@@ -2,7 +2,7 @@
 
 This directory contains the Docker configuration files for Study Assistant.
 It mirrors Health and Career Assistant's docker layout (family standard,
-deployment.md / ADR-0022): the **web stack runs PostgreSQL 16** (pgvector) —
+deployment.md): the **web stack runs PostgreSQL 16** (pgvector) —
 desktop installs keep SQLite (`<data_dir>/study.sqlite3`), that convention
 does not apply here.
 
@@ -17,17 +17,33 @@ For development on the host see `docs/` and `scripts/run-dev.sh`.
 | `docker-compose.standalone.yml` | Canonical self-hosted single-host stack: **db + app + nginx + backup** (TLS-ready). |
 | `docker-compose.demo.yml` | Demo flavor (S8): isolated compose project/network, `neuronection_study_demo`, synthetic-only data seeded by `scripts/seed-demo.py`, SPA badged "Demo — synthetic data". Never production. |
 | `Dockerfile` | Multi-stage: pnpm frontend bundle → single uvicorn image serving API + SPA. Fetches the family auth-kit (git-SHA pin in the root `pyproject.toml`/`uv.lock`) via git during `uv sync`. |
-| `entrypoint.sh` | Demo guard → waits for the DB → runs migrations (owner role) → starts uvicorn. |
-| `init-db.sh` | First-boot Postgres bootstrap: family roles + optional `neuronection_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
+| `entrypoint.sh` | Demo guard → waits for the DB → `serve` boots uvicorn (app DSN only; refuses the owner DSN) / `migrate` runs the one-shot owner-role provisioning + Alembic (`app.ops.migrations`). |
+| `init-db.sh` | First-boot Postgres bootstrap: family roles (distinct passwords, the credential policy) + optional `neuronection_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
 | `nginx.conf` | HTTP-only reverse proxy incl. the `/ws` WebSocket endpoint (loopback / VPN). |
 | `nginx-TLS.conf` | TLS-terminating variant (certbot webroot ACME + HSTS). |
-| `.env.production.example` | Template for `docker/.env` (the one required secret: `SA_DB_PASSWORD`). |
+| `.env.production.example` | Template for `docker/.env` (the two required secrets: `SA_DB_OWNER_PASSWORD` + `SA_DB_PASSWORD`, the credential policy). |
 
 Ops scripts (repo `scripts/`): `run-docker.sh` (first deploy), `update-docker.sh`
 (refresh), `lib-docker.sh` (shared helpers), `backup.sh` / `restore.sh`
 (instance backup + restore, see the restore drill below).
 
-## Databases & roles (ADR-0022)
+## Cloud object storage
+
+A cloud profile (AWS S3, Azure Blob, or an S3-compatible gateway) uses the
+object-storage overlay on top of the prod/standalone stack:
+
+```bash
+docker compose -f docker/docker-compose.prod.yml \
+               -f docker/docker-compose.cloud.yml up -d
+```
+
+Put the provider values in `docker/.env` (`SA_CLOUD_PROFILE`,
+`SA_OBJECT_STORAGE_BACKEND`, bucket/container, region/endpoint, credentials
+or identity, prefix). See `docs/dev/storage.md` for the full copy-paste
+AWS/Azure blocks and the cloud deployment checklist; do not duplicate those
+values here.
+
+## Databases & roles
 
 Web mode runs **PostgreSQL 16** (`pgvector/pgvector` — embeddings use pgvector).
 Naming and env vars follow deployment.md:
@@ -36,24 +52,24 @@ Naming and env vars follow deployment.md:
 |---|---|
 | Database | `neuronection_study` (test: `neuronection_study_test`) |
 | Roles | `neuronection_study_owner` (owns schema, runs migrations/DDL) + `neuronection_study_app` (runtime, CONNECT + DML only — never DDL) |
-| Env vars | `SA_DB_NAME`, `SA_DB_USER`, `SA_DB_PASSWORD`, `SA_DATABASE_URL` (**URL wins** when set); `SA_DB_HOST`/`SA_DB_PORT` for the non-URL form |
+| Env vars | `SA_DB_NAME`, `SA_DB_USER`, `SA_DB_PASSWORD` (app role), `SA_DB_OWNER_PASSWORD` (owner role), `SA_DATABASE_URL` (**URL wins** when set); `SA_DB_HOST`/`SA_DB_PORT` for the non-URL form |
 
-**Two-role split — what exactly happens here:** `docker/init-db.sh` creates
-both roles on first boot of the data volume and grants the app role DML-only
-privileges (plus `ALTER DEFAULT PRIVILEGES` so tables the owner creates during
-migrations are covered automatically). The app container gets **two URLs**:
-`SA_DATABASE_URL` connects as `neuronection_study_app` (the runtime, least
-privilege) and `SA_MIGRATIONS_DATABASE_URL` is used *only* by
-`entrypoint.sh` to run `alembic upgrade head` as `neuronection_study_owner` on
-every boot — migrations are never a manual step. Both roles share the single
-`SA_DB_PASSWORD`, so the env surface stays exactly at the law's four vars;
-the split is privilege-based, not credential-based. Consequences: the app
-container holds the owner password (it must, to auto-migrate), and the
-runtime role can never alter the schema.
+**Two roles, two credentials (the credential policy).** `docker/init-db.sh` creates both
+roles on first boot of the data volume — each with its **own** password —
+and grants the app role DML-only privileges (plus `ALTER DEFAULT
+PRIVILEGES` so tables the owner creates during migrations are covered
+automatically). `SA_MIGRATIONS_DATABASE_URL` (the owner DSN) is injected
+**only into the one-shot `migrate` service**; the `app` service carries the
+app DSN alone and `entrypoint.sh serve` refuses to boot if it ever sees the
+owner DSN. Every `migrate` run bootstraps/syncs the app role (create,
+password rotation, grants, default privileges, `vector`/`pg_trgm`
+verification) as the owner — so rotating `SA_DB_PASSWORD` is: change it,
+`docker compose up -d`. Consequence: a leaked app container cannot alter
+the schema, create extensions or drop tables.
 
-### Renaming `neuro_*` → `neuronection_*` (ADR-0022 amendment, 2026-09-30)
+### Renaming `neuro_*` → `neuronection_*` (datastore rename, 2026-09-30)
 
-The family datastore prefix was spelled out (ADR-0022 revision history):
+The family datastore prefix was spelled out:
 databases `neuronection_study` (+ `neuronection_study_test` /
 `neuronection_study_demo`), roles `neuronection_study_owner` /
 `neuronection_study_app`. **Existing installations migrate automatically**
@@ -124,15 +140,15 @@ SA_DB_PASSWORD=study_dev_pw docker compose -f docker/docker-compose.dev-db.yml u
 ## Self-hosting (standalone flavor)
 
 ```bash
-cp docker/.env.production.example docker/.env   # then set SA_DB_PASSWORD
+cp docker/.env.production.example docker/.env   # set SA_DB_OWNER_PASSWORD + SA_DB_PASSWORD
 docker compose -f docker/docker-compose.standalone.yml up -d --build
 # → http://localhost
 ```
 
 - Stack: PostgreSQL 16 + app image (API + SPA same-origin) + nginx; the app
   entrypoint runs migrations automatically on every start.
-- Required secret `SA_DB_PASSWORD` (URL-safe characters only) is `:?`-guarded —
-  `up` fails loud and early without it.
+- Required secrets `SA_DB_OWNER_PASSWORD` and `SA_DB_PASSWORD` (URL-safe
+  characters only) are `:?`-guarded — `up` fails loud and early without both.
 - Optional scheduled backups (DB dump + data volume to `docker/backups/`):
   add `--profile backup` (`BACKUP_INTERVAL_HOURS` / `BACKUP_KEEP`).
 - Deploy a pre-built image instead of building:
@@ -173,8 +189,10 @@ each. Host-side one-shots (used by the drill and for off-machine copies) are
 **Drill (run it before you rely on it):**
 
 ```bash
-# 1. Seed data — start the stack and create something you can recognize.
-cp docker/.env.production.example docker/.env   # set SA_DB_PASSWORD
+# 0. Configure — TWO secrets now (the credential policy): owner + app DB passwords.
+cp docker/.env.production.example docker/.env   # set SA_DB_OWNER_PASSWORD + SA_DB_PASSWORD
+#    Optional (the backup policy): an off-host target so backups leave this host —
+#    e.g. SA_BACKUP_RCLONE_REMOTE=myremote:study-backups
 scripts/run-docker.sh
 curl -s -X POST http://localhost/api/v1/auth/register \
   -H 'Content-Type: application/json' -c /tmp/drill-jar \
@@ -211,7 +229,17 @@ curl -s -b /tmp/drill-jar http://localhost/api/v1/courses                 # → 
 `scripts/restore.sh` prints exactly what it destroys (the `neuronection_study`
 database + the `data` volume) and refuses to run without `--yes` (or
 `FORCE=1`). It uses `pg_restore --clean --if-exists`, so restoring over a
-running instance works too.
+running instance works too. After `pg_restore` it **re-grants the app role**
+its DML-only set (the dump carries ownership, not runtime grants) — the
+re-grant SQL mirrors `docker/init-db.sh` and `app.ops.migrations`.
+
+Every `scripts/backup.sh` run appends a JSONL row to
+`backups/backup_runs.jsonl` (`run_at`, `archive`, `bytes`, `sha256`,
+`uploaded_to`, `status`) — the the backup policy run ledger. With an off-host target
+set (`SA_BACKUP_RCLONE_REMOTE` / `SA_BACKUP_S3_URI` / `SA_BACKUP_AZURE_URL`)
+the archive uploads and the row records it; `local-only` rows on a T1
+deployment are a DR gap. Alert when the newest row is older than 2× your
+`BACKUP_INTERVAL_HOURS` — that means the backup service stopped.
 
 ## Demo notes
 

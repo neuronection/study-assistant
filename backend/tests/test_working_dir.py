@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from nx_auth.instance import IdentityMode
 from settings_factory import settings_from_env_file
 
 from app.core.config import Settings, default_data_dir
@@ -14,21 +15,45 @@ def make_client(tmp_path: Path, data_dir_name: str = "data") -> TestClient:
         data_dir=tmp_path / data_dir_name,
         config_dir=tmp_path / "config",
         log_level="WARNING",
+        identity_mode=IdentityMode.DESKTOP,
     )
     return TestClient(create_app(settings))
 
 
-def test_get_working_dir_fresh_install(client: TestClient, tmp_path: Path) -> None:
-    with client:
+def test_working_dir_routes_are_desktop_only(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        config_dir=tmp_path / "config",
+        log_level="WARNING",
+    )
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/v1/config/working-dir").status_code == 404
+        assert (
+            client.post(
+                "/api/v1/config/working-dir/validate", json={"path": str(tmp_path)}
+            ).status_code
+            == 404
+        )
+        assert (
+            client.put(
+                "/api/v1/config/working-dir", json={"path": str(tmp_path / "next")}
+            ).status_code
+            == 404
+        )
+        assert client.delete("/api/v1/config/working-dir").status_code == 404
+
+
+def test_get_working_dir_fresh_install(tmp_path: Path) -> None:
+    with make_client(tmp_path) as client:
         body = client.get("/api/v1/config/working-dir").json()
-        assert body["path"] == str(tmp_path)
+        assert body["path"] == str(tmp_path / "data")
         assert body["custom"] is False
         assert body["restart_pending"] is False
         assert body["default_path"].endswith("StudyAssistant")
 
 
-def test_validate_rejects_relative_and_current(client: TestClient, tmp_path: Path) -> None:
-    with client:
+def test_validate_rejects_relative_and_current(tmp_path: Path) -> None:
+    with make_client(tmp_path) as client:
         relative = client.post(
             "/api/v1/config/working-dir/validate", json={"path": "relative/dir"}
         ).json()
@@ -36,14 +61,15 @@ def test_validate_rejects_relative_and_current(client: TestClient, tmp_path: Pat
         assert relative["reason"] == "relative_path"
 
         current = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(tmp_path)}
+            "/api/v1/config/working-dir/validate",
+            json={"path": str(tmp_path / "data")},
         ).json()
         assert current["valid"] is False
         assert current["reason"] == "already_current"
 
         inside = client.post(
             "/api/v1/config/working-dir/validate",
-            json={"path": str(tmp_path / "nested")},
+            json={"path": str(tmp_path / "data" / "nested")},
         ).json()
         assert inside["valid"] is False
         assert inside["reason"] == "inside_current"
@@ -109,9 +135,11 @@ def test_put_writes_pointer_and_reports_pending(tmp_path: Path) -> None:
         assert body["path"] == str(tmp_path / "data")
 
 
-def test_put_rejects_current_directory(client: TestClient, tmp_path: Path) -> None:
-    with client:
-        put = client.put("/api/v1/config/working-dir", json={"path": str(tmp_path)})
+def test_put_rejects_current_directory(tmp_path: Path) -> None:
+    with make_client(tmp_path) as client:
+        put = client.put(
+            "/api/v1/config/working-dir", json={"path": str(tmp_path / "data")}
+        )
         assert put.status_code == 422
         assert "already_current" in put.json()["detail"]
 

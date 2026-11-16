@@ -460,7 +460,35 @@ def update_link(
     return link
 
 
+def _revoke_oauth_grant(link: CalendarLink) -> None:
+    """Best-effort provider-side revoke before the local grant is deleted."""
+    try:
+        provider_row = provider(link.provider)
+        endpoint = provider_row.oauth.revoke_url if provider_row.oauth else None
+        if not endpoint:
+            return
+        tokens = cloud_oauth.vault_for(link.id).find(link.id)
+        if tokens is None:
+            return
+        data = {
+            "token": tokens.refresh_token or tokens.access_token,
+            "token_type_hint": "refresh_token" if tokens.refresh_token else "access_token",
+        }
+        try:
+            client = oauth_client(provider_row, link)
+            data["client_id"] = client.client_id
+            if client.client_secret:
+                data["client_secret"] = client.client_secret
+        except Exception:
+            pass
+        httpx.post(endpoint, data=data, timeout=5.0, follow_redirects=False)
+    except Exception:
+        return
+
+
 def delete_link(session: Session, link: CalendarLink) -> None:
+    if link.auth_kind == "oauth2":
+        _revoke_oauth_grant(link)
     for kind in ("oauth", "password", "token", "pending"):
         secret_store.delete_secret(_secret_slot(link.id, kind))
     cloud_oauth.vault_for(link.id).clear(link.id)

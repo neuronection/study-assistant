@@ -1,5 +1,5 @@
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 
@@ -35,9 +35,17 @@ class TranscriptionUnsupported(RuntimeError):
 
 
 @dataclass(frozen=True)
+class TranscriptionSegment:
+    start_ms: int
+    end_ms: int
+    text: str
+
+
+@dataclass(frozen=True)
 class TranscriptionResult:
     text: str
     model: str
+    segments: list[TranscriptionSegment] = field(default_factory=list)
 
 
 def audio_extension(mime: str) -> str:
@@ -51,7 +59,7 @@ def transcribe_with(
     mime: str,
     language: str | None,
     instruction: str | None,
-) -> tuple[str, Usage | None]:
+) -> tuple[str, list[TranscriptionSegment], Usage | None]:
     if mime.startswith("video/") and resolved.provider_type == "google":
         raise TranscriptionUnsupported(
             f"{resolved.provider_type} inline transcription does not accept video "
@@ -60,7 +68,8 @@ def transcribe_with(
     if resolved.provider_type == "openai_compatible":
         return _transcribe_openai(client, resolved, data, mime, language)
     if resolved.provider_type == "google":
-        return _transcribe_google(client, resolved, data, mime, instruction)
+        text, usage = _transcribe_google(client, resolved, data, mime, instruction)
+        return text, [], usage
     raise TranscriptionUnsupported(resolved.provider_type)
 
 
@@ -70,7 +79,7 @@ def _transcribe_openai(
     data: bytes,
     mime: str,
     language: str | None,
-) -> tuple[str, Usage | None]:
+ ) -> tuple[str, list[TranscriptionSegment], Usage | None]:
     form: list[
         tuple[
             str,
@@ -78,7 +87,7 @@ def _transcribe_openai(
         ]
     ] = [
         ("model", (None, resolved.external_id)),
-        ("response_format", (None, "json")),
+        ("response_format", (None, "verbose_json")),
         ("file", (f"audio.{audio_extension(mime)}", data, mime or "audio/webm")),
     ]
     if language:
@@ -91,7 +100,21 @@ def _transcribe_openai(
     response.raise_for_status()
     body = response.json()
     usage = _usage_from_tokens(body.get("usage"))
-    return str(body.get("text", "")).strip(), usage
+    segments: list[TranscriptionSegment] = []
+    for entry in body.get("segments") or []:
+        if not isinstance(entry, dict):
+            continue
+        text = str(entry.get("text", "")).strip()
+        if not text:
+            continue
+        try:
+            start = round(float(entry.get("start", 0)) * 1000)
+            end = round(float(entry.get("end", 0)) * 1000)
+        except (TypeError, ValueError):
+            continue
+        if end > start:
+            segments.append(TranscriptionSegment(start_ms=start, end_ms=end, text=text))
+    return str(body.get("text", "")).strip(), segments, usage
 
 
 def _transcribe_google(

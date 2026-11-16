@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from ..core.config import Settings
+from .bootstrap import resolve_storage_config
+from .object_storage import StorageConfigError
 
 CONTRACT_FORMAT = "nx-datastore-quarantine/v1"
 PRODUCT = "study-assistant"
@@ -124,7 +126,19 @@ def quarantine(
             database.with_name(database.name + "-shm"),
         )
     ]
-    sources += [settings.blobs_dir, settings.backups_dir]
+    sources += [settings.backups_dir]
+    try:
+        config = resolve_storage_config(settings)
+    except StorageConfigError as error:
+        if settings.cloud_profile or settings.object_storage_backend:
+            raise DatastoreQuarantineError(
+                "Datastore quarantine is a desktop/local-filesystem feature and "
+                f"cannot resolve the configured cloud/object storage ({error}). "
+                "Fix the SA_* storage configuration or use a local profile."
+            ) from error
+        raise
+    if not config.is_object:
+        sources.append(config.local_root or settings.blobs_dir)
     sources = [source for source in sources if source.exists()]
     folder.mkdir(parents=True)
     moved: list[Path] = []

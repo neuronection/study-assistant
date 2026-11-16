@@ -2,7 +2,6 @@ import json
 import zipfile
 from datetime import UTC, datetime
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -54,7 +53,7 @@ from ...domain.payloads import (
     BundleMaterialRow,
     BundleTreeRow,
 )
-from ...storage.blobs import blob_path
+from ...storage.blobs import BlobStore
 from ..study.exercise_kinds import is_card_kind
 from .course_validate import (
     BLOBS_PREFIX,
@@ -742,7 +741,7 @@ def _export_external_sources(session: Session, course_id: str) -> list[dict[str,
 def build_course_bundle(
     session: Session,
     course: Course,
-    blobs_root: Path,
+    blobs: BlobStore,
     *,
     include_history: bool = False,
     include_note_versions: bool = False,
@@ -763,7 +762,7 @@ def build_course_bundle(
     task_assignments = _export_task_assignments(session, course.id)
     shas = {sha for sha in (material_shas | note_shas) if sha}
     warnings: list[str] = list(folder_warnings)
-    readable = {sha for sha in shas if blob_path(blobs_root, sha).is_file()}
+    readable = {sha for sha in shas if blobs.has(sha)}
     for material in materials:
         sha = material["blob_sha"]
         if sha is not None and sha not in readable:
@@ -839,6 +838,7 @@ def build_course_bundle(
         archive.writestr(EXTERNAL_SOURCES_NAME, json.dumps(external_sources))
         archive.writestr(TASK_ASSIGNMENTS_NAME, json.dumps(task_assignments))
         for sha in sorted(exportable):
-            data = blob_path(blobs_root, sha).read_bytes()
-            archive.writestr(f"{BLOBS_PREFIX}{sha}", data)
+            data = blobs.get(sha)
+            if data is not None:
+                archive.writestr(f"{BLOBS_PREFIX}{sha}", data)
     return buffer.getvalue()

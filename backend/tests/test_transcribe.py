@@ -55,7 +55,14 @@ def test_openai_compatible_multipart_request_shape() -> None:
         captured["content_type"] = request.headers.get("Content-Type")
         return httpx.Response(
             200,
-            json={"text": "  hello dictation ", "usage": {"input_tokens": 30, "output_tokens": 4}},
+            json={
+                "text": "  hello dictation ",
+                "usage": {"input_tokens": 30, "output_tokens": 4},
+                "segments": [
+                    {"start": 0.0, "end": 1.25, "text": " hello"},
+                    {"start": 1.25, "end": 2.0, "text": " dictation"},
+                ],
+            },
         )
 
     gateway = make_gateway(httpx.MockTransport(handler))
@@ -64,12 +71,16 @@ def test_openai_compatible_multipart_request_shape() -> None:
     )
     assert result.text == "hello dictation"
     assert result.model == "whisper-1"
+    assert [(segment.start_ms, segment.end_ms) for segment in result.segments] == [
+        (0, 1250),
+        (1250, 2000),
+    ]
     assert captured["url"] == "https://provider.test/v1/audio/transcriptions"
     assert captured["auth"] == "Bearer KEY"
     assert "multipart/form-data" in captured["content_type"]
     body = captured["body"]
     assert b'name="model"\r\n\r\nwhisper-1' in body
-    assert b'name="response_format"\r\n\r\njson' in body
+    assert b'name="response_format"\r\n\r\nverbose_json' in body
     assert b'name="language"\r\n\r\nen' in body
     assert b'name="file"; filename="audio.webm"' in body
     assert b"RIFFfakeaudio" in body

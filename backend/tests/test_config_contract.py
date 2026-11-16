@@ -83,13 +83,25 @@ READ_ELSEWHERE = {
     # the keyring LIBRARY's own knob (read inside keyring.core.init_backend),
     # used to simulate a headless host in tests/test_deployment_modes.py
     "PYTHON_KEYRING_BACKEND": ("app/core/secrets.py", "tests/test_deployment_modes.py"),
+    # ADR-0064 deployment vars: deliberately NOT Settings fields — they are
+    # the docker `migrate` service's inputs, resolved by app.ops.migrations
+    # (tri-state, role bootstrap) and guarded by docker/entrypoint.sh serve.
+    "SA_DB_SPLIT": ("../docker/entrypoint.sh", "app/ops/migrations.py"),
+    "SA_MIGRATIONS_DATABASE_URL": ("../docker/entrypoint.sh", "app/ops/migrations.py"),
+    "SA_DB_APP_PASSWORD": ("../docker/init-db.sh", "app/ops/migrations.py"),
 }
 
 # (b) env names set by tests specifically to prove they are IGNORED —
 # `SA_REQUIRE_SHELL_SECRET=1` must never arm the §11 gate
 # (behaviorally pinned by
-# test_identity_core.test_env_require_shell_secret_never_arms_the_gate).
-UNREAD_BY_DESIGN = ("SA_REQUIRE_SHELL_SECRET",)
+# test_identity_core.test_env_require_shell_secret_never_arms_the_gate);
+# the secret store's `env_prefix=None` must never resolve a slot from the
+# environment (pinned by test_secrets.test_no_environment_fallback).
+UNREAD_BY_DESIGN = (
+    "SA_REQUIRE_SHELL_SECRET",
+    "SA_NO_ENV_PROBE",
+    "STUDYASSISTANT_NO_ENV_PROBE",
+)
 
 # (c) the §16/§8 security-relevant field pins — a rename fails loudly
 # here first (auth_mode/identity_mode are init-only §4 seeds; the TTL /

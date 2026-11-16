@@ -4,6 +4,8 @@ import { useMotionPresets } from '@/lib/motion'
 import { ArrowRight, Check, ClipboardList, HelpCircle, Loader2, MessageSquare, PenTool, Shuffle, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { recordFirstActivation } from '@/lib/activation-events'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
@@ -95,7 +97,10 @@ export function QuizRunner({ activityId }: { activityId: string }) {
 function QuizRunnerInner({ activityId }: { activityId: string }) {
   const { t } = useTranslation()
   const presets = useMotionPresets()
-  const from = useRouterState({ select: (state) => (state.location.search as { from?: string }).from })
+  const { from, mode } = useRouterState({
+    select: (state) =>
+      state.location.search as { from?: string; mode?: 'practice' | 'exam' },
+  })
   const questions = useQuery({
     queryKey: ['quiz-questions', activityId],
     queryFn: () => quizQuestions(activityId),
@@ -224,7 +229,7 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
   }
 
   const start = useMutation({
-    mutationFn: () => startQuizAttempt(activityId),
+    mutationFn: () => startQuizAttempt(activityId, mode ?? 'practice'),
     onSuccess: (started) => {
       setAttempt(started)
       setStartedAt(Date.now())
@@ -287,7 +292,10 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
 
   const finish = useMutation({
     mutationFn: () => finishQuizAttempt(attempt!.id),
-    onSuccess: (finished) => setScore(finished.score ?? 0),
+    onSuccess: (finished) => {
+      recordFirstActivation('first_quiz', { surface: 'quiz' })
+      setScore(finished.score ?? 0)
+    },
   })
 
   const handleExpire = useCallback(() => {
@@ -481,9 +489,11 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
                   : dotIndex === index
                     ? feedback === null
                       ? 'bg-primary/40'
-                      : feedback.correct
-                        ? 'bg-primary'
-                        : 'bg-danger'
+                      : feedback.deferred
+                        ? 'bg-primary/70'
+                        : feedback.correct
+                          ? 'bg-primary'
+                          : 'bg-danger'
                     : 'bg-border'
               )}
             />
@@ -741,7 +751,14 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
                 </div>
               ))}
 
-              {feedback ? (
+              {feedback?.deferred ? (
+                <div className="border-border bg-subtle rounded-lg border p-3">
+                  <p className="text-sm font-medium">{t('quiz.answerSaved')}</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {t('quiz.answerSavedHint')}
+                  </p>
+                </div>
+              ) : feedback ? (
                 <div
                   className={cn(
                     'rounded-lg border p-3',

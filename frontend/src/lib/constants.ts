@@ -28,4 +28,7 @@ export const storageKeys = {
   recentNodesPrefix: 'sa-recent-nodes',
   interfacePrefs: 'sa-interface-prefs',
   treeWidth: 'sa-tree-width',
+  coachDismissed: 'sa-coach-dismissed',
+  browserVoice: 'sa-browser-voice',
+  speechRate: 'sa-speech-rate',
 } as const

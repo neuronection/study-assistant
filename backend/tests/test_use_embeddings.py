@@ -19,6 +19,12 @@ def test_preferences_round_trip(client: TestClient) -> None:
                 {"site": "openstax.org", "label": "OpenStax", "kind": "reference"},
             ],
         },
+        "daily_brief": {
+            "enabled": False,
+            "time": "07:00",
+            "length_minutes": 5,
+            "voice": None,
+        },
     }
     off = client.put("/api/v1/profiles/preferences", json={"use_embeddings": False})
     assert off.status_code == 200
@@ -34,6 +40,12 @@ def test_preferences_round_trip(client: TestClient) -> None:
                 {"site": "openstax.org", "label": "OpenStax", "kind": "reference"},
             ],
         },
+        "daily_brief": {
+            "enabled": False,
+            "time": "07:00",
+            "length_minutes": 5,
+            "voice": None,
+        },
     }
     on = client.put("/api/v1/profiles/preferences", json={"use_embeddings": True})
     assert on.json() == {
@@ -47,6 +59,12 @@ def test_preferences_round_trip(client: TestClient) -> None:
                 {"site": "ocw.mit.edu", "label": "MIT OpenCourseWare", "kind": "course"},
                 {"site": "openstax.org", "label": "OpenStax", "kind": "reference"},
             ],
+        },
+        "daily_brief": {
+            "enabled": False,
+            "time": "07:00",
+            "length_minutes": 5,
+            "voice": None,
         },
     }
 

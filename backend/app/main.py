@@ -35,6 +35,7 @@ from .jobs.runner import JobRunner
 from .middleware import ProfileBindingMiddleware, SpaStaticFiles, mount_rate_limiting
 from .ocr.gateway_ocr import GatewayOcr
 from .seeds import run_startup_seeds
+from .services.artifacts.daily import run_daily_briefs
 from .services.platform.backup import (
     BackupScheduler,
     EffectiveBackupSettings,
@@ -49,7 +50,10 @@ from .services.retrieval.telemetry import (
     configure_recorder,
 )
 from .storage.blobs import BlobStore
+from .storage.bootstrap import open_configured_store, resolve_storage_config
 from .storage.db import make_engine, make_session_factory
+from .storage.health import StorageHealthProbe
+from .storage.object_storage import BACKEND_LOCAL
 
 
 def _find_spa_dist(settings: Settings) -> Path | None:
@@ -98,22 +102,33 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         with app.state.session_factory() as session:
             seed_notification_kinds(session)
             session.commit()
+        from .services.capture import sweep_expired_captures
+
+        with app.state.session_factory() as session:
+            sweep_expired_captures(session)
+            session.commit()
         jobs: JobRunner = app.state.jobs
         jobs.start()
         scheduler: ScanScheduler = app.state.scans
         scheduler.start()
         external_scheduler: ExternalSourceScheduler = app.state.external_scans
         external_scheduler.start()
-        backups: BackupScheduler = app.state.backups
-        backups.start()
+        backups = app.state.backups
+        if backups is not None:
+            backups.start()
         telemetry: QueryRollupRecorder = app.state.retrieval_telemetry
         telemetry.start()
+        # /ready flips green only after boot completed (plan 64 §1.4):
+        # sessions, sweeps, schedulers and the checkpointer are all up.
+        app.state.boot_complete = True
         yield
         telemetry.stop()
-        backups.stop()
+        if backups is not None:
+            backups.stop()
         external_scheduler.stop()
         scheduler.stop()
         jobs.stop()
+    app.state.objects.close()
     app.state.engine.dispose()
 
 
@@ -127,6 +142,7 @@ def create_app(
     settings = settings or get_settings()
     settings.ensure_dirs()
     setup_logging(settings.log_level)
+    storage_config = resolve_storage_config(settings)
 
     # Production boot guards (ADR-0028): fail fast on unsafe config —
     # partial/weak key pins, DEBUG/DEMO_MODE in production. Dev/test
@@ -148,12 +164,22 @@ def create_app(
     ):
         logging.getLogger(__name__).warning("boot guard: %s", warning)
 
-    recovery = boot_integrity_check(
-        settings.db_path,
-        settings.backups_dir,
-        settings.blobs_dir,
-        database_url=settings.db_url,
-    )
+    if storage_config.backend == BACKEND_LOCAL:
+        recovery = boot_integrity_check(
+            settings.db_path,
+            settings.backups_dir,
+            storage_config.local_root or settings.blobs_dir,
+            database_url=settings.db_url,
+        )
+    else:
+        # Boot integrity recovery is a local-filesystem/desktop affordance:
+        # it writes blob bytes into the mounted data directory. Object
+        # storage is provider-durable and has no local blob tree to repair.
+        recovery = None
+        logging.getLogger(__name__).info(
+            "boot_integrity_check_skipped: object-storage backend %s",
+            storage_config.backend,
+        )
     if recovery is not None:
         import structlog
 
@@ -198,7 +224,11 @@ def create_app(
     )
     install_identity(app, settings, app.state.session_factory)
 
-    app.state.blobs = BlobStore(settings.blobs_dir)
+    storage_config, objects = open_configured_store(settings)
+    app.state.storage_config = storage_config
+    app.state.objects = objects
+    app.state.storage_health = StorageHealthProbe(storage_config, objects)
+    app.state.blobs = BlobStore(objects)
     app.state.gateway = gateway if gateway is not None else LLMGateway(app.state.session_factory)
     from .services.platform.editor_ai import EditorTransformService
 
@@ -213,12 +243,18 @@ def create_app(
 
     from .api import ws as ws_router
     from .api.desktop import router as desktop_router
+    from .api.readiness import router as readiness_router
     from .api.router import api_router
 
     app.include_router(api_router, prefix="/api/v1")
     if settings.identity_mode == "desktop":
         app.include_router(desktop_router, prefix="/api/v1")
     app.include_router(ws_router.router)
+    # /ready is a root-level ingress probe (plan 64 §1.4) — outside the
+    # versioned API on purpose (no /api prefix, no session enforcement:
+    # both middleware only ever touch /api/* paths).
+    app.include_router(readiness_router)
+    app.state.boot_complete = False
 
     def _retrieval_alert_pass() -> dict[str, Any]:
         with app.state.session_factory() as session:
@@ -226,12 +262,13 @@ def create_app(
 
     app.state.scans = ScanScheduler(
         app.state.session_factory,
-        settings.blobs_dir,
+        app.state.blobs,
         app.state.jobs,
         app.state.bus.publish_threadsafe,
         interval_sec=settings.source_scan_interval_sec,
         inbox_dir=settings.inbox_dir,
         retrieval_alerts=_retrieval_alert_pass,
+        daily_briefs=lambda: run_daily_briefs(app.state.session_factory),
     )
     app.state.external_scans = ExternalSourceScheduler(
         app.state.session_factory,
@@ -250,14 +287,24 @@ def create_app(
             settings.data_dir,
         )
 
-    app.state.backups = BackupScheduler(
-        _backup_settings,
-        settings.db_path,
-        settings.blobs_dir,
-        settings.backups_dir,
-        publish=app.state.bus.publish_threadsafe,
-        database_url=settings.db_url,
-    )
+    if storage_config.is_object:
+        # Local-filesystem archives are meaningless under s3/azure_blob;
+        # never construct or start the scheduler (which would otherwise
+        # raise UnsupportedOperation every cycle).
+        logging.getLogger(__name__).info(
+            "backup_scheduler_disabled: object-storage backend %s",
+            storage_config.backend,
+        )
+        app.state.backups = None
+    else:
+        app.state.backups = BackupScheduler(
+            _backup_settings,
+            settings.db_path,
+            app.state.blobs,
+            settings.backups_dir,
+            publish=app.state.bus.publish_threadsafe,
+            database_url=settings.db_url,
+        )
 
     dist = _find_spa_dist(settings)
     if dist is not None:

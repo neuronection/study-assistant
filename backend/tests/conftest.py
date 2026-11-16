@@ -121,6 +121,11 @@ def _block_network() -> None:
 
 @pytest.fixture(autouse=True, scope="session")
 def _no_network() -> None:
+    # Explicit, opt-in escape hatch for the env-gated object-storage smoke
+    # (plan 55 P1). Every ordinary run still hard-blocks connects; the smoke
+    # sets SA_TEST_ALLOW_NETWORK=1 and must also provide SA_TEST_S3_*.
+    if os.environ.get("SA_TEST_ALLOW_NETWORK") == "1":
+        return
     _block_network()
 
 

@@ -449,6 +449,32 @@ describe('QuizRunner', () => {
     expect(screen.queryByRole('button', { name: /ask about this question/i })).not.toBeInTheDocument()
   })
 
+  test('exam mode defers feedback and never reveals the verdict', async () => {
+    quizQuestions.mockResolvedValue([QUESTIONS[0]])
+    startQuizAttempt.mockResolvedValue({ id: '17', mode: 'exam', score: null })
+    submitQuizAnswer.mockResolvedValue({
+      correct: false,
+      partial_credit: 0,
+      graded_by: null,
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+      deferred: true,
+    })
+    renderRunner()
+    await screen.findByText(/What is/)
+    fireEvent.click(getButton(/B/))
+    fireEvent.click(getButton(/submit/i))
+
+    expect(await screen.findByText('Answer saved')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Correctness and explanations stay hidden/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Correct')).not.toBeInTheDocument()
+    expect(screen.queryByText('Incorrect')).not.toBeInTheDocument()
+    expect(screen.queryByText('Power rule.')).not.toBeInTheDocument()
+  })
+
   test('handwriting: draw → recognize → confirm candidate → graded answer', async () => {
     quizQuestions.mockResolvedValue([QUESTIONS[1]])
     startQuizAttempt.mockResolvedValue({ id: '13', mode: 'practice', score: null })

@@ -522,7 +522,10 @@ def patch_message_state(
             model=None,
             input_tokens=token_count(json.dumps(body.delta), accounting),
             output_tokens=0,
-            cost_usd=None,
+            cost_micros=None,
+            usage_source="estimated",
+            estimate_method="heuristic_family_v1",
+            price_source="unknown",
             latency_ms=0,
             metadata_json=accounting.metadata(),
         )
@@ -678,7 +681,10 @@ def approve_proposal(
             model=None,
             input_tokens=token_count(str(proposal.payload), accounting),
             output_tokens=0,
-            cost_usd=None,
+            cost_micros=None,
+            usage_source="estimated",
+            estimate_method="heuristic_family_v1",
+            price_source="unknown",
             latency_ms=0,
             metadata_json=accounting.metadata(),
         )

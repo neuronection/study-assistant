@@ -84,6 +84,7 @@ describe('CoursesPage', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
   })
@@ -183,6 +184,7 @@ describe('CoursesPage', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: false,
+        autoSpeak: false,
       },
     })
     window.localStorage.setItem(

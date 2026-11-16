@@ -2,16 +2,20 @@ import json
 import re
 import time
 from collections.abc import Iterator, Mapping
-from typing import Any
+from decimal import Decimal
+from typing import Any, cast
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
 import structlog
 from langchain_core.messages import AIMessage, AIMessageChunk
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..core import secrets
-from ..domain.models import AiModel, Provider
+from ..core.vocab import PriceSource, UsageSource
+from ..domain.models import AiModel, AiPriceOverride, Provider
 from .chat_models import (
     build_chat_model,
     chat_native_schemas,
@@ -22,6 +26,8 @@ from .chat_models import (
     to_langchain_messages,
     usage_from_message,
 )
+from .model_pricing import resolve_price
+from .model_pricing_data import MODEL_PRICING_COMPILED, MODEL_PRICING_ROWS
 from .speech import (
     SpeechResult,
     SpeechUnsupported,
@@ -32,6 +38,7 @@ from .tokenizers.accounting import accounting_for, default_accounting
 from .tokenizers.accounting import token_count as _token_count
 from .transcribe import (
     TranscriptionResult,
+    TranscriptionSegment,
     TranscriptionUnsupported,
     transcribe_with,
 )
@@ -77,6 +84,14 @@ class ProviderError(RuntimeError):
             f"provider request for model '{resolved.label}' failed: {reason}{auth_hint}"
         )
         self.model_label = resolved.label
+
+
+def _is_local_url(base_url: str) -> bool:
+    try:
+        host = (urlparse(base_url).hostname or "").lower()
+        return host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".local")
+    except ValueError:
+        return False
 
 
 _STATUS_RE = re.compile(r"\b([45]\d\d)\b")
@@ -176,21 +191,26 @@ class LLMGateway:
         month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         with self._session_factory() as session:
             assignment = session.get(TaskAssignment, task)
-            cap = ((assignment.params or {}) if assignment else {}).get("monthly_cap_usd")
-            if cap is None:
+            params = cast(dict[str, Any], (assignment.params or {}) if assignment else {})
+            cap_micros = params.get("monthly_cap_micros")
+            if cap_micros is None and params.get("monthly_cap_usd") is not None:
+                cap_micros = int(Decimal(str(params["monthly_cap_usd"])) * 1_000_000)
+            if cap_micros is None:
                 return
-            spent = (
+            spent_micros = (
                 session.execute(
-                    select(func.coalesce(func.sum(AiInteraction.cost_usd), 0.0)).where(
+                    select(func.coalesce(func.sum(AiInteraction.cost_micros), 0)).where(
                         AiInteraction.context_type == "gateway",
                         AiInteraction.task == task,
                         AiInteraction.created_at >= month_start,
                     )
                 ).scalar_one()
-                or 0.0
+                or 0
             )
-            if spent >= float(cap):
-                raise BudgetExceeded(task, float(spent), float(cap))
+            if int(spent_micros) >= int(cap_micros):
+                raise BudgetExceeded(
+                    task, int(spent_micros) / 1_000_000, int(cap_micros) / 1_000_000
+                )
 
     def _ledger(
         self,
@@ -219,25 +239,59 @@ class LLMGateway:
             tokens_in = _token_count(prompt, accounting)
             tokens_out = _token_count(output, accounting)
             cached_in = 0
-        cost: float | None = None
-        if resolved is not None and resolved.cost_in is not None:
-            rate_out = resolved.cost_out if resolved.cost_out is not None else 0.0
-            billed_in = max(0, tokens_in - cached_in) * resolved.cost_in
-            billed_cache = cached_in * resolved.cost_in * CACHE_READ_RATE
-            cost = round(
-                (billed_in + billed_cache) / 1_000_000 + tokens_out / 1_000_000 * rate_out,
-                6,
-            )
+        usage_source = (
+            UsageSource.PROVIDER.value if usage is not None else UsageSource.ESTIMATED.value
+        )
+        estimate_method = None if usage is not None else "heuristic_family_v1"
+        cost_micros: int | None = None
+        price_source = PriceSource.UNKNOWN.value
+        price_version: str | None = None
         try:
             with self._session_factory() as session:
+                if resolved is not None:
+                    overrides = [
+                        {
+                            "providerRef": row.provider_ref,
+                            "provider": row.provider_key,
+                            "model": row.model,
+                            "match": row.match,
+                            "inputMicrosPerMillion": int(row.input_micros_per_million),
+                            "outputMicrosPerMillion": int(row.output_micros_per_million),
+                            "metering": row.metering,
+                            "id": row.id,
+                            "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
+                        }
+                        for row in session.scalars(select(AiPriceOverride))
+                    ]
+                    resolution = resolve_price(
+                        rows=MODEL_PRICING_ROWS,
+                        compiled=MODEL_PRICING_COMPILED,
+                        model=resolved.external_id,
+                        provider_key=resolved.provider_key,
+                        provider_row_id=resolved.provider_id,
+                        is_local=resolved.is_local,
+                        user_rows=overrides,
+                        input_tokens=tokens_in,
+                        output_tokens=tokens_out,
+                    )
+                    if resolution is not None:
+                        cost_micros = resolution.cost_micros
+                        price_source = resolution.source
+                        price_version = resolution.price_version
                 row = AiInteraction(
                     context_type="gateway",
                     task=task,
                     model=resolved.label if resolved else None,
+                    model_external_id=resolved.external_id if resolved else None,
+                    provider_key=resolved.provider_key if resolved else None,
                     input_tokens=tokens_in,
                     output_tokens=tokens_out,
                     cached_input_tokens=cached_in or None,
-                    cost_usd=cost,
+                    cost_micros=cost_micros,
+                    usage_source=usage_source,
+                    estimate_method=estimate_method,
+                    price_source=price_source,
+                    price_version=price_version,
                     latency_ms=latency_ms,
                 )
                 if metadata:
@@ -322,8 +376,12 @@ class LLMGateway:
                         label=db_model.label,
                         caps=list(db_model.caps or []),
                         api_key=secrets.get_secret(provider.keyring_ref),
-                        cost_in=db_model.cost_in,
-                        cost_out=db_model.cost_out,
+                        provider_key=provider.preset_key,
+                        is_local=(
+                            bool(provider.is_local)
+                            if provider.is_local is not None
+                            else _is_local_url(provider.base_url)
+                        ),
                         reasoning_effort=db_model.reasoning_effort,
                         temperature=db_model.temperature,
                         max_tokens=db_model.max_tokens,
@@ -471,7 +529,7 @@ class LLMGateway:
         last_error: ProviderError | None = None
         for resolved in chain:
             try:
-                text, usage = self._invoke_transcription(
+                text, segments, usage = self._invoke_transcription(
                     resolved, data, mime, language, instruction
                 )
             except ProviderError as error:
@@ -485,7 +543,7 @@ class LLMGateway:
                 int((time.monotonic() - started) * 1000),
                 usage=usage,
             )
-            return TranscriptionResult(text=text, model=resolved.label)
+            return TranscriptionResult(text=text, model=resolved.label, segments=segments)
         assert last_error is not None
         raise last_error
 
@@ -496,7 +554,7 @@ class LLMGateway:
         mime: str,
         language: str | None,
         instruction: str | None,
-    ) -> tuple[str, Usage | None]:
+    ) -> tuple[str, list[TranscriptionSegment], Usage | None]:
         for attempt in range(self._retry_attempts):
             try:
                 with httpx.Client(timeout=self._timeout, transport=self._transport) as client:

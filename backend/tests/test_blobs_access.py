@@ -23,6 +23,17 @@ def _upload_material(client: Any, title: str) -> str:
     return str(upload.json()["material"]["blob_sha"])
 
 
+def _upload_image(client: Any, title: str) -> str:
+    course_id = client.post("/api/v1/courses", json={"title": title}).json()["id"]
+    upload = client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id},
+        files={"file": ("page.png", b"\x89PNG\r\n\x1a\nfake image", "image/png")},
+    )
+    assert upload.status_code == 200, upload.text
+    return str(upload.json()["material"]["blob_sha"])
+
+
 def _navigator(app: Any, cookie: str) -> Any:
     """Navigation-shaped client: cookies only — no custom headers."""
     return AnonymousTestClient(app, headers={"Cookie": cookie})
@@ -32,8 +43,19 @@ def test_navigation_without_profile_header_serves_owned_blob(client: TestClient)
     sha = _upload_material(client, "Blob nav")
     response = _navigator(client.app, cast(Any, client).session_cookie).get(f"/api/v1/blobs/{sha}")
     assert response.status_code == 200, response.text
-    assert response.headers["content-disposition"] == "inline"
+    assert response.headers["content-disposition"].startswith("attachment")
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
     assert response.content == b"%PDF-1.4 fake body"
+
+
+def test_image_blob_is_served_inline_with_nosniff(client: TestClient) -> None:
+    sha = _upload_image(client, "Blob image")
+    response = _navigator(client.app, cast(Any, client).session_cookie).get(f"/api/v1/blobs/{sha}")
+    assert response.status_code == 200, response.text
+    assert response.headers["content-disposition"].startswith("inline")
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 def test_img_subresource_without_profile_header_serves_owned_blob(
@@ -56,6 +78,14 @@ def test_foreign_blob_is_indistinguishable_from_missing(client: TestClient) -> N
     nav = _navigator(app, cast(Any, client).session_cookie)
     assert nav.get(f"/api/v1/blobs/{foreign_sha}").status_code == 404
     assert nav.get(f"/api/v1/blobs/{'0' * 64}").status_code == 404
+
+
+def test_missing_blob_content_is_404_after_stream_open(client: TestClient) -> None:
+    app = cast(Any, client.app)
+    sha = _upload_material(client, "Vanished blob")
+    assert app.state.blobs.delete(sha)
+    response = _navigator(app, cast(Any, client).session_cookie).get(f"/api/v1/blobs/{sha}")
+    assert response.status_code == 404
 
 
 def test_unreferenced_blob_is_not_served(client: TestClient) -> None:

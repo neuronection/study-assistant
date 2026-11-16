@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session
 
+from app.core.limits import MAX_UPLOAD_BYTES
 from app.domain.models import Blob
 from app.storage.blobs import BlobStore
 
@@ -34,6 +35,10 @@ def test_path_layout_uses_sha_prefixes(store: BlobStore) -> None:
     prefix = stored.sha256[:2]
     sub = stored.sha256[2:4]
     assert store.path(stored.sha256).relative_to(store.root).parts[:2] == (prefix, sub)
+
+
+def test_legacy_path_constructor_uses_the_host_cap(store: BlobStore) -> None:
+    assert store.store.config.max_object_bytes == MAX_UPLOAD_BYTES
 
 
 def test_get_missing_returns_none(store: BlobStore) -> None:

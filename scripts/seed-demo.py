@@ -244,6 +244,40 @@ LINEAR_ALGEBRA = CourseSpec(
             study_progress=0.5,
             chapter="Matrix calculus",
         ),
+        MaterialSpec(
+            filename="03 — Basis and dimension.md",
+            title="03 — Basis and dimension",
+            markdown=(
+                "# Basis and dimension\n\n"
+                "A **basis** of $V$ is a linearly independent spanning set. "
+                "Every basis has the same size, the dimension $\\dim V$.\n\n"
+                "## Tests\n\n"
+                "- Independent + spans = basis\n"
+                "- In an $n$-dimensional space, $n$ independent vectors span.\n"
+            ),
+            summary="Basis tests and the dimension argument in one page.",
+            topics=("basis", "dimension"),
+            key_terms=("basis", "dimension", "span", "independence"),
+            study_status=StudyStatus.READING.value,
+            study_progress=0.4,
+            chapter="Vector spaces",
+        ),
+        MaterialSpec(
+            filename="04 — Problem set 3.md",
+            title="04 — Problem set 3",
+            markdown=(
+                "# Problem set 3\n\n"
+                "1. Show that $\\{1, x, x^2\\}$ is a basis of $P_2$.\n"
+                "2. Find the dimension of the subspace of symmetric $3 \\times 3$ matrices.\n"
+                "3. Prove that $\\ker T$ is a subspace for any linear map $T$.\n"
+            ),
+            summary="Proof and computation warm-ups before the midterm.",
+            topics=("problem set", "basis"),
+            key_terms=("basis", "kernel", "dimension"),
+            study_status=StudyStatus.UNREAD.value,
+            study_progress=0.0,
+            chapter="Matrix calculus",
+        ),
     ),
     notes=(
         NoteSpec(
@@ -271,12 +305,37 @@ LINEAR_ALGEBRA = CourseSpec(
             ),
             tags=("proofs", "revision"),
         ),
+        NoteSpec(
+            title="Basis and dimension checklist",
+            body_md=(
+                "# Basis and dimension checklist\n\n"
+                "- A basis is linearly independent and spans.\n"
+                "- In dimension $n$, any $n$ independent vectors form a basis.\n"
+                "- Rank–nullity: $\\dim V = \\dim \\ker T + \\dim \\operatorname{im} T$.\n"
+            ),
+            tags=("revision", "week-4"),
+            chapter="Vector spaces",
+        ),
+        NoteSpec(
+            title="Midterm proof skeletons",
+            body_md=(
+                "# Midterm proof skeletons\n\n"
+                "**Subspace:** non-empty, closed under addition, closed under scalar multiplication.\n\n"
+                "**Independence:** assume $\\sum a_i v_i = 0$ and show every $a_i = 0$.\n"
+            ),
+            tags=("proofs", "midterm"),
+            chapter="Matrix calculus",
+        ),
     ),
     cards=(
         CardSpec("What are the two closure axioms of a subspace?", "Closure under addition and closure under scalar multiplication", due_in_days=-1),
         CardSpec("State the transpose rule for a matrix product.", "$(AB)^{\\mathsf{T}} = B^{\\mathsf{T}} A^{\\mathsf{T}}$", due_in_days=0),
         CardSpec("Does $AB = 0$ imply $A = 0$ or $B = 0$?", "No — non-zero matrices can multiply to zero.", kind="card_reverse", due_in_days=2),
         CardSpec("A non-empty subset closed under addition and scalar multiplication is …", "a subspace", kind="card_cloze", due_in_days=5),
+        CardSpec("A basis is both … and …", "linearly independent and spanning", due_in_days=-2),
+        CardSpec("The dimension of $\\mathbb{R}^n$ is …", "$n$", kind="card_cloze", due_in_days=1),
+        CardSpec("Every spanning set contains a …", "basis", kind="card_cloze", due_in_days=4),
+        CardSpec("Rank–nullity: $\\dim V =$ …", "$\\dim \\ker T + \\dim \\operatorname{im} T$", due_in_days=7),
     ),
 )
 
@@ -311,6 +370,43 @@ DATABASES = CourseSpec(
             key_terms=("1NF", "2NF", "3NF", "transitive dependency"),
             chapter="Relational model",
         ),
+        MaterialSpec(
+            filename="02 — SQL joins cheat sheet.md",
+            title="02 — SQL joins cheat sheet",
+            markdown=(
+                "# SQL joins cheat sheet\n\n"
+                "## Inner join\n\n"
+                "Keep rows with a match on both sides.\n\n"
+                "## Left join\n\n"
+                "Keep every left row; fill the right side with NULL when missing.\n\n"
+                "## Anti-join\n\n"
+                "`WHERE right.key IS NULL` after a left join.\n"
+            ),
+            summary="Inner, left and anti-joins with the row counts they return.",
+            topics=("sql", "joins"),
+            key_terms=("inner join", "left join", "anti-join", "null"),
+            study_status=StudyStatus.READING.value,
+            study_progress=0.6,
+            chapter="Relational model",
+        ),
+        MaterialSpec(
+            filename="03 — ER diagram walkthrough.md",
+            title="03 — ER diagram walkthrough",
+            markdown=(
+                "# ER diagram walkthrough\n\n"
+                "Start with entities, then cardinalities, then the tables that "
+                "carry the relationships. A many-to-many relation becomes its "
+                "own table with two foreign keys.\n\n"
+                "## Check\n\n"
+                "- Every relationship has a cardinality.\n"
+                "- Every weak entity has an owner.\n"
+            ),
+            summary="From entities to tables without losing a relationship.",
+            topics=("ER model", "schema"),
+            key_terms=("entity", "cardinality", "foreign key"),
+            study_status=StudyStatus.UNREAD.value,
+            chapter="Relational model",
+        ),
     ),
     notes=(
         NoteSpec(
@@ -323,11 +419,157 @@ DATABASES = CourseSpec(
             tags=("modelling",),
             chapter="Relational model",
         ),
+        NoteSpec(
+            title="Join patterns to practise",
+            body_md=(
+                "# Join patterns to practise\n\n"
+                "- Students with no submission: left join + `IS NULL`.\n"
+                "- Top course per department: window function, not a self-join.\n"
+                "- Duplicate rows after a join: check the join key grain first.\n"
+            ),
+            tags=("sql", "joins"),
+            chapter="Relational model",
+        ),
     ),
     cards=(
         CardSpec("State the one-line rule for 3NF.", "Every non-key attribute depends on the key, the whole key, and nothing but the key.", due_in_days=1),
         CardSpec("What does 1NF forbid?", "Repeating groups and non-atomic values.", due_in_days=3),
         CardSpec("A partial dependency violates …", "2NF", kind="card_cloze", due_in_days=6),
+        CardSpec("Which join keeps unmatched left rows?", "LEFT JOIN", due_in_days=-1),
+        CardSpec("3NF removes … dependencies.", "transitive", kind="card_cloze", due_in_days=2),
+        CardSpec("A foreign key enforces …", "referential integrity", due_in_days=5),
+        CardSpec("A primary key is …", "unique and not null", due_in_days=8),
+    ),
+)
+
+ALGORITHMS = CourseSpec(
+    title="Algorithms & Data Structures",
+    description="Big-O, graphs, greedy and dynamic programming — fictional third course.",
+    subject="Computer Science",
+    level="Year 2",
+    course_type="programming",
+    color="#7a5cff",
+    exam_date="2027-03-05",
+    goals=("Read a recurrence", "Choose the right traversal"),
+    tags=("algorithms", "graphs", "complexity"),
+    chapters=("Complexity", "Graphs"),
+    materials=(
+        MaterialSpec(
+            filename="01 — Big-O cheat sheet.md",
+            title="01 — Big-O cheat sheet",
+            markdown=(
+                "# Big-O cheat sheet\n\n"
+                "- Binary search: $O(\\log n)$\n"
+                "- Merge sort: $O(n \\log n)$\n"
+                "- Dijkstra with a heap: $O((V+E) \\log V)$\n\n"
+                "Drop constants, keep the fastest-growing term.\n"
+            ),
+            summary="The six bounds that cover most of the course.",
+            topics=("complexity", "big-o"),
+            key_terms=("big-O", "log n", "heap"),
+            study_status=StudyStatus.STUDIED.value,
+            study_progress=1.0,
+            chapter="Complexity",
+        ),
+        MaterialSpec(
+            filename="02 — Graph traversal patterns.md",
+            title="02 — Graph traversal patterns",
+            markdown=(
+                "# Graph traversal patterns\n\n"
+                "BFS explores by distance; DFS explores by depth. Use BFS for "
+                "shortest unweighted paths and DFS for connectivity and cycles.\n\n"
+                "## Dijkstra\n\n"
+                "Relax edges from the smallest tentative distance; a heap keeps "
+                "the next vertex cheap.\n"
+            ),
+            summary="BFS, DFS and when Dijkstra is the right tool.",
+            topics=("graphs", "traversal"),
+            key_terms=("BFS", "DFS", "Dijkstra", "heap"),
+            study_status=StudyStatus.READING.value,
+            study_progress=0.35,
+            chapter="Graphs",
+        ),
+    ),
+    notes=(
+        NoteSpec(
+            title="Dijkstra invariants",
+            body_md=(
+                "# Dijkstra invariants\n\n"
+                "When a vertex leaves the heap, its distance is final. "
+                "That only holds with non-negative edge weights.\n"
+            ),
+            tags=("graphs", "proofs"),
+            chapter="Graphs",
+        ),
+    ),
+    cards=(
+        CardSpec("Binary search runs in …", "$O(\\log n)$", kind="card_cloze", due_in_days=0),
+        CardSpec("Which traversal finds shortest unweighted paths?", "BFS", due_in_days=3),
+        CardSpec("Dijkstra requires … edge weights.", "non-negative", kind="card_cloze", due_in_days=6),
+    ),
+)
+
+NETWORKS = CourseSpec(
+    title="Computer Networks",
+    description="Packets, routing and congestion — fictional fourth course.",
+    subject="Computer Science",
+    level="Year 2",
+    course_type="programming",
+    color="#0ea5e9",
+    exam_date="2027-02-12",
+    goals=("Read a packet trace", "Subnet without a calculator"),
+    tags=("networking", "tcp-ip"),
+    chapters=("Layers", "Routing"),
+    materials=(
+        MaterialSpec(
+            filename="01 — TCP-IP layers.md",
+            title="01 — TCP/IP layers",
+            markdown=(
+                "# TCP/IP layers\n\n"
+                "Link, internet, transport, application. Each layer adds its own "
+                "header; encapsulation is the whole trick.\n\n"
+                "## Ports\n\n"
+                "A socket is an IP address plus a port.\n"
+            ),
+            summary="The four-layer model and where each protocol lives.",
+            topics=("tcp-ip", "layers"),
+            key_terms=("encapsulation", "socket", "port"),
+            study_status=StudyStatus.STUDIED.value,
+            study_progress=1.0,
+            chapter="Layers",
+        ),
+        MaterialSpec(
+            filename="02 — Subnetting practice.md",
+            title="02 — Subnetting practice",
+            markdown=(
+                "# Subnetting practice\n\n"
+                "A /24 leaves 8 host bits. A /26 gives four subnets of 62 usable "
+                "addresses. Write the mask in binary before doing arithmetic.\n"
+            ),
+            summary="Masks, host counts and the two addresses you cannot use.",
+            topics=("subnetting", "ipv4"),
+            key_terms=("CIDR", "mask", "broadcast"),
+            study_status=StudyStatus.READING.value,
+            study_progress=0.25,
+            chapter="Routing",
+        ),
+    ),
+    notes=(
+        NoteSpec(
+            title="Congestion control questions",
+            body_md=(
+                "# Congestion control questions\n\n"
+                "- Why does TCP slow start double the window?\n"
+                "- What does a dropped packet signal to the sender?\n"
+            ),
+            tags=("tcp", "revision"),
+            chapter="Layers",
+        ),
+    ),
+    cards=(
+        CardSpec("A socket is an IP address plus a …", "port", kind="card_cloze", due_in_days=1),
+        CardSpec("A /26 subnet has how many usable hosts?", "62", due_in_days=4),
+        CardSpec("Which layer adds the TCP header?", "the transport layer", due_in_days=7),
     ),
 )
 
@@ -708,7 +950,7 @@ DEMO_USERS: tuple[UserSpec, ...] = (
                 key="cs",
                 name="Computer Science BSc",
                 color="#4f7cff",
-                courses=(LINEAR_ALGEBRA, DATABASES),
+                courses=(LINEAR_ALGEBRA, DATABASES, ALGORITHMS, NETWORKS),
             ),
             ProfileSpec(
                 key="greek",

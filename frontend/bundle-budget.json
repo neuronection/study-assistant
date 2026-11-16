@@ -1,0 +1,16 @@
+{
+  "distDir": "dist",
+  "entryBudgetKb": 300,
+  "initialJsBudgetKb": 900,
+  "requiredChunks": [
+    "HomePage",
+    "LibraryPage",
+    "MaterialDetailPage",
+    "NodeWorkspace",
+    "QuizRunner",
+    "ReviewPage",
+    "SettingsPage",
+    "SolvePage",
+    "StudioPage"
+  ]
+}

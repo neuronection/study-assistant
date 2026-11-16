@@ -1,5 +1,4 @@
 import { useNavigate } from '@tanstack/react-router'
-import { AnimatePresence, motion } from 'framer-motion'
 
 import { useCurrentOrigin } from '@/lib/origin'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,7 +7,6 @@ import {
   BookOpen,
   Camera,
   ClipboardList,
-  CornerDownLeft,
   Dumbbell,
   GraduationCap,
   History,
@@ -19,27 +17,38 @@ import {
   Plus,
   Search,
   Settings,
+  Sigma,
+  Presentation,
+  type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { CommandPalette as CommandPaletteShell } from '@/components/ui/command-palette'
+import type { CommandGroup, CommandItem } from '@/components/ui/command-list'
 import { createNote, courseTree, generateQuiz, listCourses, listExercises, listNotes, listQuizzes, search, type NodeInfo } from '@/lib/api'
 import { useCaptureStore } from '@/lib/capture-store'
 import { useImportUrlStore } from '@/lib/import-url-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
-import { useMotionPresets } from '@/lib/motion'
 import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
 import { useInterfacePrefs } from '@/lib/interface-prefs'
 import { useWorkspaceStore } from '@/lib/workspace-store'
-import { cn } from '@/lib/utils'
 
 interface Action {
   key: string
   label: string
   hint?: string
-  indent?: number
-  icon: React.ComponentType<{ className?: string }>
+  icon: LucideIcon
   run: () => void | Promise<void>
+}
+
+function toCommandItem(action: Action): CommandItem {
+  return {
+    id: action.key,
+    label: action.label,
+    hint: action.hint,
+    icon: action.icon,
+  }
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -47,15 +56,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const navigate = useNavigate()
   const from = useCurrentOrigin()
   const queryClient = useQueryClient()
-  const presets = useMotionPresets()
   const courseId = useWorkspaceStore((state) => state.courseId)
   const interfacePrefs = useInterfacePrefs()
   const setCourse = useWorkspaceStore((state) => state.setCourse)
   const [query, setQuery] = useState('')
-  const [active, setActive] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
+  const keepOpenRef = useRef(false)
 
   const courses = useQuery({
     queryKey: ['courses'],
@@ -129,12 +135,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const actions = useMemo<Action[]>(() => {
     const go = (to: string) => () => {
       void navigate({ to })
-      onClose()
     }
     const nav: Action[] = [
       { key: 'nav-home', label: t('nav.home'), icon: Home, run: go('/') },
       { key: 'nav-chat', label: t('nav.chat'), icon: MessageSquare, run: go('/chat') },
       { key: 'nav-courses', label: t('nav.courses'), icon: GraduationCap, run: go('/courses') },
+      { key: 'nav-solve', label: t('nav.solve'), icon: Sigma, run: go('/solve') },
+      { key: 'nav-studio', label: t('nav.studio'), icon: Presentation, run: go('/studio') },
       { key: 'nav-library', label: t('nav.library'), icon: BookOpen, run: go('/library') },
       { key: 'nav-scores', label: t('nav.scores'), icon: BarChart3, run: go('/scores') },
       { key: 'nav-settings', label: t('nav.settings'), icon: Settings, run: go('/settings') },
@@ -146,7 +153,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: NotebookPen,
         run: () => {
           useCaptureStore.getState().openCapture()
-          onClose()
         },
       },
       {
@@ -155,7 +161,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: Camera,
         run: () => {
           useCaptureStore.getState().openSnap()
-          onClose()
         },
       },
       {
@@ -164,7 +169,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: Link2,
         run: () => {
           useImportUrlStore.getState().openImport()
-          onClose()
         },
       },
       {
@@ -172,18 +176,23 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         label: t('palette.newNote'),
         icon: Plus,
         run: async () => {
+          keepOpenRef.current = true
           const noteCourseId = resolveCourseId()
           if (noteCourseId === null) {
             setNotice(t('workspace.openCourseFirst'))
             return
           }
-          const note = await createNote({
-            title: t('notes.defaultTitle'),
-            course_id: noteCourseId,
-          })
-          await queryClient.invalidateQueries({ queryKey: ['notes'] })
-          void navigate({ to: '/note/$noteId', params: { noteId: note.id } })
-          onClose()
+          try {
+            const note = await createNote({
+              title: t('notes.defaultTitle'),
+              course_id: noteCourseId,
+            })
+            await queryClient.invalidateQueries({ queryKey: ['notes'] })
+            void navigate({ to: '/note/$noteId', params: { noteId: note.id } })
+            onClose()
+          } catch {
+            setNotice(t('palette.actionFailed'))
+          }
         },
       },
       {
@@ -192,7 +201,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: MessageSquare,
         run: () => {
           void navigate({ to: '/chat' })
-          onClose()
         },
       },
     ]
@@ -205,7 +213,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         run: () => {
           setCourse(course.id)
           void navigate({ to: '/courses/$courseId', params: { courseId: String(course.id) } })
-          onClose()
         },
       },
     ])
@@ -220,7 +227,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               icon: NotebookPen,
               run: () => {
                 void navigate({ to: '/note/$noteId', params: { noteId: note.id } })
-                onClose()
               },
             }))
     const quizActions: Action[] =
@@ -238,7 +244,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   params: { activityId: String(quiz.id) },
                   search: { from },
                 })
-                onClose()
               },
             }))
     const exerciseActions: Action[] =
@@ -256,7 +261,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   params: { exerciseId: String(exercise.id) },
                   search: { from },
                 })
-                onClose()
               },
             }))
     const quizNodeActions: Action[] = []
@@ -269,7 +273,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               key: `quiz-node-${entry.id}`,
               label: t('palette.quizMeOn', { title: entry.title }),
               hint: t('palette.nodeHint'),
-              indent: entry.depth,
               icon: ClipboardList,
               run: async () => {
                 const activity = await generateQuiz({
@@ -283,7 +286,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   params: { activityId: String(activity.id) },
                   search: { from },
                 })
-                onClose()
               },
             })
           }
@@ -326,14 +328,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               key: `open-node-${id}-${entry.id}`,
               label: t('palette.openNode', { title: entry.title }),
               hint: breadcrumb,
-              indent: entry.depth,
               icon: BookOpen,
               run: () => {
                 void navigate({
                   to: '/courses/$courseId/n/$nodeId',
                   params: { courseId: String(id), nodeId: String(entry.id) },
                 })
-                onClose()
               },
             })
             collect(entry.children, [...trail, entry.title])
@@ -345,7 +345,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       collect(root, [courseTitle])
     }
     return openActions
-  }, [treeCourseIds, trees, courses.data, t, navigate, onClose])
+  }, [treeCourseIds, trees, courses.data, t, navigate])
 
   const recentActions = useMemo<Action[]>(() => {
     if (query.trim() !== '' || !interfacePrefs.paletteRecent) {
@@ -365,215 +365,216 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             to: '/courses/$courseId/n/$nodeId',
             params: { courseId: String(row.courseId), nodeId: String(row.nodeId) },
           })
-          onClose()
         },
       })
     )
-  }, [query, trees, courses.data, navigate, onClose, interfacePrefs])
+  }, [query, trees, courses.data, navigate, interfacePrefs])
 
-  const filtered = useMemo(() => {
-    if (contentQuery !== null) {
-      const contentActions: Action[] = []
-      for (const hit of contentSearch.data?.hits.slice(0, 8) ?? []) {
-        contentActions.push({
-          key: `content-${hit.material_id}`,
-          label: t('palette.contentResult', {
-            title: hit.title,
-            snippet: (hit.snippet ?? '').slice(0, 90),
-          }),
-          icon: Search,
+  const contentActions = useMemo<Action[]>(() => {
+    if (contentQuery === null) {
+      return []
+    }
+    const contentItems: Action[] = []
+    for (const hit of contentSearch.data?.hits.slice(0, 8) ?? []) {
+      contentItems.push({
+        key: `content-${hit.material_id}`,
+        label: t('palette.contentResult', {
+          title: hit.title,
+          snippet: (hit.snippet ?? '').slice(0, 90),
+        }),
+        icon: Search,
+        run: () => {
+          void navigate({
+            to: '/library/$materialId',
+            params: { materialId: String(hit.material_id) },
+          })
+        },
+      })
+      const placement = hit.nodes?.[0]
+      if (placement !== undefined && contentItems.length < 12) {
+        contentItems.push({
+          key: `content-node-${hit.material_id}-${placement.node_id}`,
+          label: t('palette.openInNode', { node: placement.node_title }),
+          hint: hit.title,
+          icon: BookOpen,
           run: () => {
             void navigate({
-              to: '/library/$materialId',
-              params: { materialId: String(hit.material_id) },
+              to: '/courses/$courseId/n/$nodeId',
+              params: {
+                courseId: String(placement.course_id),
+                nodeId: String(placement.node_id),
+              },
+              search: { material: hit.material_id },
             })
-            onClose()
           },
         })
-        const placement = hit.nodes?.[0]
-        if (placement !== undefined && contentActions.length < 12) {
-          contentActions.push({
-            key: `content-node-${hit.material_id}-${placement.node_id}`,
-            label: t('palette.openInNode', { node: placement.node_title }),
-            hint: hit.title,
-            icon: BookOpen,
-            run: () => {
-              void navigate({
-                to: '/courses/$courseId/n/$nodeId',
-                params: {
-                  courseId: String(placement.course_id),
-                  nodeId: String(placement.node_id),
-                },
-                search: { material: hit.material_id },
-              })
-              onClose()
-            },
-          })
-        }
       }
-      return contentActions
+    }
+    return contentItems
+  }, [contentQuery, contentSearch.data, t, navigate])
+
+  const filteredActions = useMemo(() => {
+    if (contentQuery !== null) {
+      return []
     }
     const actionText = (action: Action) => (action.hint ? `${action.label} ${action.hint}` : action.label)
-    return [
-      ...recentActions,
-      ...fuzzyFilter(actions, query, actionText),
-      ...fuzzyFilter(nodeActions, query, actionText).slice(0, 40),
-    ]
-  }, [actions, nodeActions, recentActions, query, contentQuery, contentSearch.data, t, navigate, onClose])
+    return fuzzyFilter(actions, query, actionText)
+  }, [actions, contentQuery, query])
+
+  const filteredNodes = useMemo(() => {
+    if (contentQuery !== null) {
+      return []
+    }
+    const actionText = (action: Action) => (action.hint ? `${action.label} ${action.hint}` : action.label)
+    return fuzzyFilter(nodeActions, query, actionText).slice(0, 40)
+  }, [contentQuery, nodeActions, query])
+
+  const actionIndex = useMemo(() => {
+    const index = new Map<string, Action>()
+    for (const action of [...recentActions, ...filteredActions, ...filteredNodes, ...contentActions]) {
+      index.set(action.key, action)
+    }
+    return index
+  }, [contentActions, filteredActions, filteredNodes, recentActions])
+
+  const hasRows =
+    contentQuery !== null
+      ? contentActions.length > 0
+      : recentActions.length + filteredActions.length + filteredNodes.length > 0
+
+  const groups = useMemo<CommandGroup[]>(() => {
+    const result: CommandGroup[] = []
+    if (notice !== null && hasRows) {
+      result.push({
+        id: 'notice',
+        label: t('palette.group.notice'),
+        filter: 'none',
+        items: [{ id: 'notice', label: notice, disabled: true }],
+      })
+    }
+    if (contentQuery !== null) {
+      if (contentActions.length > 0) {
+        result.push({
+          id: 'content',
+          label: t('palette.group.content'),
+          filter: 'none',
+          items: contentActions.map(toCommandItem),
+        })
+      }
+      return result
+    }
+    if (recentActions.length > 0) {
+      result.push({
+        id: 'recent',
+        label: t('palette.group.recent'),
+        filter: 'none',
+        items: recentActions.map(toCommandItem),
+      })
+    }
+    if (filteredActions.length > 0) {
+      result.push({
+        id: 'actions',
+        label: t('palette.group.actions'),
+        filter: 'none',
+        items: filteredActions.map(toCommandItem),
+      })
+    }
+    if (filteredNodes.length > 0) {
+      result.push({
+        id: 'nodes',
+        label: t('palette.group.nodes'),
+        filter: 'none',
+        items: filteredNodes.map(toCommandItem),
+      })
+    }
+    if (hasRows) {
+      result.push({
+        id: 'hint',
+        label: t('palette.group.hint'),
+        filter: 'none',
+        items: [{ id: 'content-hint', label: t('palette.contentHint'), disabled: true }],
+      })
+    }
+    return result
+  }, [
+    contentActions,
+    contentQuery,
+    filteredActions,
+    filteredNodes,
+    hasRows,
+    notice,
+    recentActions,
+    t,
+  ])
+
+  const emptyLabel =
+    notice !== null && !hasRows
+      ? `${
+          contentQuery !== null && contentSearch.isFetching
+            ? t('palette.contentSearching')
+            : t('palette.noResults')
+        } ${notice}`
+      : contentQuery !== null && contentSearch.isFetching
+        ? t('palette.contentSearching')
+        : t('palette.noResults')
+
+  const resultsLabel =
+    contentQuery !== null && contentSearch.isFetching
+      ? `${t('palette.resultCount')} — ${t('palette.contentSearching')}`
+      : notice !== null && hasRows
+        ? `${t('palette.resultCount')} — ${notice}`
+        : t('palette.resultCount')
 
   useEffect(() => {
     if (open) {
       setQuery('')
-      setActive(0)
       setNotice(null)
-      requestAnimationFrame(() => inputRef.current?.focus())
+      keepOpenRef.current = false
     }
   }, [open])
 
-  useEffect(() => {
-    setActive((current) => (current < filtered.length ? current : 0))
-  }, [filtered.length])
-
-  const runActive = () => {
-    const action = filtered[active]
-    if (action !== undefined) {
-      void action.run()
-    }
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      setActive((current) => Math.min(current + 1, filtered.length - 1))
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      setActive((current) => Math.max(current - 1, 0))
-    } else if (event.key === 'Enter') {
-      event.preventDefault()
-      runActive()
-    } else if (event.key === 'Escape') {
-      event.preventDefault()
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (next) {
+        return
+      }
+      if (keepOpenRef.current) {
+        keepOpenRef.current = false
+        return
+      }
       onClose()
-    }
-  }
+    },
+    [onClose],
+  )
+
+  const handleSelect = useCallback(
+    (item: CommandItem) => {
+      keepOpenRef.current = false
+      const action = actionIndex.get(item.id)
+      if (action !== undefined) {
+        void action.run()
+      }
+    },
+    [actionIndex],
+  )
 
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          key="palette-backdrop"
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[15vh]"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('palette.title')}
-          initial={presets.backdrop.initial}
-          animate={presets.backdrop.animate}
-          exit={presets.backdrop.exit}
-          transition={presets.backdrop.transition}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              onClose()
-            }
-          }}
-        >
-          <motion.div
-            className="bg-surface border-border w-full max-w-lg overflow-hidden rounded-xl border shadow-[var(--as-shadow-3)]"
-            onKeyDown={onKeyDown}
-            initial={presets.panel.initial}
-            animate={presets.panel.animate}
-            exit={presets.panel.exit}
-            transition={presets.panel.transition}
-          >
-        <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
-          <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
-          <input
-            ref={inputRef}
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            placeholder={t('palette.placeholder')}
-            aria-label={t('palette.placeholder')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <kbd className="text-muted-foreground border-border rounded border px-1.5 py-0.5 text-[10px]">
-            {t('palette.escKey')}
-          </kbd>
-        </div>
-        {notice ? (
-          <p role="status" className="text-muted-foreground border-border border-t px-4 py-2 text-xs">
-            {notice}
-          </p>
-        ) : null}
-        {contentQuery !== null && contentSearch.isFetching ? (
-          <p role="status" className="text-muted-foreground border-border border-t px-4 py-2 text-xs">
-            {t('palette.contentSearching')}
-          </p>
-        ) : null}
-        {contentQuery === null ? (
-          <p className="text-muted-foreground border-border border-t px-4 py-1.5 text-[10px]">
-            {t('palette.contentHint')}
-          </p>
-        ) : null}
-        {filtered.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-6 text-center text-sm">
-            {t('palette.noResults')}
-          </p>
-        ) : (
-          <motion.ul
-            ref={listRef}
-            className="max-h-80 overflow-y-auto p-1"
-            role="listbox"
-            variants={presets.staggeredRows()}
-            initial="hidden"
-            animate="show"
-          >
-            {filtered.map((action, index) => (
-              <motion.li
-                key={action.key}
-                role="option"
-                aria-selected={index === active}
-                variants={presets.row}
-              >
-                <button
-                  type="button"
-                  className={cn(
-                    'relative flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm',
-                    index === active ? 'text-foreground' : 'hover:bg-subtle/60'
-                  )}
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => void action.run()}
-                >
-                  {index === active ? (
-                    <motion.span
-                      layoutId="palette-active"
-                      className="bg-subtle absolute inset-0 rounded-md"
-                      aria-hidden
-                      transition={presets.reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
-                    />
-                  ) : null}
-                  <action.icon className="text-muted-foreground relative size-4 shrink-0" aria-hidden />
-                  <span
-                    className="relative flex-1 truncate"
-                    style={{ paddingLeft: `${(action.indent ?? 0) * 10}px` }}
-                  >
-                    {action.label}
-                  </span>
-                  {action.hint ? (
-                    <span className="text-muted-foreground relative max-w-[45%] shrink-0 truncate text-[10px]">
-                      {action.hint}
-                    </span>
-                  ) : null}
-                  {index === active ? (
-                    <CornerDownLeft className="text-muted-foreground relative size-3.5 shrink-0" aria-hidden />
-                  ) : null}
-                </button>
-              </motion.li>
-            ))}
-          </motion.ul>
-        )}
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+    <CommandPaletteShell
+      open={open}
+      onOpenChange={handleOpenChange}
+      query={query}
+      onQueryChange={setQuery}
+      groups={groups}
+      onSelect={handleSelect}
+      labels={{
+        placeholder: t('palette.placeholder'),
+        empty: emptyLabel,
+        results: resultsLabel,
+        listLabel: t('palette.searchLabel'),
+      }}
+      ariaLabel={t('palette.title')}
+      closeLabel={t('common.close')}
+    />
   )
 }
 

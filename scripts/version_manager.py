@@ -201,6 +201,11 @@ def propagated_version(prop: dict, text: str) -> str | None:
     match = re.compile(prop["pattern"]).search(text)
     if not match:
         return None
+    if "version" not in match.groupdict():
+        raise ValueError(
+            f"{prop.get('name', prop.get('file', '?'))}: pattern needs a named "
+            "'version' group — e.g. '(?P<version>[^-)]+)'"
+        )
     value = match.group("version")
     if prop.get("dash_escape"):
         value = value.replace("--", "-")
@@ -216,7 +221,11 @@ def check_propagation(cfg: dict, version: str) -> list[str]:
         if not path.is_file():
             problems.append(f"{label}: file not found ({rel})")
             continue
-        current = propagated_version(prop, path.read_text(encoding="utf-8"))
+        try:
+            current = propagated_version(prop, path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            problems.append(str(exc))
+            continue
         if current is None:
             problems.append(f"{label}: version pattern not found in {rel}")
         elif current != version:

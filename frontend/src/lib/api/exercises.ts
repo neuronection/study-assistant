@@ -39,7 +39,8 @@ export async function createExercise(body: {
   course_id: string
   node_id?: string | null
   title: string
-  steps: { prompt_md: string; expected?: { value: string } | null }[]
+  kind?: string
+  steps: { prompt_md: string; expected?: Record<string, unknown> | null }[]
 }): Promise<ExerciseInfo> {
   const response = await apiFetch('/api/v1/exercises', {
     method: 'POST',

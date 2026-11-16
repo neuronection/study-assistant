@@ -16,6 +16,7 @@ import {
   Home,
   Info,
   Keyboard,
+  AudioLines,
   Layers,
   MessageSquare,
   NotebookPen,
@@ -26,11 +27,11 @@ import {
   X,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, createContext, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
-import { FileDock, fileDockOpen } from './FileDock'
+import { fileDockOpen } from '@/lib/file-dock-open'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
 import { loadUpdateCheck } from './UpdateBadge'
@@ -40,14 +41,27 @@ import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
 import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
 import { WindowDropOverlay } from './WindowDropOverlay'
+import { MobileBottomBar } from './MobileBottomBar'
+import { ReviewSyncNotice } from '@/features/review/ReviewSyncNotice'
 import { ActivityButton } from './ActivityPopover'
 import { NotificationBell } from './NotificationBell'
 import { ProfileSwitcherMenu } from './ProfileSwitcherMenu'
 import { SidebarFooter } from './SidebarFooter'
 import { useThemePreference } from '@/components/theme/use-theme-preference'
+
+const FileDock = lazy(() =>
+  import('./FileDock').then((module) => ({ default: module.FileDock }))
+)
 import { UserMenu } from '@/components/ui/user-menu'
 import { Popover } from '@/components/ui/popover'
+import { AudioPlayerBar } from './AudioPlayerBar'
+import { AudioPlayerProvider } from '@/lib/audio-player'
+import { applySessionScopeChange } from '@/lib/audio-offline'
+import { resolveSessionScope } from '@/lib/session-scope'
 import { SidebarNav } from '@/components/ui/sidebar-nav'
+import { Button } from '@/components/ui/button'
+import { LectureRecorderDialog } from '@/features/lectures/LectureRecorderDialog'
+import { loadLectureDraft, type LectureDraft } from '@/features/lectures/lectureDraft'
 import { StudyChatPanel } from '@/features/chat/StudyChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
@@ -77,6 +91,7 @@ import { useChatStore } from '@/lib/chat-store'
 import { useChatFitsAlongsideFile, useRailLayout } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
+import { offlineJournal } from '@/lib/offline/journal'
 
 import { cn } from '@/lib/utils'
 import { storageKeys } from '@/lib/constants'
@@ -343,8 +358,49 @@ function AppLogo() {
   )
 }
 
+const SessionScopeContext = createContext<{
+  scope: string | null
+  setScope: (scope: string | null) => void
+} | null>(null)
+
+function ProfileBoundary({ children }: { children: React.ReactNode }) {
+  const [scope, setScopeState] = useState<string | null>(null)
+  const scopeRef = useRef<string | null>(null)
+  const setScope = useCallback((next: string | null) => {
+    const previous = scopeRef.current
+    if (previous === next) {
+      return
+    }
+    scopeRef.current = next
+    applySessionScopeChange(next)
+    setScopeState(next)
+  }, [])
+  return (
+    <SessionScopeContext.Provider value={{ scope, setScope }}>
+      <AudioPlayerProvider scope={scope}>{children}</AudioPlayerProvider>
+    </SessionScopeContext.Provider>
+  )
+}
+
+function useSessionScope() {
+  const value = useContext(SessionScopeContext)
+  if (value === null) {
+    throw new Error('useSessionScope must be used inside ProfileBoundary')
+  }
+  return value
+}
+
 export function AppShell() {
+  return (
+    <ProfileBoundary>
+      <AppShellInner />
+    </ProfileBoundary>
+  )
+}
+
+function AppShellInner() {
   const { t, i18n } = useTranslation()
+  const { setScope } = useSessionScope()
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -368,7 +424,13 @@ export function AppShell() {
   const setCourse = useWorkspaceStore((state) => state.setCourse)
   const [selected, setSelected] = useState<string | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [lectureDraft, setLectureDraft] = useState<LectureDraft | null>(null)
+  const [lectureOpen, setLectureOpen] = useState(false)
+  const [lectureDismissed, setLectureDismissed] = useState(false)
   const palette = useCommandPaletteOpen()
+  useEffect(() => {
+    setLectureDraft(loadLectureDraft())
+  }, [])
   const shortViewport = useIsShortViewport()
   const dueCount = useDueCount()
   const pendingProposals = usePendingProposalCount()
@@ -439,11 +501,13 @@ export function AppShell() {
   // last-used fallback. Both modes repair a selection that no longer
   // exists (dev DBs get recreated; profiles can be deleted elsewhere).
   const [authMode, setAuthMode] = useState<string | undefined>(undefined)
+  const [identityMode, setIdentityMode] = useState<string | undefined>(undefined)
   useEffect(() => {
     let alive = true
     void loadInstanceConfig().then((config) => {
       if (alive) {
         setAuthMode(config?.auth_mode)
+        setIdentityMode(config?.identity_mode)
         // config unresolvable: fail open — release the gate so requests
         // behave exactly as before this reconciliation existed
         if (config === undefined) markProfileSettled()
@@ -453,6 +517,16 @@ export function AppShell() {
       alive = false
     }
   }, [])
+
+  const defaultProfile =
+    profileList.find((profile) => profile.is_default) ?? profileList[0] ?? null
+  const scopeProfileId =
+    selected ?? (identityMode === 'desktop' ? defaultProfile?.id ?? null : null)
+  const sessionScope = resolveSessionScope(user, scopeProfileId)
+
+  useEffect(() => {
+    setScope(sessionScope)
+  }, [sessionScope, setScope])
 
   useEffect(() => {
     if (authMode === undefined) {
@@ -557,8 +631,8 @@ export function AppShell() {
   }
 
   return (
-    <div className="bg-surface text-foreground flex h-screen overflow-hidden">
-      <aside className="border-border bg-subtle w-60 shrink-0 border-r">
+    <div className="bg-surface text-foreground flex h-[100dvh] overflow-hidden">
+      <aside className="border-border bg-subtle hidden w-60 shrink-0 border-r md:block">
         <SidebarNav
           items={PRIMARY_NAV.map(({ to, icon, labelKey }) => ({
             id: to,
@@ -736,10 +810,60 @@ export function AppShell() {
           }
         />
       </aside>
-      <main className="flex-1 overflow-y-auto">
-        <RouteFade />
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <Suspense
+          fallback={
+            <div className="mx-auto max-w-4xl space-y-3 p-8" aria-busy="true">
+              <div className="bg-subtle h-8 w-52 animate-pulse rounded" />
+              <div className="bg-subtle h-24 w-full animate-pulse rounded-lg" />
+              <div className="bg-subtle h-40 w-full animate-pulse rounded-lg" />
+            </div>
+          }
+        >
+          <RouteFade />
+        </Suspense>
       </main>
-      <FileDock />
+      {lectureDraft && !lectureDismissed ? (
+        <div
+          className="bg-surface border-border fixed bottom-4 left-1/2 z-40 flex w-[min(92vw,40rem)] -translate-x-1/2 items-center gap-3 rounded-lg border px-3 py-2 shadow-[var(--as-shadow-3)]"
+          role="status"
+        >
+          <AudioLines className="text-primary size-4 shrink-0" aria-hidden />
+          <p className="min-w-0 flex-1 text-xs">
+            {t('lectures.recoveryBanner', { title: lectureDraft.title })}
+          </p>
+          <Button size="sm" onClick={() => setLectureOpen(true)}>
+            {t('lectures.resumeUpload')}
+          </Button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground text-xs underline"
+            onClick={() => setLectureDismissed(true)}
+          >
+            {t('lectures.later')}
+          </button>
+        </div>
+      ) : null}
+      {lectureOpen && lectureDraft ? (
+        <LectureRecorderDialog
+          courseId={lectureDraft.courseId}
+          nodeId={lectureDraft.nodeId}
+          onClose={() => {
+            setLectureOpen(false)
+            setLectureDraft(loadLectureDraft())
+          }}
+          onCreated={() => {
+            setLectureDraft(null)
+            setLectureOpen(false)
+          }}
+        />
+      ) : null}
+      <AudioPlayerBar />
+      {fileOpen ? (
+        <Suspense fallback={null}>
+          <FileDock />
+        </Suspense>
+      ) : null}
       {chatOpen && !rail.chatDeferred ? (
         <StudyChatProvider sessionId={sessionId ?? chatSession?.id ?? null}>
           <StudyChatPanel
@@ -759,6 +883,20 @@ export function AppShell() {
       <SnapIntoNote />
       <UrlImportDialog />
       <WindowDropOverlay />
+      <ReviewSyncNotice />
+      <MobileBottomBar
+        activePath={location.pathname}
+        dueCount={dueCount}
+        onNavigate={(path) => void navigate({ to: path as never })}
+        onCapture={async (files) => {
+          for (const file of Array.from(files)) {
+            await offlineJournal.enqueueCapture(file, 'camera')
+          }
+          window.dispatchEvent(new Event('sa-capture-enqueued'))
+          await navigate({ to: '/library' })
+        }}
+        onSearch={palette.openPalette}
+      />
       {quarantine.notice ? (
         <DatastoreQuarantineDialog
           notice={quarantine.notice}

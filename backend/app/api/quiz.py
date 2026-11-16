@@ -113,6 +113,7 @@ class FeedbackOut(BaseModel):
     feedback: list[dict[str, Any]]
     error_tags: list[str]
     explanation: list[dict[str, Any]]
+    deferred: bool = False
 
 
 class AttemptOut(BaseModel):
@@ -1018,13 +1019,15 @@ def submit_answer(
             ),
         )
     session.commit()
+    deferred = attempt.mode == AttemptMode.EXAM
     return FeedbackOut(
-        correct=result.correct,
-        partial_credit=result.partial_credit,
-        graded_by=result.graded_by,
-        feedback=result.feedback,
-        error_tags=error_tags,
-        explanation=cast(list[dict[str, Any]], question.explanation or []),
+        correct=False if deferred else result.correct,
+        partial_credit=0.0 if deferred else result.partial_credit,
+        graded_by=None if deferred else result.graded_by,
+        feedback=[] if deferred else result.feedback,
+        error_tags=[] if deferred else error_tags,
+        explanation=[] if deferred else cast(list[dict[str, Any]], question.explanation or []),
+        deferred=deferred,
     )
 
 

@@ -149,6 +149,7 @@ describe('HomePage (Today screen)', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
@@ -429,6 +430,7 @@ describe('HomePage exam card', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
@@ -513,6 +515,7 @@ describe('HomePage exam card', () => {
         paletteRecent: true,
         courseJumpBackIn: true,
         courseCardMeta: true,
+        autoSpeak: false,
       },
     })
     window.localStorage.setItem(

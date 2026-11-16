@@ -59,6 +59,7 @@ jobs:
       - run: pnpm --filter frontend typecheck
       - run: pnpm --filter frontend test
       - run: pnpm --filter frontend build
+      - run: pnpm --filter frontend check:bundle
       - run: uv sync --frozen
       - run: uv run --directory backend ruff check .
       - run: uv run --directory backend ruff format --check .

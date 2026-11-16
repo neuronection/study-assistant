@@ -941,7 +941,7 @@ class DropboxTransport(_HttpFiles):
     async def mkdir(self, path: str) -> CloudFile:
         response = await self._request(
             "POST",
-            f"{self.api_base}/files/create_folder_v2",
+            f"{self.api_base}/files/create_folder_v2",  # gate-allow: *, Dropbox API path
             headers={"Content-Type": "application/json"},
             content=json.dumps({"path": self._dbx_path(path), "autorename": False}),
         )
@@ -954,7 +954,7 @@ class DropboxTransport(_HttpFiles):
     async def delete(self, path: str) -> None:
         response = await self._request(
             "POST",
-            f"{self.api_base}/files/delete_v2",
+            f"{self.api_base}/files/delete_v2",  # gate-allow: *, Dropbox API path
             headers={"Content-Type": "application/json"},
             content=json.dumps({"path": self._dbx_path(path)}),
         )
@@ -964,7 +964,7 @@ class DropboxTransport(_HttpFiles):
     async def move(self, path: str, destination: str) -> CloudFile:
         response = await self._request(
             "POST",
-            f"{self.api_base}/files/move_v2",
+            f"{self.api_base}/files/move_v2",  # gate-allow: *, Dropbox API path
             headers={"Content-Type": "application/json"},
             content=json.dumps(
                 {

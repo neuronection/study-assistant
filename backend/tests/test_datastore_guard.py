@@ -125,6 +125,51 @@ def test_quarantine_failure_keeps_the_old_datastore(
     assert not any(settings.data_dir.glob("previous-datastore-*"))
 
 
+def test_object_backend_quarantines_db_and_backups_but_not_local_blobs(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        data_dir=tmp_path,
+        config_dir=tmp_path / "config",
+        spa_dist=tmp_path / "no-spa",
+        log_level="WARNING",
+        app_env="test",
+        object_storage_backend="s3",
+        s3_bucket="bucket1",
+    )
+    settings.ensure_dirs()
+    _legacy_db(settings.db_path)
+    (settings.blobs_dir / "blob.bin").write_bytes(b"payload")
+    (settings.backups_dir / "manual-20260101-000000.zip").write_bytes(b"old-backup")
+
+    notice = guard_datastore(settings)
+
+    assert notice is not None
+    folder = Path(notice.path)
+    assert (folder / "study.sqlite3").is_file()
+    assert (folder / "backups" / "manual-20260101-000000.zip").is_file()
+    # Object storage owns the blob bytes; the local mount is not authoritative.
+    assert not (folder / "blobs").exists()
+    assert (settings.blobs_dir / "blob.bin").is_file()
+
+
+def test_cloud_storage_config_error_is_reported_friendly(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path,
+        config_dir=tmp_path / "config",
+        spa_dist=tmp_path / "no-spa",
+        log_level="WARNING",
+        app_env="test",
+        cloud_profile="aws",
+        object_storage_backend="local",
+    )
+    settings.ensure_dirs()
+    _legacy_db(settings.db_path)
+
+    with pytest.raises(DatastoreQuarantineError, match="local-filesystem"):
+        guard_datastore(settings)
+
+
 def test_instance_config_exposes_the_quarantine_marker(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     _legacy_db(settings.db_path)

@@ -19,6 +19,7 @@ from ..pipelines.drawing_ocr import make_drawing_ocr_handler
 from ..pipelines.genesis import make_genesis_handler
 from ..pipelines.image_ocr import make_image_ocr_handler
 from ..pipelines.ingest import make_ingest_handler
+from ..pipelines.lecture_transcribe import make_lecture_transcribe_handler
 from ..pipelines.postprocess import make_postprocess_handler
 from ..pipelines.retrieval_ops import (
     make_vector_cutover_handler,
@@ -26,6 +27,7 @@ from ..pipelines.retrieval_ops import (
     make_vector_reindex_handler,
 )
 from ..pipelines.url_import import make_url_import_handler
+from ..services.artifacts.render import make_artifact_render_handler
 from .runner import JobRunner
 
 
@@ -67,6 +69,16 @@ def build_job_runner(app: FastAPI) -> JobRunner:
             ),
             JobType.COMPOSE: make_compose_handler(
                 app.state.gateway, app.state.blobs, app.state.embedder.embed
+            ),
+            JobType.ARTIFACT_RENDER: make_artifact_render_handler(
+                app.state.gateway,
+                app.state.blobs,
+                jobs_provider=lambda: getattr(app.state, "jobs", None),
+            ),
+            JobType.LECTURE_TRANSCRIBE: make_lecture_transcribe_handler(
+                app.state.gateway,
+                app.state.blobs,
+                jobs_provider=lambda: getattr(app.state, "jobs", None),
             ),
             JobType.URL_IMPORT: make_url_import_handler(
                 app.state.blobs,

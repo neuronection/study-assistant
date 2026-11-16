@@ -26,9 +26,13 @@ from ..services.platform.backup import (
     store_settings_override,
 )
 from ..services.platform.profiles import get_or_create_default
-from .deps import require_admin
+from .deps import require_admin, require_local_blob_storage
 
-router = APIRouter(prefix="/backup", tags=["backup"], dependencies=[Depends(require_admin)])
+router = APIRouter(
+    prefix="/backup",
+    tags=["backup"],
+    dependencies=[Depends(require_admin), Depends(require_local_blob_storage)],
+)
 
 MAX_UPLOAD = 512 * 1024 * 1024
 
@@ -176,7 +180,7 @@ def delete_backup(name: str, request: Request) -> dict[str, Any]:
 @router.get("/export")
 def export_backup(request: Request) -> Response:
     settings = request.app.state.settings
-    package = build_backup(settings.db_path, settings.blobs_dir, database_url=settings.db_url)
+    package = build_backup(settings.db_path, request.app.state.blobs, database_url=settings.db_url)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return Response(
         content=package,
@@ -222,10 +226,10 @@ def apply_restore(request: Request, data: bytes) -> dict[str, Any]:
             status_code=422, detail="backup database kind does not match this deployment"
         )
 
-    blobs_root = settings.blobs_dir.resolve()
+    blobs_root = request.app.state.blobs.local_root().resolve()
     destinations: list[tuple[Path, bytes]] = []
     for rel_path, blob_data in blobs.items():
-        target = (settings.blobs_dir / rel_path).resolve()
+        target = (blobs_root / rel_path).resolve()
         if not target.is_relative_to(blobs_root) or target == blobs_root:
             raise HTTPException(status_code=422, detail="backup contains an unsafe blob path")
         destinations.append((target, blob_data))

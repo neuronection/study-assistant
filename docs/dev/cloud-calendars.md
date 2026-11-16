@@ -1,6 +1,6 @@
 # Cloud calendars — implementation notes
 
-Family law: [ADR-0052] (cloud accounts) and
+Family law: cloud accounts and
 [`guidelines/cloud-connectors.md`]. This page is the study-host map; the
 canonical catalog and engines are vendored byte-identically from the
 family contract canonical.
@@ -62,7 +62,7 @@ a Google/Microsoft binding can never resolve to a LAN address. Calendar writes
 skip the GET-only politeness layer (robots, conditional GET) but never the
 SSRF check.
 
-## Data-driven setup (plan 52 §12 / Rev 4)
+## Data-driven setup
 
 The bind form knows no provider names. `calendar_sync.setup_fields(provider)`
 derives each row's form fields from catalog data — the row's `protocol`,
@@ -96,7 +96,7 @@ against it instead of deriving. Until that lands, this file is the study-host
 derivation and any new protocol needs a case in `setup_fields` (code, not
 data — protocols are code).
 
-## Calendar discovery (plan 52 §9 M1)
+## Calendar discovery
 
 `POST /api/v1/calendar/links/discover` lists an account's calendars for the
 picker. Request: either `link_id` (discovery rides the stored credential of a
@@ -153,7 +153,7 @@ id is a typed `needs-config`, never a crash.
   settings map wall cover placement (the card lives under `tools.connectors`,
   so the settings nav contract is unchanged).
 
-## Deployment modes: desktop vs web (plan 52 fix)
+## Deployment modes: desktop vs web
 
 Two things differ between a desktop install and a web/server deployment, and
 **both fail silently** if ignored.

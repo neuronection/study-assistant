@@ -28,7 +28,7 @@ from .courses_schemas import (
     ImportedCourseOut,
     StudyStateOut,
 )
-from .deps import content_disposition, get_session
+from .deps import content_disposition, get_session, require_local_blob_storage
 
 router = APIRouter(tags=["courses"])
 
@@ -290,7 +290,6 @@ def duplicate(
             session,
             course,
             profile.id,
-            request.app.state.settings.blobs_dir,
             request.app.state.blobs,
             title=payload.title,
             copy_materials=payload.copy_materials,
@@ -331,7 +330,7 @@ def export_course(
         package = build_course_bundle(
             session,
             course,
-            request.app.state.settings.blobs_dir,
+            request.app.state.blobs,
             include_history=include_history,
             include_note_versions=include_note_versions,
         )
@@ -381,7 +380,6 @@ async def import_course(
             session,
             bundle,
             profile.id,
-            request.app.state.settings.blobs_dir,
             request.app.state.blobs,
             existing_titles,
         )
@@ -408,8 +406,9 @@ def delete_course(
         )
     from ..services.platform.backup import create_backup
 
+    require_local_blob_storage(request)
     settings = request.app.state.settings
-    create_backup(settings.db_path, settings.blobs_dir, settings.backups_dir, prefix="manual")
+    create_backup(settings.db_path, request.app.state.blobs, settings.backups_dir, prefix="manual")
     purge_course(session, course)
     session.commit()
     return {"status": "deleted", "course_id": course_id}

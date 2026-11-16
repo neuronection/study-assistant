@@ -6,6 +6,8 @@ import {
   Home,
   type LucideIcon,
   RotateCcw,
+  Sigma,
+  Presentation,
 } from 'lucide-react'
 
 export interface AppNavItem {
@@ -19,6 +21,8 @@ export interface AppNavItem {
 export const PRIMARY_NAV: AppNavItem[] = [
   { to: '/', icon: Home, labelKey: 'nav.home', exact: true },
   { to: '/review', icon: RotateCcw, labelKey: 'nav.review', exact: true },
+  { to: '/solve', icon: Sigma, labelKey: 'nav.solve', exact: true },
+  { to: '/studio', icon: Presentation, labelKey: 'nav.studio', exact: true },
   { to: '/courses', icon: GraduationCap, labelKey: 'nav.courses', exact: false },
   { to: '/chat', icon: Bot, labelKey: 'nav.chat', exact: false },
   { to: '/library', icon: BookOpen, labelKey: 'nav.library', exact: false },

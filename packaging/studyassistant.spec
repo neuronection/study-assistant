@@ -113,7 +113,20 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[os.path.join(SPEC_DIR, "hooks")],
     runtime_hooks=[RUNTIME_HOOK],
-    excludes=["tkinter", "test", "pytest", "IPython", "matplotlib", "pandas", "numpy"],
+    excludes=[
+        "tkinter",
+        "test",
+        "pytest",
+        "IPython",
+        "matplotlib",
+        "pandas",
+        "numpy",
+        # Object-storage SDKs are web-image optional extras (ADR-0057);
+        # desktop uses the stdlib local adapter only.
+        "boto3",
+        "botocore",
+        "azure",
+    ],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

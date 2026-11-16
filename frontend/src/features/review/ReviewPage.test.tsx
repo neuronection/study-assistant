@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { ReviewPage } from './ReviewPage'
@@ -7,15 +7,19 @@ import type { FlashcardInfo, ReviewDue } from '@/lib/api'
 
 const getReviewDue = vi.fn()
 const reviewFlashcard = vi.fn()
+const previewReview = vi.fn()
 const useStudySession = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getReviewDue: (perCourse?: number) => getReviewDue(perCourse),
+    getReviewDue: (query?: unknown) => getReviewDue(query),
+    listReviewFilters: () => Promise.resolve([]),
     reviewFlashcard: (cardId: string, rating: number) =>
       reviewFlashcard(cardId, rating),
+    previewReview: (cardId: string, rating: number) =>
+      previewReview(cardId, rating),
   }
 })
 
@@ -59,6 +63,9 @@ function renderPage() {
 
 const DUE: ReviewDue = {
   total_due: 3,
+  capped: false,
+  preview: false,
+  remaining_today: null,
   groups: [
     {
       course_id: '1',
@@ -81,6 +88,8 @@ describe('ReviewPage', () => {
   beforeEach(() => {
     getReviewDue.mockReset()
     reviewFlashcard.mockReset()
+    previewReview.mockReset()
+    previewReview.mockResolvedValue(undefined)
     reviewFlashcard.mockResolvedValue({ interval_days: 3, due_at: 'x', state: 'review' })
     useStudySession.mockReset()
   })
@@ -120,3 +129,13 @@ describe('ReviewPage', () => {
     expect(document.querySelector('.animate-spin')).not.toBeInTheDocument()
   })
 })
+
+  test('preview mode sends ratings to the preview endpoint', async () => {
+    getReviewDue.mockResolvedValue({ ...DUE, preview: true })
+    renderPage()
+    expect(await screen.findByText('review.previewChip')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /cards.reveal/ }))
+    fireEvent.click(screen.getByRole('button', { name: /cards.rateGood/ }))
+    await waitFor(() => expect(previewReview).toHaveBeenCalledWith('11', 3))
+    expect(reviewFlashcard).not.toHaveBeenCalled()
+  })

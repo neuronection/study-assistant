@@ -46,6 +46,15 @@ class UrlImportPayload(TypedDict, total=False):
     action: str
 
 
+class LectureTranscribePayload(TypedDict, total=False):
+    session_id: Required[str]
+    material_id: Required[str]
+
+
+class ArtifactRenderPayload(TypedDict, total=False):
+    artifact_id: Required[str]
+
+
 class ComposePayload(TypedDict, total=False):
     course_id: Required[str]
     profile_id: str | None

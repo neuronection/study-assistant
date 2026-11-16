@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { SettingsShell } from '@/components/ui/settings-shell'
 import { getCurrentUser } from '@/lib/auth-session'
+import { desktopBridge } from '@/lib/desktop-bridge'
 import { ConnectorsSection } from './ConnectorsSection'
 import { DataTab } from './DataTab'
 import { DeveloperTab } from './DeveloperTab'
@@ -23,6 +24,7 @@ import { ModelsTab } from './ModelsTab'
 import { ProvidersTab } from './ProvidersTab'
 import { WebSearchSection } from './WebSearchSection'
 import { SkillsTab } from './SkillsTab'
+import { StorageStatusCard } from './StorageStatusCard'
 import { TasksTab } from './TasksTab'
 import { UsersTab } from './UsersTab'
 import { WebSourcesCard } from './WebSourcesCard'
@@ -54,7 +56,24 @@ export const TOOLS_TAB_SECTIONS = [
 ] as const
 type ToolsSection = (typeof TOOLS_TAB_SECTIONS)[number]
 
-type Section = AiSection | ToolsSection
+export const DEVELOPER_TAB_SECTIONS = ['diagnostics', 'storage'] as const
+type DeveloperSection = (typeof DEVELOPER_TAB_SECTIONS)[number]
+
+type Section = AiSection | ToolsSection | DeveloperSection
+
+// Storage is an instance/admin surface (plan 55 P4b2): it stays unreachable
+// for non-admins even through a hand-written `?tab=developer&section=storage`
+// URL, the same rule that hides the users tab.
+const ADMIN_ONLY_SECTIONS: Partial<Record<Tab, readonly string[]>> = {
+  developer: ['storage'],
+}
+
+// The desktop app is always local storage, so the operator card is not a
+// desktop surface at all: filter the section out of the nav and the URL
+// resolution, not only the card's render.
+const DESKTOP_HIDDEN_SECTIONS: Partial<Record<Tab, readonly string[]>> = {
+  developer: ['storage'],
+}
 
 // Legacy deep links keep working (INV-6): the former top-level `search` tab
 // (embeddings + OCR) folded into tools → indexing, and the AI tab's former
@@ -83,7 +102,7 @@ const SECTIONS_PER_TAB: Record<Tab, readonly string[]> = {
   tools: TOOLS_TAB_SECTIONS,
   data: [],
   users: [],
-  developer: [],
+  developer: DEVELOPER_TAB_SECTIONS,
 }
 
 export function SettingsPage() {
@@ -95,8 +114,11 @@ export function SettingsPage() {
   }
 
   // Users tab is admin-only (identity-auth §12): hidden — and
-  // unreachable via `?tab=users` — for everyone else.
-  const allowedTabs: Tab[] = getCurrentUser()?.is_admin
+  // unreachable via `?tab=users` — for everyone else. The developer tab
+  // stays visible, but its storage section follows the same rule.
+  const isAdmin = getCurrentUser()?.is_admin ?? false
+  const isDesktop = desktopBridge() !== undefined
+  const allowedTabs: Tab[] = isAdmin
     ? [...SETTINGS_TABS]
     : SETTINGS_TABS.filter((key) => key !== 'users')
 
@@ -110,7 +132,12 @@ export function SettingsPage() {
       : 'general'
   const activeTab: Tab = allowedTabs.includes(requestedTab) ? requestedTab : 'general'
 
-  const sections = SECTIONS_PER_TAB[activeTab]
+  const adminOnly = ADMIN_ONLY_SECTIONS[activeTab] ?? []
+  const desktopHidden = isDesktop ? (DESKTOP_HIDDEN_SECTIONS[activeTab] ?? []) : []
+  const sections = SECTIONS_PER_TAB[activeTab].filter(
+    (section) =>
+      (isAdmin || !adminOnly.includes(section)) && !desktopHidden.includes(section)
+  )
   const requestedSection = redirect?.section ?? sectionRedirect?.section ?? search.section ?? ''
   const activeSection: string = sections.includes(requestedSection)
     ? requestedSection
@@ -150,7 +177,7 @@ export function SettingsPage() {
               {t(`settings.nav.${activeTab}Desc`)}
             </p>
           </div>
-          {sections.length > 0 ? (
+          {sections.length > 1 ? (
             <SegmentedTabs
               ariaLabel={t(`settings.${activeTab}SectionsAria`)}
               items={sectionTabs}
@@ -174,7 +201,12 @@ export function SettingsPage() {
           {activeTab === 'tools' && activeSection === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'data' ? <DataTab /> : null}
           {activeTab === 'users' ? <UsersTab /> : null}
-          {activeTab === 'developer' ? <DeveloperTab /> : null}
+          {activeTab === 'developer' && activeSection === 'diagnostics' ? (
+            <DeveloperTab />
+          ) : null}
+          {activeTab === 'developer' && activeSection === 'storage' ? (
+            <StorageStatusCard />
+          ) : null}
         </div>
       </SettingsShell>
     </div>

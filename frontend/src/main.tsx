@@ -13,12 +13,13 @@ import { RenderBeacon } from '@/components/RenderBeacon'
 import { SessionGate } from '@/features/auth/SessionGate'
 import { installGlobalErrorSurface } from '@/lib/boot-errors'
 import { initI18n } from '@/lib/i18n'
+import { registerPwa } from '@/lib/pwa'
 
-import '@neuronection/assistant-ui/styles.css'
 import './index.css'
 import './theme.css'
 
 installGlobalErrorSurface()
+registerPwa()
 
 void initI18n()
 

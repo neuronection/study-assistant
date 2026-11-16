@@ -38,6 +38,8 @@ describe('resolveActiveId', () => {
     expect(PRIMARY_NAV.map((item) => item.to)).toEqual([
       '/',
       '/review',
+      '/solve',
+      '/studio',
       '/courses',
       '/chat',
       '/library',

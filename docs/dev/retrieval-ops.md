@@ -1,6 +1,6 @@
-# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2/Q3c3a/Q3c3b)
+# Retrieval operations
 
-Status: **Q3b shipped, plan 50 P3a storage foundation, Q3c1 PostgreSQL
+Status: **Q3b shipped, storage foundation, Q3c1 PostgreSQL
 baseline repair, Q3c2a vector backend/provisioning, Q3c2b1
 lifecycle/cutover, Q3c2b2 golden-query quality + gate, Q3c3a
 alerts/generation tagging/canonical adoption and Q3c3b read-only retrieval
@@ -16,10 +16,10 @@ pre-cutover quality compare. The family closeout remains Q5.
 
 ## Contracts
 
-### Vector retrieval contract (plan 50 P3a)
+### Vector retrieval contract
 
 - Canonical: `dev-vector-p0/contracts/vector_contract.py` and
-  `vector-contract.fixtures.json` (ADR-0051).
+  `vector-contract.fixtures.json`.
 - Vendored byte-identically:
   - `backend/app/storage/vector_contract.py` —
     sha256 `43a2cefe22b9ad0e50f3e5c04d311726d7bb8d123fc0ad66b6dbceeafe7280f2`
@@ -31,10 +31,10 @@ pre-cutover quality compare. The family closeout remains Q5.
 - The fixture table also pins the pure helpers study now uses directly
   (`content_hash`, `space_key`).
 
-### Retrieval operations contract (plan 51 Q0)
+### Retrieval operations contract
 
 - Canonical: `dev-vector-p0/contracts/retrieval_ops.py` and
-  `retrieval-ops.fixtures.json` (plan 51 Q0).
+  `retrieval-ops.fixtures.json`.
 - Vendored byte-identically:
   - `backend/app/storage/retrieval_ops.py` —
     sha256 `4d3db17c795280a700fc6b39d1ef4383fc67f5e478dce08bae706430ee529551`
@@ -52,7 +52,7 @@ There is no `VECTOR_RECONCILE` in Q0. The canonical job names are
 `VECTOR_REINDEX`, `VECTOR_MAINTENANCE`, `VECTOR_CUTOVER`; the reconcile pass
 runs as `VECTOR_REINDEX`.
 
-## Vector storage adapter (plan 50 P3a / plan 51 Q3c2a)
+## Vector storage adapter
 
 `storage/vector_store.py::StudyVectorStore` is the one seam over the
 physical index **and** the metadata layer. Search, embedding writes, purge
@@ -218,12 +218,12 @@ Cold/partial states are explicit: no `vec_meta` dim → no space row and
 and the backend keeps returning what exists; a missing table → healthy
 `ok=false` detail and the legacy fallback answers.
 
-### PostgreSQL chain and backfill assertions (plan 51 Q3c1)
+### PostgreSQL chain and backfill assertions
 
 `tests/test_migrations_postgres.py` now runs on the pgvector test container
 instead of skipping, and the full chain `0001_baseline` →
 `0013_vector_space_provisioning` is green. Repaired pre-0012 incompatibilities (final
-schema unchanged; details in [migrations.md](migrations.md#postgresql-chain-plan-51-q3c1)):
+schema unchanged; details in [migrations.md](migrations.md#postgresql-chain)):
 
 - six boolean `server_default` values (`0`/`1`) became `sa.false()` /
   `sa.true()`; PostgreSQL rejects `BOOLEAN DEFAULT 0` at `CREATE TABLE`;
@@ -315,7 +315,7 @@ Migration `0010_retrieval_ops` adds:
   with total/missing/stale/failed/embedded and nullable ANN recall. TTL 90
   days.
 
-Both are **operational aggregates, not audit ledgers** (ADR-0044's
+Both are **operational aggregates, not audit ledgers** (the
 no-silent-pruning rule does not apply). Query telemetry is appended to a
 bounded in-memory deque by the search path and flushed by a daemon every 60
 seconds into 5-minute buckets; no query text enters the recorder. Coverage
@@ -434,7 +434,7 @@ instead of a second one.
 The study settings map (`contracts/settings-map.json`) marks
 `tools.retrieval` **aligned** and hosts it in the `indexing` section;
 `tools.indexing` remains the user-scoped semantic-search/OCR domain. The dev
-canonical still says `pending (plan 51 Q3)` — re-vendoring it (plus career's
+canonical still says `pending` — re-vendoring it (plus career's
 copy) is the sync handoff when this branch is ready for adoption.
 
 ## Parity
@@ -450,7 +450,7 @@ contract/fixture bytes, runs every shared quality case through the vendored
 scorer, pins the DTO shapes and records the sha plus the sync-gate status. It
 does **not** claim the family `--strict` gate: the canonical ledger still
 records only career, and the canonical settings map still says
-`pending (plan 51 Q3)` for study.
+`pending` for study.
 
 **Parity evidence recorded 2026-11-04** (`run_family_parity()`):
 both vendored files match career and the dev canonical byte-for-byte —
@@ -462,7 +462,7 @@ every vocabulary, quality-floor, quality-case and DTO-shape check passes.
 At Q3c2b2 `strict=false` with blockers `sync-ledger:study-assistant` (the
 ledger had no study row; `ledger:study-assistant=""`) and
 `settings-map:canonical-study-pending` (canonical adopter
-`pending (plan 51 Q3)`). After the Q3c3a canonical adoption and the
+`pending`). After the Q3c3a canonical adoption and the
 study-main merge, both are green and `strict=true`.
 
 **Q3c3a update.** The `/dev` settings canonical now has both career and study
@@ -563,7 +563,7 @@ the evidence on the failed run.
 
 ### Alerts through the one notification funnel
 
-Study's bell aggregate (`GET /notifications`, ADR-151) remains the only
+Study's bell aggregate (`GET /notifications`) remains the only
 delivery surface. Q3c3a adds its missing durable side: migration `0015`
 creates the boot-seeded `notification_kinds` registry and the deduped
 `notifications` event rows. Every emitter goes through
@@ -713,7 +713,7 @@ usage read, and the canonical settings-map/ledger adoption. The canonical
 `/dev` settings map now marks both career and study `tools.retrieval`
 `aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's
 bytes with the branch note. At the Q3c3a checkpoint `/study-assistant` main
-carried the same vendored bytes and the adoption check passed; the plan 52
+carried the same vendored bytes and the adoption check passed; the
 T5a re-sync above supersedes those bytes, so main adoption follows its merge.
 
 **Q3c3b shipped** (above): the read-only observation card inside Tools →
@@ -729,7 +729,7 @@ route or a second audit stack.
    settings-map/audit-vocabulary/no-`vector_events`/no-`prompt` checks, and
    the shared UI promotion under the two-app rule.
 
-## Plan 52 T5a — tokenizer accounting (T5b handoff)
+## Tokenizer accounting (T5b handoff)
 
 T5a is the **accounting-only** study slice. It vendors the family tokenizer
 contract and the token-aware `vector_contract`/`retrieval_ops` DTOs, ships a
@@ -792,7 +792,7 @@ character-chunked records; it is not a token-aware chunk write.
 5. T5c/T5d: progress DTO emission and UI are still out of scope. The contract
    fields are accepted today; nothing writes `progress_detail`.
 
-## Plan 52 T5b1 — stored space key + token schema (T5b2 handoff)
+## Stored space key + token schema (T5b2 handoff)
 
 T5b1 is the **compatibility and schema** half of T5b. It persists the vector
 space identity and adds the columns T5b2 will write, but it does **not** make
@@ -854,7 +854,7 @@ it are removed.
    stored-key activation path, and retain the v1 space. Progress detail/UI
    stay T5c/T5d.
 
-## Plan 52 T5b2 — token-aware writes and the v2 cutover (T5c handoff)
+## Token-aware writes and the v2 cutover (T5c handoff)
 
 T5b2 is the **write half**. A token-aware space now chunks and embeds by
 tokens while every v1 space stays character-chunked and byte-identical. It
@@ -949,7 +949,7 @@ embedding model resolves the exact bundled `cl100k_base`, anything else shows
 4. Run the full re-embed/parity benchmark and close the family T5 parity
    evidence once main carries these bytes.
 
-## Plan 52 T5c — bounded live progress and read-only parity (T5d handoff)
+## Bounded live progress and read-only parity (T5d handoff)
 
 T5c is the **visibility** slice. It emits the vendored family
 `RunProgressDTO` shape from the Study retrieval pipeline, exposes it on the

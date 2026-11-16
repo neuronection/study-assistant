@@ -9,10 +9,16 @@ import {
 } from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
 
+
+const desktopEnv = vi.hoisted(() => ({ desktop: false }))
+
+vi.mock('@/lib/desktop-bridge', () => ({
+  desktopBridge: () => (desktopEnv.desktop ? {} : undefined),
+}))
 
 const listProviders = vi.fn()
 const listPresets = vi.fn()
@@ -117,6 +123,10 @@ const PROVIDER = {
 }
 
 describe('SettingsPage', () => {
+  beforeEach(() => {
+    desktopEnv.desktop = false
+  })
+
   test('providers tab lists providers with no raw key — keyless ones flag it', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     await await renderSettings('/settings?tab=ai&section=providers')
@@ -581,6 +591,36 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Diagnostics for this build.')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^developer/i }))
     expect(await screen.findByText('Diagnostics for this build.')).toBeInTheDocument()
+  })
+
+  test('non-admins cannot deep-link into the developer storage section', async () => {
+    getCurrentUser.mockReturnValue({
+      id: 'u-plain',
+      email: 'grace@example.com',
+      full_name: '',
+      is_admin: false,
+      is_active: true,
+    })
+    await renderSettings('/settings?tab=developer&section=storage')
+    // The admin-only section is not declared in the nav, so the URL falls
+    // back to the first developer section instead of rendering the card.
+    expect(await screen.findByText('Diagnostics for this build.')).toBeInTheDocument()
+    expect(screen.queryByText('Storage status')).not.toBeInTheDocument()
+  })
+
+  test('desktop filters the storage section out of the developer nav and URL', async () => {
+    desktopEnv.desktop = true
+    getCurrentUser.mockReturnValue({
+      id: 'u-admin',
+      email: 'ada@example.com',
+      full_name: 'Ada Lovelace',
+      is_admin: true,
+      is_active: true,
+    })
+    await renderSettings('/settings?tab=developer&section=storage')
+    expect(await screen.findByText('Diagnostics for this build.')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Storage' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Storage status')).not.toBeInTheDocument()
   })
 
   test('edit provider dialog patches without touching the key when blank', async () => {

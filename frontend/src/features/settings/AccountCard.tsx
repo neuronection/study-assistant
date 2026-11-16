@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ErrorBanner } from '@/components/ErrorBanner'
+import {
+  AccountSessionList,
+  type AccountSessionRow,
+} from '@/components/ui/account-session-list'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -18,9 +22,10 @@ import {
   deleteMyAccount,
   listMySessions,
   revokeMySession,
-  type UserSession,
 } from '@/lib/api'
 import { UNAUTHENTICATED_EVENT } from '@/lib/api/client'
+import { clearPreScopeFirstEventKeys } from '@/lib/activation-events'
+import { purgeLastSessionScope } from '@/lib/audio-offline'
 import { setCurrentUser } from '@/lib/auth-session'
 import { formatDateTime } from '@/lib/format'
 import { useConfirm } from '@/lib/use-confirm'
@@ -37,58 +42,6 @@ function errorText(
   return detail ?? generic
 }
 
-function SessionRow({
-  session,
-  onRevoke,
-}: {
-  session: UserSession
-  onRevoke: (session: UserSession) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <li
-      className="flex flex-wrap items-center justify-between gap-2 py-2"
-      data-testid="account-session"
-    >
-      <div className="min-w-0">
-        <p className="text-sm">
-          {session.client_label || '—'}
-          {session.current ? (
-            <span className="text-muted-foreground ml-2 text-xs">
-              ({t('settings.account.sessionCurrent')})
-            </span>
-          ) : null}
-        </p>
-        <p className="text-muted-foreground text-xs">
-          {session.created_at
-            ? t('settings.account.sessionCreated', {
-                when: formatDateTime(session.created_at),
-              })
-            : '—'}
-          {' · '}
-          {t('settings.account.sessionExpires', {
-            when: formatDateTime(session.expires_at),
-          })}
-        </p>
-      </div>
-      {session.revoked_at ? (
-        <span className="text-muted-foreground text-xs">
-          {t('settings.account.sessionRevoked')}
-        </span>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onRevoke(session)}
-          aria-label={`${t('settings.account.revoke')} — ${session.client_label || session.id}`}
-        >
-          {t('settings.account.revoke')}
-        </Button>
-      )}
-    </li>
-  )
-}
-
 /** Account self-service (identity-auth §12, `/api/v1/me`): the caller's
  * sessions with revocation, password change and account deletion. */
 export function AccountCard() {
@@ -96,21 +49,44 @@ export function AccountCard() {
   const [confirm, confirmElement] = useConfirm()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
+  const sessionsHeadingRef = useRef<HTMLHeadingElement>(null)
 
   const sessions = useQuery({
     queryKey: ['my-sessions'],
     queryFn: listMySessions,
   })
 
+  const sessionRows: AccountSessionRow[] = (sessions.data ?? []).map((session) => ({
+    id: session.id,
+    current: session.current,
+    label: session.client_label || '—',
+    details: [
+      session.created_at
+        ? t('settings.account.sessionCreated', {
+            when: formatDateTime(session.created_at),
+          })
+        : '—',
+      t('settings.account.sessionExpires', {
+        when: formatDateTime(session.expires_at),
+      }),
+    ],
+    revoked: Boolean(session.revoked_at),
+  }))
+
   const dropToLogin = () => {
+    void purgeLastSessionScope()
+    clearPreScopeFirstEventKeys()
     setCurrentUser(null)
     window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT))
   }
 
-  const revoke = async (session: UserSession) => {
+  const revoke = async (id: string) => {
+    const session = (sessions.data ?? []).find((item) => item.id === id)
+    if (!session) return
     const ok = await confirm({
       title: t('settings.account.revokeConfirmTitle'),
       description: session.current
@@ -119,6 +95,7 @@ export function AccountCard() {
       confirmLabel: t('settings.account.revoke'),
     })
     if (!ok) return
+    setRevokingId(session.id)
     try {
       await revokeMySession(session.id)
       setError(null)
@@ -128,6 +105,7 @@ export function AccountCard() {
         return
       }
       await sessions.refetch()
+      sessionsHeadingRef.current?.focus()
     } catch (err) {
       setError(
         errorText(
@@ -136,6 +114,8 @@ export function AccountCard() {
           t('settings.account.errorGeneric'),
         ),
       )
+    } finally {
+      setRevokingId(null)
     }
   }
 
@@ -186,11 +166,21 @@ export function AccountCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         <ErrorBanner message={error} />
-        {message ? <p className="text-muted-foreground text-xs">{message}</p> : null}
+        {message ? (
+          <p role="status" className="text-muted-foreground text-xs">
+            {message}
+          </p>
+        ) : null}
 
         <section aria-label={t('settings.account.sessionsTitle')} className="space-y-2">
           <div>
-            <h3 className="text-sm font-medium">{t('settings.account.sessionsTitle')}</h3>
+            <h3
+              ref={sessionsHeadingRef}
+              tabIndex={-1}
+              className="text-sm font-medium"
+            >
+              {t('settings.account.sessionsTitle')}
+            </h3>
             <p className="text-muted-foreground text-xs">
               {t('settings.account.sessionsDescription')}
             </p>
@@ -201,16 +191,19 @@ export function AccountCard() {
             </p>
           ) : sessions.error ? (
             <p className="text-danger text-xs">{t('settings.account.errorGeneric')}</p>
-          ) : (sessions.data ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              {t('settings.account.sessionsEmpty')}
-            </p>
           ) : (
-            <ul className="divide-border divide-y">
-              {(sessions.data ?? []).map((session) => (
-                <SessionRow key={session.id} session={session} onRevoke={revoke} />
-              ))}
-            </ul>
+            <AccountSessionList
+              rows={sessionRows}
+              onRevoke={revoke}
+              busyId={revokingId ?? undefined}
+              labels={{
+                current: t('settings.account.sessionCurrent'),
+                revoke: t('settings.account.revoke'),
+                revoking: t('settings.account.revoking'),
+                revoked: t('settings.account.sessionRevoked'),
+                empty: t('settings.account.sessionsEmpty'),
+              }}
+            />
           )}
         </section>
 

@@ -175,6 +175,71 @@ export interface TextFileEditState {
 
 /** Narrowed view of `StepOut.input` / `QuestionOut.input` widget payloads
  * (the wire field is an open map; each widget family reads its own keys). */
+export interface ArtifactChapterView {
+  title?: string
+  script?: string
+  kind?: string
+}
+
+export interface ArtifactSpecView {
+  kind?: string
+  title?: string
+  script?: string
+  renderer?: string
+  model?: string | null
+  length_minutes?: number
+  sections?: { kind?: string; title?: string; script?: string; citations?: string[] }[]
+  chapters?: ArtifactChapterView[]
+}
+
+export interface StudioSlideView {
+  layout?: string
+  title?: string
+  bullets?: string[]
+  body_md?: string | null
+  notes?: string | null
+}
+
+export interface StudioSpecView {
+  kind?: string
+  title?: string
+  subtitle?: string | null
+  theme?: string
+  slides?: StudioSlideView[]
+  source_title?: string | null
+}
+
+export interface SolveStepView {
+  op?: string
+  title?: string
+  before?: string
+  after?: string
+  check?: string
+  verified?: boolean
+  detail?: string
+}
+
+export interface SolveResultView {
+  input?: string
+  normalized?: string
+  intent?: string
+  title?: string
+  answer_latex?: string | null
+  answer_text?: string | null
+  steps?: SolveStepView[]
+  assumptions?: string[]
+  verified?: boolean
+  message?: string | null
+}
+
+export interface DiagramHotspot {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface ExerciseStepInput {
   widget:
     | 'matching'
@@ -185,6 +250,7 @@ export interface ExerciseStepInput {
     | 'essay'
     | 'lines'
     | 'numberline'
+    | 'diagram_label'
   kind?: string
   lefts?: string[]
   rights?: { index: number; label: string }[]
@@ -196,6 +262,10 @@ export interface ExerciseStepInput {
   requires_fix?: boolean
   min?: number
   max?: number
+  image_sha?: string
+  hotspots?: DiagramHotspot[]
+  labels?: string[]
+  mode?: string
 }
 
 /** Narrowed view of `QuestionOut.input` for the widget families the quiz
@@ -204,6 +274,9 @@ export interface QuizQuestionInput {
   widget: string
   min?: number
   max?: number
+  image_sha?: string
+  hotspots?: DiagramHotspot[]
+  labels?: string[]
   kind?: string
   lefts?: string[]
   rights?: { index: number; label: string }[]
@@ -257,6 +330,7 @@ export const HAND_TYPE_REGISTER = [
   { name: 'AiContextStats', source: 'read model of the open PreviewOut.stats map' },
   { name: 'AdminUser', source: 'nx_auth kit route payload (kit publishes no response model)' },
   { name: 'BlockDto', source: 'read model of an open content block document' },
+  { name: 'CaptureSourceKind', source: 'client request vocabulary (server validates the capture-kind registry)' },
   { name: 'ComposeKind', source: 'client-side compose-kind list (request vocabulary)' },
   { name: 'ExerciseOrderingItem', source: 'exercise-struct position index', numericId: true },
   { name: 'PendingDrawing', source: 'client placeholder refs', numericId: true },
@@ -273,7 +347,15 @@ export const HAND_TYPE_REGISTER = [
   { name: 'UserSession', source: 'nx_auth kit route payload (kit publishes no response model)' },
   { name: 'DesktopFileEntry', source: 'desktop-only route payload (not in the web OpenAPI export)' },
   { name: 'DesktopFolderListing', source: 'desktop-only route payload (not in the web OpenAPI export)' },
+  { name: 'ArtifactChapterView', source: 'narrowed view of ArtifactSpecView.chapters' },
+  { name: 'ArtifactSpecView', source: 'narrowed view of ArtifactOut.spec (open typed artifact spec)' },
+  { name: 'StudioSlideView', source: 'narrowed view of StudioOut.spec.slides (open spec document)' },
+  { name: 'StudioSpecView', source: 'narrowed view of StudioOut.spec (open typed artifact spec)' },
+  { name: 'SolveStepView', source: 'narrowed view of SolveOut.result.steps (open result document)' },
+  { name: 'SolveResultView', source: 'narrowed view of SolveOut.result (open typed result document)' },
+  { name: 'DiagramHotspot', source: 'narrowed view of ExerciseStepInput.hotspots (open widget map)' },
   { name: 'ExternalSourceKind', source: 'client request vocabulary (server validates the registry)' },
+  { name: 'ReviewQuery', source: 'client query composition over the review due endpoint' },
   { name: 'McpServerToolInfo', source: 'MCP server tool row (list endpoint returns the raw row)' },
   { name: 'ProviderSetupErrorDetail', source: 'structured 4xx detail (provider setup)' },
   { name: 'SearchProviderCatalog', source: 'extension-owned catalog document (open map)' },

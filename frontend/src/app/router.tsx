@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import {
   createRootRoute,
   createRoute,
@@ -7,22 +8,75 @@ import {
 } from '@tanstack/react-router'
 
 import { AppShell } from '@/components/layout/AppShell'
-import { CourseDetailPage } from '@/features/courses/CourseDetailPage'
-import { NodeWorkspace } from '@/features/courses/NodeWorkspace'
 import { CoursesPage } from '@/features/courses/CoursesPage'
-import { HomePage } from '@/features/home/HomePage'
-import { LibraryPage } from '@/features/library/LibraryPage'
-import { MaterialDetailPage } from '@/features/library/MaterialDetailPage'
-import { ExercisePlayerRoute } from '@/features/exercises/Player'
-import { NoteFocusPage } from '@/features/notes/NoteFocusPage'
-import { ChatPage } from '@/features/chat/ChatPage'
-import { ReviewPage } from '@/features/review/ReviewPage'
-import { StudySessionPage } from '@/features/study-session/StudySessionFlow'
-import { QuizRunner } from '@/features/quiz/QuizRunner'
-import { ScoresPage } from '@/features/scores/ScoresPage'
-import { JobsPage } from '@/features/jobs/JobsPage'
-import { SettingsPage } from '@/features/settings/SettingsPage'
-import { AboutPage } from '@/features/about/AboutPage'
+
+const HomePage = lazy(() =>
+  import('@/features/home/HomePage').then((module) => ({ default: module.HomePage }))
+)
+const CourseDetailPage = lazy(() =>
+  import('@/features/courses/CourseDetailPage').then((module) => ({
+    default: module.CourseDetailPage,
+  }))
+)
+const NodeWorkspace = lazy(() =>
+  import('@/features/courses/NodeWorkspace').then((module) => ({
+    default: module.NodeWorkspace,
+  }))
+)
+const LibraryPage = lazy(() =>
+  import('@/features/library/LibraryPage').then((module) => ({
+    default: module.LibraryPage,
+  }))
+)
+const MaterialDetailPage = lazy(() =>
+  import('@/features/library/MaterialDetailPage').then((module) => ({
+    default: module.MaterialDetailPage,
+  }))
+)
+const ExercisePlayerRoute = lazy(() =>
+  import('@/features/exercises/Player').then((module) => ({
+    default: module.ExercisePlayerRoute,
+  }))
+)
+const NoteFocusPage = lazy(() =>
+  import('@/features/notes/NoteFocusPage').then((module) => ({
+    default: module.NoteFocusPage,
+  }))
+)
+const ChatPage = lazy(() =>
+  import('@/features/chat/ChatPage').then((module) => ({ default: module.ChatPage }))
+)
+const ReviewPage = lazy(() =>
+  import('@/features/review/ReviewPage').then((module) => ({ default: module.ReviewPage }))
+)
+const StudySessionPage = lazy(() =>
+  import('@/features/study-session/StudySessionFlow').then((module) => ({
+    default: module.StudySessionPage,
+  }))
+)
+const QuizRunner = lazy(() =>
+  import('@/features/quiz/QuizRunner').then((module) => ({ default: module.QuizRunner }))
+)
+const ScoresPage = lazy(() =>
+  import('@/features/scores/ScoresPage').then((module) => ({ default: module.ScoresPage }))
+)
+const JobsPage = lazy(() =>
+  import('@/features/jobs/JobsPage').then((module) => ({ default: module.JobsPage }))
+)
+const SettingsPage = lazy(() =>
+  import('@/features/settings/SettingsPage').then((module) => ({
+    default: module.SettingsPage,
+  }))
+)
+const AboutPage = lazy(() =>
+  import('@/features/about/AboutPage').then((module) => ({ default: module.AboutPage }))
+)
+const SolvePage = lazy(() =>
+  import('@/features/solve/SolvePage').then((module) => ({ default: module.SolvePage }))
+)
+const StudioPage = lazy(() =>
+  import('@/features/studio/StudioPage').then((module) => ({ default: module.StudioPage }))
+)
 
 const rootRoute = createRootRoute({
   component: () => <AppShell />,
@@ -32,6 +86,18 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => <HomePage />,
+})
+
+const solveRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/solve',
+  component: () => <SolvePage />,
+})
+
+const studioRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/studio',
+  component: () => <StudioPage />,
 })
 
 const reviewRoute = createRoute({
@@ -163,11 +229,14 @@ function QuizRunRoute() {
 function focusSearch(search: Record<string, unknown>): {
   from?: string
   print?: 'paper' | 'key'
+  mode?: 'practice' | 'exam'
 } {
   return {
     from: typeof search.from === 'string' ? search.from : undefined,
     print:
       search.print === 'paper' || search.print === 'key' ? search.print : undefined,
+    mode:
+      search.mode === 'exam' || search.mode === 'practice' ? search.mode : undefined,
   }
 }
 
@@ -280,6 +349,8 @@ const aboutRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  solveRoute,
+  studioRoute,
   reviewRoute,
   studySessionRoute,
   chatRoute.addChildren([chatIndexRoute, chatDetailRoute]),

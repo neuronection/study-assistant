@@ -18,6 +18,10 @@
   --as-muted-fg: var(--muted-foreground);
   --as-focus-ring: var(--ring);
   --as-radius: var(--radius);
+  --hl-yellow: #eab308;
+  --hl-green: #22c55e;
+  --hl-blue: #3b82f6;
+  --hl-pink: #ec4899;
 }
 
 .dark {
@@ -47,4 +51,8 @@
   --as-shadow-1: 0 1px 2px 0 oklch(0 0 0 / 0.25);
   --as-shadow-2: 0 2px 4px -1px oklch(0 0 0 / 0.3), 0 4px 12px -2px oklch(0 0 0 / 0.35);
   --as-shadow-3: 0 4px 8px -2px oklch(0 0 0 / 0.35), 0 12px 24px -4px oklch(0 0 0 / 0.45);
+  --hl-yellow: #facc15;
+  --hl-green: #4ade80;
+  --hl-blue: #60a5fa;
+  --hl-pink: #f472b6;
 }

@@ -1,11 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  MAX_MISSING_RATIO,
-  LOCALES,
-  availableLocales,
-  missingRatio,
-} from './locales'
+import { MAX_MISSING_RATIO, missingRatio } from './locale-audit'
+import { LOCALES, availableLocales } from './locales'
 
 describe('locale manifest', () => {
   test('English is always the source and always available', () => {
@@ -29,5 +25,6 @@ describe('locale manifest', () => {
   test('native names are not translated', () => {
     const el = LOCALES.find((locale) => locale.code === 'el')
     expect(el?.name).toBe('Ελληνικά')
+    expect(el?.flag).toBe('🇬🇷')
   })
 })

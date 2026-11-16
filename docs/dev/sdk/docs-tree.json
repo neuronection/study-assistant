@@ -2,7 +2,7 @@
   "version": 1,
   "project": "study-extension-sdk",
   "title": "Study Assistant extension SDK",
-  "description": "Authoring and operating Study Assistant's extension surface over the family extension charter: the bundled connectors (external sources, discovery, MCP servers), the vendored ADR-0035 web-search trio, per-tool discovery/parse contracts with keyring-sealed secrets, and the T3 MCP instance lifecycle.",
+  "description": "Authoring and operating Study Assistant's extension surface over the family extension charter: the bundled connectors (external sources, discovery, MCP servers), the vendored web-search trio, per-tool discovery/parse contracts with keyring-sealed secrets, and the T3 MCP instance lifecycle.",
   "chapters": [
     "overview",
     "quickstart",
@@ -98,7 +98,7 @@
     {
       "id": "versioning-and-migration",
       "title": "Versioning & Migration",
-      "description": "The extension/v1 envelope policy, append-only vocabularies, and the ADR-0035 sync law: vendored paths change via the dev canonical only.",
+      "description": "The extension/v1 envelope policy, append-only vocabularies, and the contract sync law: vendored paths change via the dev canonical only.",
       "audience": "dev",
       "file": "versioning-and-migration.md"
     },

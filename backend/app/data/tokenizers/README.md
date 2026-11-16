@@ -1,4 +1,4 @@
-# Bundled tokenizer assets (plan 52 T5a)
+# Bundled tokenizer assets
 
 These files are **data**, never code. The tokenizer service loads them from
 this directory (which the packaging spec ships as `app/data`) and never
@@ -19,7 +19,7 @@ Licence: the tiktoken library and its encoding data are MIT-licensed
 (OpenAI).
 
 Hugging Face `tokenizer.json` assets do **not** live here. Study has no
-concrete HF model mapping in plan 52 T5a, so the service exposes only the
+concrete HF model mapping, so the service exposes only the
 spec interface and degrades that kind visibly; a later wave may pre-seed
 verified assets under `<data_dir>/tokenizers/<sha256>/tokenizer.json`.
 `sentencepiece` remains reserved and unsupported until a concrete model

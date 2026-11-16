@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, X } from 'lucide-react'
+import { Highlighter, Pencil, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -12,7 +12,11 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {
   addMaterialDrawing,
+  createMaterialAnchor,
+  deleteAnchor,
   deleteMaterialDrawing,
+  listMaterialAnchors,
+  patchAnchor,
   editExtraction,
   getMaterial,
   reocrMaterialDrawing,
@@ -20,9 +24,11 @@ import {
   updateMaterialDrawing,
 } from '@/lib/api'
 import { useTextSelection } from '@/lib/useTextSelection'
+import { useDocumentHighlights } from '@/lib/useDocumentHighlights'
 import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 import { askMaterial } from '@/features/chat/useMaterialAsk'
 import { MindmapViewer } from './MindmapViewer'
+import { HighlightsPanel } from './HighlightsPanel'
 import { SelectionToolbar } from './SelectionToolbar'
 import { isTextMaterial } from './textMaterial'
 import { SegmentedControl } from '@/components/motion/SegmentedControl'
@@ -44,11 +50,58 @@ export function ExtractionView({
   const [draft, setDraft] = useState('')
   const [draftDescription, setDraftDescription] = useState('')
   const [editTab, setEditTab] = useState<EditTab>('content')
+  const [highlightsOpen, setHighlightsOpen] = useState(false)
+  const [highlightError, setHighlightError] = useState<string | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const { capture, clear } = useTextSelection(contentRef)
   const { data, isLoading } = useQuery({
     queryKey: ['material', materialId],
     queryFn: () => getMaterial(materialId),
+  })
+  const anchorsQuery = useQuery({
+    queryKey: ['anchors', materialId],
+    queryFn: () => listMaterialAnchors(materialId),
+  })
+  const anchors = anchorsQuery.data ?? []
+  const { jumpTo } = useDocumentHighlights(
+    contentRef,
+    anchors,
+    data?.extraction?.id ?? null
+  )
+  const createAnchor = useMutation({
+    mutationFn: (quote: string) =>
+      createMaterialAnchor(materialId, {
+        anchor_kind: 'text_range',
+        quote,
+        color: 'yellow',
+        source: 'user',
+      }),
+    onSuccess: async () => {
+      setHighlightError(null)
+      await queryClient.invalidateQueries({ queryKey: ['anchors', materialId] })
+      setHighlightsOpen(true)
+    },
+    onError: (error) => {
+      setHighlightError(error instanceof Error ? error.message : String(error))
+    },
+  })
+  const editAnchor = useMutation({
+    mutationFn: ({
+      anchorId,
+      body,
+    }: {
+      anchorId: string
+      body: { note_md?: string | null; color?: string }
+    }) => patchAnchor(anchorId, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['anchors', materialId] })
+    },
+  })
+  const removeAnchor = useMutation({
+    mutationFn: (anchorId: string) => deleteAnchor(anchorId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['anchors', materialId] })
+    },
   })
 
   const drawingAdapter = useMemo<DrawingAdapter>(
@@ -252,6 +305,16 @@ export function ExtractionView({
           })}
         </p>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={highlightsOpen}
+            onClick={() => setHighlightsOpen((previous) => !previous)}
+          >
+            <Highlighter className="size-3.5" aria-hidden />
+            {t('library.highlightsTitle')}
+            {anchors.length > 0 ? ` (${anchors.length})` : ''}
+          </Button>
           <ReadAloudButton markdown={data.extraction.markdown} />
           <Button
             variant="ghost"
@@ -264,23 +327,49 @@ export function ExtractionView({
           </Button>
         </div>
       </div>
-      <div ref={contentRef}>
+      <div>
         {data.index_card?.summary ? (
           <p className="bg-subtle text-muted-foreground rounded-md p-3 text-xs">
             {data.index_card.summary}
           </p>
         ) : null}
-        <BlockRenderer
-          blocks={data.extraction.blocks as Block[]}
-          resolveDrawing={(id) => data.drawings.find((entry) => entry.id === id)}
-          resolveImage={(id) => data.images.find((entry) => entry.id === id)}
-        />
+        <div ref={contentRef}>
+          <BlockRenderer
+            blocks={data.extraction.blocks as Block[]}
+            resolveDrawing={(id) => data.drawings.find((entry) => entry.id === id)}
+            resolveImage={(id) => data.images.find((entry) => entry.id === id)}
+          />
+        </div>
       </div>
+      {highlightsOpen ? (
+        <div className="space-y-2">
+          {highlightError !== null ? (
+            <p className="text-danger text-xs" role="alert">
+              {highlightError}
+            </p>
+          ) : null}
+          <HighlightsPanel
+            anchors={anchors}
+            busy={editAnchor.isPending || removeAnchor.isPending}
+            onPatch={async (anchorId, body) => {
+              await editAnchor.mutateAsync({ anchorId, body })
+            }}
+            onDelete={async (anchorId) => {
+              await removeAnchor.mutateAsync(anchorId)
+            }}
+            onJump={jumpTo}
+          />
+        </div>
+      ) : null}
       {capture !== null ? (
         <SelectionToolbar
           capture={capture}
           onAsk={askAboutSelection}
           onQuote={onQuoteSelection === undefined ? undefined : quoteSelectionToNote}
+          onHighlight={() => {
+            createAnchor.mutate(capture.text)
+            clear()
+          }}
         />
       ) : null}
     </div>

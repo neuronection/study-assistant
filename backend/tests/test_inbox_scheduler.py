@@ -88,7 +88,7 @@ def make_scheduler(inbox_dir: Path, published: list[tuple[str, dict[str, Any]]])
     )
     scheduler = ScanScheduler(
         app.state.session_factory,
-        app.state.settings.blobs_dir,
+        app.state.blobs,
         RecordingJobs(),  # type: ignore[arg-type]
         lambda topic, payload: published.append((topic, payload)),
         interval_sec=300,

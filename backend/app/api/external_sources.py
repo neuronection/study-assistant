@@ -17,7 +17,7 @@ from ..services.content import external_sources as external
 from ..services.platform.backup import BackupError, build_backup
 from ..services.platform.profiles import ensure_default_profile
 from .backup import apply_restore
-from .deps import get_session
+from .deps import get_session, require_local_blob_storage
 
 router = APIRouter(prefix="/external-sources", tags=["external-sources"])
 
@@ -479,9 +479,10 @@ def upload_backup(
 ) -> BackupUploadOut:
     profile = ensure_default_profile(session)
     source = _owned_source(session, profile.id, source_id)
+    require_local_blob_storage(request)
     settings = request.app.state.settings
     try:
-        data = build_backup(settings.db_path, settings.blobs_dir, database_url=settings.db_url)
+        data = build_backup(settings.db_path, request.app.state.blobs, database_url=settings.db_url)
     except BackupError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")

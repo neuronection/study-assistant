@@ -8,12 +8,12 @@ single source of truth for what exists and what phase we are in.** Longer-range
 planning documents (plans, roadmap, ADR register) live outside this
 repository and are not part of it — there is no repo-root `dev/` directory.
 
-**Identity class D** (family ADR-0013): web/server mode is always
+**Identity class D**: web/server mode is always
 authenticated with user management; desktop initializes `auth_mode=open`
 (implicit local owner + Default profile, zero auth UI) unless explicitly
 initialized as `authenticated`. Study spaces are **profiles** — 1:N per user,
 owned via `users`; `X-Profile-Id` is validated against the session user (403
-on mismatch, 400 when absent in web mode). Datastore (family ADR-0022):
+on mismatch, 400 when absent in web mode). Datastore:
 SQLite for desktop, **PostgreSQL 16 for web/server** — supersedes
 SQLite-in-Docker; the FTS5/sqlite-vec stack gains Postgres dialect twins.
 

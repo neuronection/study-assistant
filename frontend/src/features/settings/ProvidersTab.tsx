@@ -16,7 +16,6 @@ import {
 import { getCountryFlag } from '@neuronection/assistant-ui/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
-import { LocalEngines } from './LocalEngines'
 import { ProviderSetupModal } from './ProviderSetupModal'
 import { ReRunSetupDialog } from './ReRunSetupDialog'
 import { useConfirm } from '@/lib/use-confirm'
@@ -197,9 +196,6 @@ export function ProvidersTab() {
               <Sparkles aria-hidden />
               {t('onboarding.runWizard')}
             </Button>
-          </div>
-          <div className="mx-auto max-w-sm pt-2 text-left">
-            <LocalEngines />
           </div>
         </div>
       ) : null}

@@ -362,6 +362,13 @@ class DesktopBridge:
             return None
         return folder
 
+    def pick_data_dir(self) -> str | None:
+        window = self._window
+        if window is None:
+            return None
+        selected = window.create_file_dialog(webview.FileDialog.FOLDER)
+        return selected[0] if selected else None
+
 
 def run() -> None:
     sanitize_environment()

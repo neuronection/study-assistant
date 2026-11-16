@@ -3,7 +3,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-STRUCT_KINDS = ("matching", "ordering", "categorize", "fill_blank")
+STRUCT_KINDS = ("matching", "ordering", "categorize", "fill_blank", "diagram_label")
 BLANK_RE = re.compile(r"\{\{(\d+)\}\}")
 
 
@@ -78,6 +78,45 @@ def validate_structural_payload(kind: str, payload: Mapping[str, Any]) -> list[s
             category = item.get("category")
             if not isinstance(category, int) or not 0 <= category < len(categories):
                 problems.append(f"item {index}: category index out of range")
+    elif kind == "diagram_label":
+        image_sha = str(payload.get("image_sha", "")).strip()
+        if not image_sha:
+            problems.append("diagram_label: image_sha is required")
+        hotspots = _as_list(payload.get("hotspots"))
+        if not 1 <= len(hotspots) <= 20:
+            problems.append("diagram_label: 1-20 hotspots required")
+            return problems
+        labels: set[str] = set()
+        ids: set[str] = set()
+        for index, spot in enumerate(hotspots):
+            if not isinstance(spot, dict):
+                problems.append(f"hotspot {index}: not an object")
+                continue
+            spot_id = str(spot.get("id", "")).strip()
+            label = str(spot.get("label", "")).strip()
+            if not spot_id or spot_id in ids:
+                problems.append(f"hotspot {index}: missing or duplicate id")
+            if not label or normalize_text(label) in labels:
+                problems.append(f"hotspot {index}: missing or duplicate label")
+            ids.add(spot_id)
+            labels.add(normalize_text(label))
+            try:
+                x = float(spot.get("x", 0))
+                y = float(spot.get("y", 0))
+                w = float(spot.get("w", 0))
+                h = float(spot.get("h", 0))
+            except (TypeError, ValueError):
+                problems.append(f"hotspot {index}: coordinates must be numbers")
+                continue
+            if min(x, y) < 0 or w <= 0 or h <= 0 or x + w > 1.0001 or y + h > 1.0001:
+                problems.append(f"hotspot {index}: region outside the image")
+        bank = [str(entry).strip() for entry in _as_list(payload.get("labels"))]
+        if bank:
+            if len({normalize_text(entry) for entry in bank}) != len(bank):
+                problems.append("diagram_label: duplicate label in bank")
+            missing = labels - {normalize_text(entry) for entry in bank}
+            if missing:
+                problems.append("diagram_label: label bank misses a hotspot label")
     elif kind == "fill_blank":
         prompt_md = str(payload.get("prompt_md", ""))
         answers = _as_list(payload.get("answers"))
@@ -152,6 +191,31 @@ def check_structural(kind: str, payload: Mapping[str, Any], response: Any) -> tu
             if hits == len(entries)
             else f"categorize: {hits}/{len(entries)} items sorted correctly"
         )
+    if kind == "diagram_label":
+        hotspots = _as_list(payload.get("hotspots"))
+        expected = {
+            str(spot.get("id")): normalize_text(str(spot.get("label", "")))
+            for spot in hotspots
+            if isinstance(spot, dict)
+        }
+        placements = response if isinstance(response, list) else []
+        chosen: dict[str, str] = {}
+        for entry in placements:
+            if not isinstance(entry, dict):
+                return False, "diagram_label: malformed response"
+            hotspot_id = str(entry.get("hotspot_id", ""))
+            label = normalize_text(str(entry.get("label", "")))
+            if hotspot_id in chosen:
+                return False, "diagram_label: hotspot labelled twice"
+            chosen[hotspot_id] = label
+        hits = sum(
+            1 for hotspot_id, label in expected.items() if chosen.get(hotspot_id) == label
+        )
+        return hits == len(expected), (
+            "diagram_label: correct"
+            if hits == len(expected)
+            else f"diagram_label: {hits}/{len(expected)} labels correct"
+        )
     if kind == "fill_blank":
         answers = _as_list(payload.get("answers"))
         values = _as_list(response)
@@ -198,6 +262,28 @@ def public_input(kind: str, payload: Mapping[str, Any], seed: str) -> dict[str, 
             "widget": "categorize",
             "categories": [str(entry) for entry in _as_list(payload.get("categories"))],
             "items": [str(entry.get("label", "")) for entry in _as_list(payload.get("items"))],
+        }
+    if kind == "diagram_label":
+        hotspots = _as_list(payload.get("hotspots"))
+        labels = [str(entry).strip() for entry in _as_list(payload.get("labels"))]
+        if not labels:
+            labels = [str(spot.get("label", "")) for spot in hotspots]
+        rnd.shuffle(labels)
+        return {
+            "widget": "diagram_label",
+            "image_sha": str(payload.get("image_sha", "")),
+            "hotspots": [
+                {
+                    "id": str(spot.get("id", "")),
+                    "x": float(spot.get("x", 0)),
+                    "y": float(spot.get("y", 0)),
+                    "w": float(spot.get("w", 0)),
+                    "h": float(spot.get("h", 0)),
+                }
+                for spot in hotspots
+            ],
+            "labels": labels,
+            "mode": str(payload.get("mode", "click")),
         }
     if kind == "fill_blank":
         prompt_md = str(payload.get("prompt_md", ""))

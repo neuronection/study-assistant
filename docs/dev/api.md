@@ -1,7 +1,7 @@
 # REST API
 
 The backend exposes one versioned JSON API under `/api/v1`, plus a WebSocket at
-`/ws`. **Every request is authenticated** (identity-auth ADR-0013, §4): browser
+`/ws`. **Every request is authenticated** (identity-auth, §4): browser
 sessions ride the §10 cookie triple (`nx_access` / `nx_refresh` / `nx_csrf`)
 with double-submit CSRF; non-browser clients may use
 `Authorization: Bearer <session token>`. Unauthenticated calls ⇒ 401. The
@@ -29,7 +29,7 @@ background work.
 | Materials | `materials`, `blobs_router` | Upload, detail, extraction versions, drawings, blob serving |
 | Search | `search` | Hybrid search hits with node placements |
 | Discovery | `discovery`, `external_sources`, `mcp_servers` | Provider search, external sources, MCP connectors |
-| Extensions | `extensions` (`/extensions/{id}/documentation`) | Per-extension docs surface: the bundle's docs tree + markdown pages (plan 34 wave 8) |
+| Extensions | `extensions` (`/extensions/{id}/documentation`) | Per-extension docs surface: the bundle's docs tree + markdown pages |
 | Library | `folders`, `sources`, `fs` | Folders, linked sources, filesystem browsing |
 | Courses | `courses` | Courses, tree nodes, tree operations |
 | Chat | `chat` | Sessions, turns, proposals, tools |
@@ -42,8 +42,10 @@ background work.
 
 DTOs are Pydantic models; shared schemas live in `api/schemas.py` and
 `api/courses_schemas.py`, area-specific shapes in their router module.
+The `/config/working-dir*` routes are desktop-only and return 404 on server
+identity; the desktop shell resolves the OS folder picker through its bridge.
 
-### Connected-source surface (plan 86)
+### Connected-source surface
 
 `/external-sources` keeps the original CRUD and adds the provider seam:
 `GET /external-sources/providers` returns the catalog (labels, kinds,
@@ -131,7 +133,7 @@ treat them as opaque: no parsing, validation or numeric coercion. The generated
 schema is the wire truth — hand-written client types may narrow optionality but
 must not redeclare entity ids as numbers.
 
-**Generated-types-only rule (plan 82 B, ADR-203).** Every module in
+**Generated-types-only rule.** Every module in
 `frontend/src/lib/api/` imports `@/lib/api-schema`; a wire shape is a
 `components['schemas'][…]` alias, never a hand-redeclared interface. Where a
 DTO is genuinely open (block documents, widget input maps, `provenance`

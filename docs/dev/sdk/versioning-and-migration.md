@@ -25,7 +25,7 @@ The vocabularies this set documents are wire law, and they only grow:
   changes in lockstep with desktop's TS adapters and the fixture
   wall); removing or renaming one is a breaking change (below).
 
-## The ADR-0035 sync law
+## The sync law
 
 The web-search trio, the charter set, and the docs-tree contract are
 **byte-identical vendored copies** — never edited in-repo. The law, in
@@ -67,7 +67,7 @@ suite through the vendored validator).
 ## The no-shims doctrine
 
 Old shapes are deleted in the adopting commit, not shimmed: the lazy
-migration from the pre-plan-28 single-provider preference rewrote rows
+migration from the earlier single-provider preference rewrote rows
 once and dropped the old key; the legacy keyring slot moved with it.
 There is no compatibility layer to target — write against the shapes
 in [Reference](reference.md) as they are today.

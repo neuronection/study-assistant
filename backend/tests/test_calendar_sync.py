@@ -11,9 +11,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace as dc_replace
 from datetime import date
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
+import nx_auth.oauth as nx_oauth
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -22,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.domain.models import CalendarEventLink, CalendarLink, PlanItem
 from app.extensions.cloud import cloud_calendar as cc
 from app.services.study import calendar_sync as service
+from app.services.study import cloud_oauth
 
 
 class FakeTransport:
@@ -1035,3 +1038,58 @@ def test_failure_detail_scrubs_feed_query_tokens(client: TestClient, db_session:
         assert stored is not None and stored.last_error is not None
         assert "SECRET-X" not in stored.last_error
         assert "<redacted>" in stored.last_error
+
+
+def test_oauth_disconnect_revokes_before_deleting_local_grant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+    tokens = nx_oauth.TokenSet(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        expires_at=None,
+        scope=None,
+    )
+    provider_row = SimpleNamespace(oauth=SimpleNamespace(revoke_url="https://provider.test/revoke"))
+
+    class Vault:
+        def find(self, binding_id: str) -> Any:
+            assert binding_id == "link-1"
+            return tokens
+
+    monkeypatch.setattr(service, "provider", lambda provider_id: provider_row)
+    monkeypatch.setattr(cloud_oauth, "vault_for", lambda link_id: Vault())
+    monkeypatch.setattr(
+        service,
+        "oauth_client",
+        lambda row, link: SimpleNamespace(client_id="client-id", client_secret=None),
+    )
+
+    def fake_post(
+        url: str, *, data: dict[str, str], timeout: float, follow_redirects: bool
+    ) -> None:
+        calls.append((url, data))
+        assert timeout == 5.0
+        assert follow_redirects is False
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    link = SimpleNamespace(id="link-1", provider="google", auth_kind="oauth2", direction="push")
+
+    service._revoke_oauth_grant(link)  # type: ignore[arg-type]
+
+    assert calls == [
+        (
+            "https://provider.test/revoke",
+            {
+                "token": "refresh-token",
+                "token_type_hint": "refresh_token",
+                "client_id": "client-id",
+            },
+        )
+    ]
+
+    def failing_post(*args: Any, **kwargs: Any) -> None:
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(httpx, "post", failing_post)
+    service._revoke_oauth_grant(link)  # type: ignore[arg-type]

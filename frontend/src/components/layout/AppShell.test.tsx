@@ -314,8 +314,8 @@ describe('AppShell rail', () => {
 
   test('primary navigation routes Courses through onNavigate', async () => {
     renderShell()
-    expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: 'Courses' }))
+    const nav = await screen.findByRole('navigation', { name: 'Main navigation' })
+    await fireEvent.click(within(nav).getByRole('button', { name: 'Courses' }))
     expect(navigate).toHaveBeenCalledWith({ to: '/courses' })
   })
 

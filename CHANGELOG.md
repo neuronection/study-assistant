@@ -11,6 +11,479 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+- **Deployment conformance (plan 64 W1-C: ADR-0062 v7 §3-§5, ADR-0063,
+  ADR-0064).** Two DB roles, two credentials: the owner DSN
+  (`SA_MIGRATIONS_DATABASE_URL` / `SA_DB_OWNER_PASSWORD`) now lives only in
+  the one-shot `migrate` service — the `app` service carries the app DSN
+  alone, and `entrypoint.sh serve` refuses a boot that carries the owner
+  DSN. Every `migrate` run bootstraps/syncs the app role as owner (create,
+  password rotation, DML-only grants, `ALTER DEFAULT PRIVILEGES`,
+  `vector`/`pg_trgm` verification with a managed allow-list note) and
+  provisions the checkpoint schema; migrate mode resolves the ADR-0064
+  tri-state (split / legacy warning / `SA_DB_SPLIT=1` without a URL
+  refuses to boot). New `GET /ready` ingress probe (DB at migration head,
+  required storage, boot complete; 503 otherwise; soft signals — Redis is
+  `none` — never flip the status) beside the unchanged
+  `GET /api/v1/health`. Cookie `Secure` is now **derived from the public
+  scheme** (`SA_PUBLIC_URL` or `SA_TLS=1`; explicit `SA_COOKIE_SECURE`
+  still wins) so LAN/VPN logins over HTTP keep working;
+  `SA_TRUSTED_PROXY_COUNT` is wired in both compose flavors. Backups:
+  `scripts/backup.sh` uploads off-host (rclone / aws s3 / azcopy via env),
+  appends a `backup_runs.jsonl` ledger row per run, and `restore.sh`
+  re-grants the app role after `pg_restore`; the restore drill is
+  documented in `docs/dev/deployment.md`. Desktop (`python -m
+  studyassistant`) is unchanged; the macOS packaging gap stays documented.
+- **Read-only storage status card and `app.storage` settings domain (plan 55
+  P4b2).** Admins get Settings → Developer → Storage, a read-only card fed by
+  `GET /api/v1/admin/storage/status`: backend, bucket/container, prefix,
+  region/endpoint host, SSE, per-object cap, presign TTL and the cached live
+  health row, with a **Test connection** action (`?refresh=true` forces a
+  fresh probe). There is no credential form, provider tile or backend switch —
+  changing backends stays a verified migration. Non-admins receive 403 and
+  cannot deep-link the section; desktop renders nothing. The response redacts
+  credentials, connection strings, presigned URLs and the full endpoint URL.
+  The family `app.storage` settings-map domain (scope `instance (admin)`,
+  secrets `none`) is declared and vendored; the conformance test pins study's
+  developer sections. Tests: `test_storage_status.py` (admin/non-admin,
+  redaction, cache/refresh) and `StorageStatusCard.test.tsx`
+  (render/refresh/error, non-admin/desktop).
+- **Storage health is on `/api/v1/health` and boots log a redacted storage
+  line.** The health row reports the backend, `ok`/`degraded`/`unavailable`
+  and whether storage is required; the probe is cached for 30 s and bounded
+  to 5 s (a slow provider cannot outlive the healthcheck), a transient
+  provider failure or probe timeout degrades open (200), and the endpoint
+  returns 503 only when storage is required or the failure is sustained. A
+  missing bucket is still a boot error. The manual `Cloud storage smoke`
+  workflow runs the AWS and Azure provider tests on demand; normal PRs stay
+  local-only.
+- **Adopted the family object-storage contract (plan 55 P1 / ADR-0057).**
+  `BlobStore` is now a thin wrapper over the vendored
+  `app/storage/object_storage.py`: the legacy `<aa>/<bb>/<sha>` layout and
+  `put/get/has/known_shas` are unchanged, writes are atomic through the
+  contract, and new `stream`/`materialize`/`delete` methods replace durable
+  path use. Every direct `blobs_dir` seam was re-seamed (sources, course
+  export/import/duplicate, scan scheduler, lecture purge, blob streaming),
+  `SA_*` storage settings bootstrap `app.state.objects`, and the web image
+  installs the optional `object-storage-s3` extra. The effective storage cap
+  tracks the host's 200 MB upload ceiling (oversized uploads return 413, not
+  500), and blob downloads use `attachment` + `no-store` + `nosniff` by
+  default (inline only for images). The library's PDF original view fetches
+  the bytes and renders a revocable `blob:` URL, so the download policy stays
+  intact without breaking in-app preview. Backup/restore/reset stay
+  desktop/local-only: an object backend returns 409 instead of archiving an
+  empty `blobs/` tree, and the compose backup sidecar skips its `/data` tar
+  under a cloud profile. Desktop behavior and data directories are unchanged.
+  New contract/migration tests plus an env-gated MinIO/S3 smoke test are
+  documented in `docs/dev/storage.md`.
+- **Retired compatibility paths removed (no users exist).** The
+  `price_source='legacy'` marker is gone from the enum/CHECK (migration
+  `0035_drop_legacy_price_source` maps any residue to `unknown`), and the
+  pre-scope global audio-cache purge (`purgeLegacyAudioCache` and its
+  localStorage key) is deleted. New installs carry no migration state.
+
+## [0.13.0] - 2026-11-13
+
+### Changed
+- **Revoked account rows use the library sign-out flag (plan 60 Phase 4 follow-up).**
+  `@neuronection/assistant-ui` moves to `^0.88.0` and Settings → Account marks
+  already-revoked sessions with the row's `revoked` flag instead of an app-side
+  chip: the library renders its **Signed out** badge (`labels.revoked` stays the
+  localized `settings.account.sessionRevoked`) and no **Sign out** action, so
+  `revoked_at` sessions are read-only content rather than a no-op button. Active
+  rows keep the confirm-then-revoke flow, the current-session sign-out warning
+  and the per-row busy state; a successful revoke now returns focus to the
+  sessions heading and the result line is announced (`role="status"`). This
+  supersedes the 0.86.0 note above (revoked rows carried the action then).
+- **Onboarding provider setup uses the shared provider grid (plan 113 C/D).**
+  The wizard's provider step now reuses the same `ProviderSetupTiles` +
+  `ProviderSetupForm` flow as Settings, including capability chips, guided key
+  checklists and the local-engine companion tile. Preset setup hides the
+  auto-derived connection name, hosting and country; the Custom path keeps the
+  fields it needs. Local-engine adds route through the preset setup when the
+  detected engine is a known preset, and the legacy
+  `useProviderCreate`/`ProviderCreateFields` path is deleted. The standalone
+  local-engine block in the Providers empty state is replaced by the grid tile.
+  The wizard's **Pick default models** step now uses the same library
+  `TaskAssignmentPicker` as Settings → AI → Tasks and auto-fills missing
+  capabilities from enabled models; wizard provider setup binds curated
+  defaults instead of passing all `bind_*: false`.
+- **Onboarding data location is desktop-only and explicit (plan 113 A/B).** The
+  first-run wizard hides the working-directory step on server identity, and the
+  welcome copy no longer claims local-only storage there. The shared
+  `WorkingDirEditor` now shows the current path read-only until **Change
+  folder…** is chosen; the desktop shell opens the system folder picker through
+  a dedicated `pick_data_dir` bridge that does not register the data directory
+  as an upload root, while browser development falls back to manual editing.
+  Settings → Data hides the same card on server identity, and the config routes
+  return 404 there. The restart-pending banner no longer prints the current
+  path as if it were the pending one.
+- **Account sessions render through the shared library list (plan 60 Phase 4).**
+  `@neuronection/assistant-ui` moves to `^0.86.0` and Settings → Account uses
+  the library `AccountSessionList` (new `components/ui/account-session-list`
+  shim): the local session-row markup is gone, rows keep the signed-in/expiry
+  line, the current-session badge and the "Signed out" chip, and a revoke in
+  flight disables only that row's button until the request settles. Revoked
+  rows now also carry the library sign-out control (the shared row has no hide
+  action; the server DELETE is idempotent), as career documents. The
+  confirmation dialog, error banner and password/account-deletion flows are
+  unchanged.
+- **The canonical extension source grammar is vendored** as
+  `backend/app/extensions/extension_sources.py` (byte-identical to the family
+  contract, synced by `scripts/sync-extension-contract.sh`). Nothing consumes
+  it yet — it is the one parser for extension-source URL / ref / subpath /
+  commit-sha / archive-entry grammar, so no behaviour changes.
+
+### Added
+- **Data & Cost (plan 58 P1).** AI calls now record integer micro-USD cost plus
+  provenance at call time (`usage_source`, `estimate_method`, `price_source`,
+  `price_version`); the old float `cost_usd` and per-model `cost_in/cost_out`
+  are migrated once to exact `ai_price_overrides` rows and dropped. The Data
+  tab shows month/task totals, recent calls, built-in list prices and custom
+  overrides (`/api/v1/ai/prices`), with the standard/uncached/non-batch
+  disclaimer. Existing money caps are stored as `monthly_cap_micros`.
+- **Capture inbox (plan 90-A).** The New menu's **Take photo…** action stages
+  camera/file photos first: a capture inbox lists them with status, size and a
+  preview, and only **Add** commits one into the open course/topic through the
+  normal upload + OCR path. Staged captures expire after 7 days by status only
+  (no blob deletion); a profile-scoped `client_op_id` makes offline replays
+  idempotent. Backend: `capture_staging` + `capture_tokens` (migration 0020),
+  `/api/v1/capture` stage/list/commit/discard, and a device-credential token
+  service for the upcoming share target/clipper.
+- **Text highlights (plan 90-B).** Select a passage in a material and choose
+  **Highlight**; the mark stores the extraction version, quote and occurrence,
+  keeps an optional note and one of four colors, and appears in the reading
+  header's Highlights panel. Extraction edits and re-ingest re-locate a highlight by quote or
+  mark it **source changed**; highlights are excluded from course bundles.
+  Backend: `document_anchors` (migration 0021), the `AnchorPayload` validator
+  and `/api/v1/materials/{id}/anchors` + `/api/v1/anchors/{id}`.
+- **Offline capture journal (plan 90-E).** Photos taken without a connection
+  wait in the capture inbox as **Waiting for connection**, saved in IndexedDB
+  (session-only where durable storage is unavailable), and drain
+  automatically on reconnect through the same staging endpoint with an
+  idempotent client op id. Retry / Retry all / Remove per item; one failed
+  capture never blocks the others. No schema change.
+- **Secure-connection report (plan 92-G).** Settings → General → Connection
+  shows whether the current origin can install the app, accept a phone share,
+  use the microphone and show notifications, with an honest **Plain HTTP**
+  state and a "what needs HTTPS" note instead of controls that silently
+  vanish. Adds `lib/secure-context.ts`, a `docs/dev/tls-and-secure-context.md`
+  guide (bundled nginx TLS, Caddy, local CA) and a TLS section link; desktop
+  reports **Desktop app** separately. No schema change.
+- **Installable web app + mobile shell (plan 92-A).** The web build now ships
+  a manifest with maskable icons and a small app-shell service worker
+  (production, secure origins only; `/api` and `/ws` stay network-only), an
+  install action in Settings → General → Connection, and a mobile bottom bar
+  (**Home · Courses · Review · Capture · More**, with search in More). The
+  shell uses `100dvh`/safe-area insets and leaves room for the bar; Capture
+  enqueues through the offline journal, so a photo can be taken and filed
+  from any page. **Offline review ratings** are queued in the same journal,
+  replayed with their original review time (`reviewed_at`), with a
+  **rating saved offline / Sync now** pill; the review endpoint accepts
+  `reviewed_at` inside a 30-day, no-future window. No schema change.
+- **Multi-page scans (plan 92-B).** When more than one photo is staged, the
+  capture inbox shows a page filmstrip: reorder, rotate in 90° steps, remove a
+  page, name the scan, and **Combine into PDF**. The server assembles the pages
+  with PyMuPDF into one staged PDF, discards the source image rows and commits
+  through the normal upload/OCR path. Tests: `test_capture_api.py`,
+  `ScanPages.test.tsx`.
+- **Study pace settings (plan 99-A).** Settings → General → Study pace adds
+  Light / Standard / Intense presets plus retention target, maximum interval,
+  daily new/review caps, leech threshold, sibling burying and load balancing.
+  FSRS parameters resolve course → profile → defaults, so existing profiles
+  keep today's 90%/365-day behaviour until they opt in; per-course overrides
+  are available through `/api/v1/study/courses/{id}/fsrs`. Schema: migration
+  0022 (`fsrs_settings`, `course_fsrs_overrides`). Tests:
+  `test_fsrs_settings.py`, `FsrsSettingsCard.test.tsx`.
+- **Review filters, preview mode and daily cap (plan 99-B).** The review page
+  gains Due today / Ahead N days filters, saved profile-scoped filters, a
+  **Preview** chip with **Reschedule as reviewed**, and a daily-cap banner.
+  Preview ratings log `review_log.source=cram_preview` without touching FSRS;
+  real reviews stay `review`. `GET /review/due` accepts filter/course/node/
+  window/order/limit, returns `preview`/`capped`/`remaining_today`, and honors
+  the profile's reviews-per-day cap. Schema: migration 0023 (`review_filters`,
+  `review_log.source`). Tests: `test_review_api.py` (filters, preview, cap),
+  `ReviewPage.test.tsx` (preview path).
+- **Retention & workload analytics (plan 99-D).** Scores gains a **Retention**
+  tab: true recall over the last 90 days vs the target, young/mature interval
+  buckets, review/lapse counts, and a 30-day workload chart with new-card
+  availability and the peak day. New endpoints `GET /analytics/retention` and
+  `/analytics/workload` are honest about empty samples. No schema change.
+  Tests: `test_analytics_retention.py`, `RetentionTab.test.tsx`.
+- **Adaptive weekly plan (plan 99-C).** Home gains **Plan my week**: a
+  deterministic cross-course draft paced by exam proximity, weak concepts, due
+  cards, untouched topics and daily capacity, with per-day minutes, evidence
+  lines, manual items preserved and an honest overflow count. **Add to plan**
+  writes `origin=generated` rows (replaced as a block on the next commit).
+  Capacity (7 weekday minutes, light week, blackout dates) is editable in the
+  dialog. Migration 0024 widens `plan_items.origin` with `generated`. Tests:
+  `test_adaptive_plan.py`, `WeekPlanDialog.test.tsx`.
+- **Speech-to-text capability gate (plan 94-F).** When no STT task has a model,
+  the chat composer shows an **Assign a speech-to-text model** link instead of a
+  mic that would fail after recording. Tests: dictation panel test.
+- **First-run funnel events (plan 101-F).** Onboarding completion, first review,
+  first finished quiz and first capture are recorded once per browser via a
+  local `sa-first-event.*` dedupe; failed writes retry on the next action.
+  Tests: `activation-events.test.ts`.
+- **One-time contextual tips (plan 101-G).** Library, Review and Practice each
+  show one dismissible first-use tip, persisted as `sa-tip.<id>` and recorded
+  through the local-only counters. No modal tour. Tests: `OneTimeTip.test.tsx`.
+- **Voice settings polish (plan 94-F).** Voice & audio adds a persisted speaking
+  speed used by browser read-aloud and the test phrase, plus an honest audio-
+  input count hint (labels need microphone permission). Tests:
+  `VoiceAudioCard.test.tsx`, `ReadAloudButton.test.tsx`.
+- **Offline audio downloads (plan 94-C).** The global player can cache the
+  current track in the browser Cache API and remove it again; cached audio is
+  served from the cache when the browser is offline. Tests:
+  `AudioPlayerBar.test.tsx`.
+- **Browser voice picker (plan 94-F).** Settings → General → Voice & audio
+  lists the browser voices and persists the choice (`sa-browser-voice`);
+  read-aloud and the test phrase use it. Tests: `VoiceAudioCard.test.tsx`.
+- **Searchable feature map (plan 101-G).** The `?` shortcuts dialog now has a
+  **Find a feature** search over Capture · Read · Practise · Review · Organise ·
+  Configure, with deep links and quick-capture/import actions. Tests:
+  `ShortcutsDialog.test.tsx`.
+- **Frontend performance budget and route splitting (plan 101-D).** Every page
+  route (including Home) is lazy; the shell and chat dock stay eager. German
+  and Greek locale dictionaries load on demand. A deterministic gzip budget
+  (`pnpm --filter frontend check:bundle`) fails CI if the 300 kB entry or
+  900 kB initial JS grows, or a route chunk disappears. Entry went from
+  ~563 kB to ~223 kB gzip. Tests: route-chunk presence + budget script in CI.
+- **Study coach strip (plan 101-G first cut).** Home shows up to two
+  deterministic next-step cards in a fixed priority (first file, due review,
+  exam practice, practise, AI provider), each with one deep-linked CTA and
+  per-rule dismissal persisted locally. Clicks and dismissals feed the
+  first-party counters; no AI call or new data source. Tests:
+  `StudyCoachStrip.test.tsx`.
+- **Activation counters (plan 101-F first cut).** Migration 0034 adds
+  profile-scoped `activation_events` with a closed event vocabulary; Settings →
+  General → Usage insights shows the recorded counts, exports JSON and clears
+  them, with deployment-aware disclosure. Solve completion and
+  moment→card are instrumented. No third-party telemetry or content capture. Tests:
+  `test_activation.py`, `UsageInsightsCard.test.tsx`.
+- **Spoken tutor replies + audio/voice polish (plan 94-E/C/F residuals).**
+  Settings → General adds **Speak tutor replies aloud**; the newest completed
+  assistant message auto-plays through the existing read-aloud engine, and
+  starting dictation cancels speech for barge-in. The global player gains a
+  sleep timer, Voice & audio gains **Test voice**, and transcript search jumps
+  to the first match on Enter. Full voice quiz-me, offline audio downloads and
+  device/voice pickers remain. Tests: read-aloud auto-play, MediaPlayer search.
+- **Global audio player (plan 94-C first cut).** Audio materials now play
+  through one app-shell provider: the recording keeps playing across route
+  changes, a mini-player exposes title/progress/seek/speed/close, track and
+  position persist across reloads, and Media Session metadata is set where
+  supported. Video stays inline. Offline downloads and sleep timer remain.
+  Tests: `AudioPlayerBar.test.tsx`, `MediaPlayer.test.tsx`.
+- **Scheduled daily audio brief (plan 94-D first cut).** Settings → General
+  stores an enabled flag, local time and 5/10/20-minute length. The scan
+  scheduler creates one review-aware audio brief per profile per day for the
+  newest non-scratch course, skips duplicates and reports honestly when there
+  is no course. Home gains a Daily brief card that opens the rendered material
+  or creates today’s brief. Notification delivery and the study-state
+  fingerprint remain. Tests: `test_daily_brief.py`, `DailyBriefCard.test.tsx`.
+- **Voice & audio settings (plan 94-F first cut).** Settings → General now
+  shows the assigned speech-to-text and text-to-speech models, the device-voice
+  fallback, browser speech-synthesis availability and microphone availability,
+  with a direct link to AI task assignments. Device/voice pickers and the test
+  diagnostic remain. Tests: `VoiceAudioCard.test.tsx`.
+- **Artifact browser voice (plan 94-B first cut).** Audio brief specs now carry
+  chapter titles and scripts. When no TTS model is assigned the artifact
+  records `renderer=browser`, and the narration dialog plays the script and
+  each chapter through `speechSynthesis`, with stop, a device-voice badge and
+  an honest unsupported state. Provider audio caching/chapters and the global
+  player remain. Tests: `NarrateDialog.test.tsx`, `test_artifacts.py`.
+- **Lecture STT + text-only retention (plan 93-B/F first cut).** Finalized
+  lectures now run one `lecture_transcribe` job: provider timestamped segments
+  become `media_segments`, missing provider timestamps fall back to proportional
+  sentence windows, and the derived extraction is re-indexed. No assigned STT
+  model leaves the audio ready with an honest error. Text-only sessions carry a
+  7-day audio expiry and are purged lazily once the transcript exists and no
+  other reference needs the blob; the transcript survives and the player hides
+  the expired audio. Migration 0032 widens the job CHECK and adds
+  `audio_purged_at`. Tests: `test_lecture_transcribe.py`, purge in
+  `test_lectures.py`.
+- **Crash-resume and safe lecture containers (plan 93-A).** Recorded parts are
+  written to the shared offline journal before upload, and a saved lecture
+  draft is surfaced by a global **Unfinished lecture recording** banner and
+  offers **Resume upload** after a relaunch: pending parts replay
+  idempotently, then finalize. Finalize now validates the WebM/EBML, Ogg or
+  MP4 box structure and refuses to publish an unplayable file, leaving a failed
+  session with the parts intact. Tests: `test_container.py`, resume case in
+  `LectureRecorderDialog.test.tsx`.
+- **Lecture recording session (plan 93-A first cut).** Materials → New →
+  **Record lecture** starts a consent-gated `MediaRecorder` session with
+  pause/resume, ordered sha-checked chunk upload, idempotent sequence replay,
+  gap checks, and a part/size quota. Stop concatenates the ordered parts into a
+  normal audio material and queues ingest. `lecture_sessions`/`lecture_chunks`
+  arrive in migration 0031. Crash-journal resume, container-box concat
+  validation, text-only purge and live transcription remain. Tests:
+  `test_lectures.py`, `LectureRecorderDialog.test.tsx`.
+- **Study this lecture (plan 93-E first cut).** The media player opens the
+  existing compose builder scoped to the lecture material with a
+  timestamp-preserving instruction, so summaries and study guides use the
+  normal compose pipeline. One-click summary/cards/quiz presets and coverage
+  accounting remain.
+- **Bulk moment cards (plan 93-D residual).** Moments can be selected with
+  checkboxes and turned into a batch of basic cards in one action. Tests:
+  `MediaPlayer.test.tsx`.
+- **Speaker relabel and moment actions (plan 93-D residual).** Transcript edits
+  now carry a speaker label; lecture moments can become a basic flashcard, be
+  quoted into a course note, or be added to today’s plan through the existing
+  APIs. Tests: `MediaPlayer.test.tsx`.
+- **Transcript split/merge (plan 93-C residual).** The media player can split
+  the active segment at the current timestamp and merge a segment with its
+  next neighbour; both rebuild the derived extraction and re-index it. Tests:
+  `test_media.py`, `MediaPlayer.test.tsx`.
+- **Transcript editing + deep links (plan 93-C first cut).** Media transcript
+  segments can be edited inline; an edit rebuilds a new `media_transcript`
+  extraction from the ordered segments and enqueues postprocess for
+  re-chunk/re-embed. Clicking a segment or opening `?t=` seeks the player, and
+  an explicit rebuild endpoint is available. Merge/split UI and speaker
+  relabel remain. Tests: `test_media.py`, `MediaPlayer.test.tsx`.
+- **Review-aware narration (plan 94-A first cut).** The deterministic audio
+  brief now opens with the due-card count and up to two weak concept×skill
+  cells from recent answers before the material and next-step sections. Tests:
+  `test_artifacts.py`.
+- **Lecture moments (plan 93-D first cut).** The media player can mark the
+  current timestamp with a one-line note and the active transcript quote.
+  Moments are `time_range` document anchors (the same contract as text
+  highlights), list below the player, seek back on click and are deletable.
+  No schema change. Lecture recording, incremental STT, full transcript
+  editing and card/quote actions remain. Tests: `MediaPlayer.test.tsx`.
+- **Media player and transcript timeline (plan 90-C first cut).** Audio and
+  video materials now open with a player and a timestamped transcript list:
+  click a line to seek, search the transcript, follow the active segment and
+  change speed. `media_segments` (migration 0030) stores ordered windows;
+  segment create/patch/delete APIs are live, and the existing extraction seeds
+  one full-duration segment when no timestamped transcript exists yet.
+  Incremental timestamped STT, merge/split, extraction re-chunking and the
+  global player remain. Tests: `test_media.py`, `MediaPlayer.test.tsx`.
+- **Artifact registry + Narrate this topic (plan 90-D first cut).** A typed
+  `artifacts` registry (migration 0029) records rendered outputs with status,
+  spec version, output material and job/model/voice, and the new
+  `artifact_render` job renders an `audio_brief`. A node Overview **Narrate
+  this topic** builds a deterministic script from the node and its indexed
+  material summaries, renders through the TTS gateway, and falls back to a
+  browser-voice script material when no model is assigned. One live brief per
+  node, regenerate in place, retry/delete; output lands as a normal material.
+  Review-aware selection, chapters/player, daily brief and voice tutoring
+  remain. Tests: `test_artifacts.py`, `NarrateDialog.test.tsx`.
+- **Studio slide decks and handouts (plan 98-D/E first cut).** A new `/studio`
+  surface (sidebar and palette) turns a course material with extracted text
+  into a deterministic slide deck or handout: headings become sections,
+  paragraphs become short bullets, and the typed spec prints through the normal
+  print path at 16:9 or A4. The generated markdown is saved back to the course
+  library as a normal material; deleting the artifact keeps that material.
+  Migration 0028 adds `studio_artifacts`. Research briefs/sessions (98-A/B/C),
+  rich layout editing, templates and bundle export remain. Tests:
+  `test_studio.py`, `StudioPage.test.tsx`.
+- **Problem Desk (plan 97-A/B/C/E/F first cut).** A new `/solve` surface
+  (sidebar **Solve**, Home card, palette, mobile More) accepts typed MathLive,
+  pasted or photographed math. A deterministic SymPy classifier picks
+  simplify/evaluate/solve/differentiate/integrate/factor/expand; every displayed
+  step is machine-checked (equivalence, derivative, antiderivative,
+  substitution) and unverifiable results are withheld rather than narrated. A
+  verified solve can generate three similar problems checked server-side or be
+  kept as a scratchpad note; history is profile-scoped. Migration 0027 adds
+  `solve_entries` with a typed result document. Handwriting, crop rectangles,
+  graphing/exploration and limits/systems remain. Tests: `test_solve.py`,
+  `SolvePage.test.tsx`.
+- **Exam papers (plan 96-A/B/C/D/E first cut).** Practice → **Exam papers**
+  assembles a multi-section paper from the course question bank with a live
+  marks total, difficulty filters and a seeded, deterministic draw. Each
+  question is copied into a paper activity snapshot, so later bank edits never
+  change a paper already sat. Sit it through the existing attempts engine in
+  exam mode (deadline, no hints, feedback deferred until submission), then read
+  a marked report with per-section marks, grade bands and the topics that lost
+  the most marks. Print paper/key through the existing print surface. Migration
+  0026 adds `exam_papers`. Document-backed past papers, self-marking,
+  predicted-grade calibration and the full palette/flag review screen remain.
+  Tests: `test_exam_room.py`, `PapersPanel.test.tsx`, exam-deferred
+  `QuizRunner` case.
+- **Diagram-label questions (plan 95-A/B/C first cut).** A new
+  `diagram_label` exercise kind: pick an image material, drag labelled regions
+  on it, and save a question; the player shows the image with numbered hotspots
+  and a shuffled label bank, graded deterministically by label→hotspot
+  matching. Payload validation covers bounds, duplicate labels and label-bank
+  completeness. Migration 0025 widens `exercises.kind`. Image occlusion,
+  AI label proposals, Anki IO import and quiz-surface support remain.
+  Tests: `test_diagram_label.py`, `DiagramLabelInput.test.tsx`.
+
+### Changed
+- **One secret store and one opaque credential core — family auth-kit 0.6.0
+  (plan 60 Phase 2B).** `app/core/secrets.py` is now a thin adapter over
+  `nx_auth.secrets`: the keyring service (`StudyAssistant`), sealed
+  `secrets.json` shape, `enc::` values and `SA_DATA_KEY` sealing are
+  unchanged, with keyring → sealed-file precedence and a round-trip probe.
+  Capture device tokens mint and verify through `nx_auth.opaque` with the
+  same `token_urlsafe(32)` plaintext and SHA-256 digest-only lookup. No
+  schema or API change. Deltas: a stored empty secret now reads as `None`
+  (was `""`), and deleting a secret fails closed when no writable backend
+  can perform the revocation.
+- **Command surfaces and the dictation gate use the family library (plan 59
+  Phases 2–4).** `@neuronection/assistant-ui` 0.85.0 replaces the hand-rolled
+  `?` shortcut sheet and Ctrl/Cmd+K palette shells: the shortcuts dialog is one
+  library `Modal` composing `ShortcutList` and a `CommandList` feature map
+  (every group/keycap, quick capture/import, `?`, Escape/backdrop close and
+  focus return preserved), and the global palette is the library
+  `CommandPalette` with the app's catalog, async `?`-prefixed content search,
+  recents, course-tree search and actions kept app-side. The chat composer's
+  missing speech-to-text state renders the library `DictationUnavailable`
+  with the existing settings action. New `components/ui` shims:
+  `command-list`, `command-palette`, `shortcut-list`; `dictation` now exports
+  `DictationUnavailable`. Tests: `ShortcutsDialog.test.tsx`,
+  `CommandPalette.test.tsx`, `StudyChatPanel.dictation.test.tsx`.
+
+### Fixed
+- **The e2e boot harness now runs migrations and boots in test mode.**
+  `frontend/e2e/run_backend.py` applies the Alembic chain to its fresh
+  datastore before `create_app` and pins `app_env=test` so the production boot
+  guard does not reject the harness; the boot spec now matches the provider
+  step by heading. `pnpm e2e` passes 12/12.
+- **Library CSS no longer overrides app responsive utilities.** The prebuilt
+  `@neuronection/assistant-ui/styles.css` is now imported into a dedicated
+  `assistant-ui` cascade layer before app utilities, instead of as unlayered
+  CSS. This fixes the desktop chrome: the sidebar is visible and the mobile
+  bottom bar is hidden at ≥48rem, while the compact layout still uses the
+  bottom bar. It also prevents the library's unlayered `.flex`/`.hidden` rules
+  from beating every app `md:*` variant.
+- **The mobile More sheet renders above the app chrome.** The More menu is now
+  portaled to the document, raised above the bottom bar and overlays, and
+  closes on outside pointerdown, Escape, or a route change; it also exposes
+  `aria-haspopup`/`aria-controls`. This prevents the menu from being clipped or
+  hidden behind other fixed surfaces on small screens.
+- **Onboarding welcome title and language flags.** The wizard's welcome step
+  now resolves `onboarding.welcomeTitle` in every shipped locale, and the
+  language picker (used by onboarding and Settings) shows the shared language
+  catalog's country flag beside each endonym. The i18n audit now covers the
+  `onboarding` surface.
+- **Offline audio and activation state are scoped per user/profile (plan 59
+  1.1/1.2).** The audio cache is now `sa-audio-offline-v1:<scope>` and the
+  player state is stored per scope, where the scope is
+  `u:<user-id>:p:<profile-id>`; nothing is read before the scope resolves.
+  Downloads use the authenticated `apiFetch` path and `cache.put` instead of
+  `cache.add`, logout/401/account deletion purge the scope, and a profile
+  switch stops playback but keeps the previous profile's explicit downloads.
+  The pre-scope global cache and unscoped `sa-audio-state` key are deleted on
+  first boot; Settings → Developer gains cache diagnostics/clear. Activation
+  props are now a closed `ActivationStep`/`ActivationSurface` vocabulary with
+  a bounded numeric `value` (unknown/extra props and out-of-vocabulary values
+  are 422), the first-event marker is keyed by `(user, profile)`, and clearing
+  the counters also removes those client markers. The Usage insights disclosure is
+  deployment-aware instead of claiming everything stays on the device.
+  Tests: `test_activation.py`, `audio-offline.test.ts`,
+  `audio-player.test.tsx`, `AudioPlayerBar.test.tsx`,
+  `activation-events.test.ts`, `activation-vocab.test.ts`,
+  `UsageInsightsCard.test.tsx`, `AccountCard.test.tsx`.
+- **Secret reads are lazy about key material again (plan 60 Phase 2B).** A
+  missing or pre-adoption plaintext secret resolves without constructing the
+  at-rest cipher, so a host with no (or unwritable) key material keeps
+  answering those reads instead of failing on the lookup; an `enc::` value on
+  such a host fails closed with `None`, and sealing still refuses without a
+  resolvable key ring. The empty-ref semantics from the adoption stand:
+  `set_secret("")` / `delete_secret("")` raise `ValueError`. No schema, API or
+  stored-format change. Tests: `test_secrets.py`.
+
 ## [v0.13.0-rc.6] - 2026-11-10
 
 ### Fixed

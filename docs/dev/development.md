@@ -43,7 +43,7 @@ Ports are family-band slot 2: `SA_PORT` defaults to `8200`, `VITE_PORT` to
 `--force-stop`, `--reset` (wipe the local database and storage; `--yes` skips
 the prompt, `--all` includes backups) and `--no-bootstrap`.
 
-**Dev modes are `pnpm dev`-shaped** (identity-auth ADR-0022): the default
+**Dev modes are `pnpm dev`-shaped** (identity-auth): the default
 `./scripts/run-dev.sh` run is **desktop mode** — SQLite
 (`<data dir>/study.sqlite3`), no login surface, the shell/exchange flow.
 Add **`--web`** for **server mode**: `SA_IDENTITY_MODE=server` against
@@ -60,10 +60,28 @@ in web mode; reset by recreating the dev-db volume.
 | `pnpm dev:backend` | uvicorn `--reload` alone |
 | `pnpm dev:frontend` | Vite dev server alone |
 | `pnpm verify:backend` | `ruff check . && mypy . && pytest` in `backend/` |
-| `pnpm verify:frontend` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` in `frontend/` |
+| `pnpm verify:frontend` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:bundle` in `frontend/` |
+| `pnpm --filter frontend check:bundle` | Deterministic gzip budget + route-chunk presence check over `dist/` |
 | `pnpm api:types` | Regenerate `frontend/openapi.json` from the app and `src/lib/api-schema.d.ts` from it |
 | `pnpm --filter frontend i18n` | Translation completeness check |
 | `pnpm --filter frontend e2e` | Playwright end-to-end suite |
+
+## Frontend performance budget
+
+The app shell stays eager and every page route is `React.lazy`; the Home route
+is lazy too. `frontend/scripts/check-bundle-budget.mjs` fails CI when the entry
+chunk exceeds **300 kB gzip**, the initial JS (entry + modulepreloads) exceeds
+**900 kB gzip**, or a required route chunk disappears. The chat dock remains
+part of the shell on purpose, so its markdown/KaTeX payload counts as initial.
+Locale dictionaries: English is eager; German and Greek load on demand.
+
+Budgets and the required route-chunk prefixes live in
+`frontend/bundle-budget.json` (`distDir` resolves relative to that file, not the
+CWD); `pnpm check:bundle` runs the checker with that config. The checker is a **byte-identical vendored copy** of the family canonical
+checker — never edit the copy in this repo. Change the
+canonical and re-vendor with the family sync script
+(`sync-bundle-budget.sh --project study-assistant`); drift detection is that
+script's `--check` plus `verify-wiring.sh`, not a mode of the vendored runtime. Each app keeps its own budgets and opts in separately.
 
 ## The verification gate
 
@@ -72,7 +90,7 @@ Every commit must pass the full suite; CI mirrors it (see
 
 ```bash
 pnpm verify:backend     # ruff + mypy strict + pytest (xdist -n auto)
-pnpm verify:frontend    # eslint + tsc --noEmit + vitest + vite build
+pnpm verify:frontend    # eslint + tsc --noEmit + vitest + vite build + bundle budget
 ```
 
 If a suite is red, fix it before committing. New behavior needs tests in the

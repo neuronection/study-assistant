@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+
+import { recordFirstActivation } from '@/lib/activation-events'
 import {
   BookOpen,
   Bot,
@@ -16,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { Wizard, type WizardStep } from '@neuronection/assistant-ui'
 import { LanguagePicker } from '@/components/LanguagePicker'
 import { getOnboardingState } from '@/lib/api'
+import { useIdentityMode } from '@/lib/use-identity-mode'
 import { useOverlayStore } from '@/lib/ui-overlays'
 
 import { CourseStep, type WizardCourse } from './steps/CourseStep'
@@ -30,26 +33,15 @@ import { storageKeys } from '@/lib/constants'
 
 const DONE_KEY = storageKeys.onboardingDone
 
-const STEP_KEYS = [
-  'welcome',
-  'workingDir',
-  'provider',
-  'models',
-  'defaults',
-  'course',
-  'files',
-  'done',
-] as const
-
-const STEP_ICONS: LucideIcon[] = [
-  Sparkles,
-  FolderCog,
-  Bot,
-  Check,
-  Check,
-  BookOpen,
-  FolderUp,
-  PartyPopper,
+const STEPS: { key: string; icon: LucideIcon }[] = [
+  { key: 'welcome', icon: Sparkles },
+  { key: 'workingDir', icon: FolderCog },
+  { key: 'provider', icon: Bot },
+  { key: 'models', icon: Check },
+  { key: 'defaults', icon: Check },
+  { key: 'course', icon: BookOpen },
+  { key: 'files', icon: FolderUp },
+  { key: 'done', icon: PartyPopper },
 ]
 
 function readDismissed(): boolean {
@@ -75,6 +67,7 @@ export function OnboardingWizard() {
   const open = useWizardStore((state) => state.open)
   const closeWizard = useWizardStore((state) => state.closeWizard)
   const closeFloatings = useOverlayStore((state) => state.closeFloatings)
+  const { isDesktop, isPending: identityPending } = useIdentityMode()
   const [dismissed, setDismissed] = useState(readDismissed)
   const [course, setCourse] = useState<WizardCourse | null>(null)
   const state = useQuery({
@@ -94,6 +87,7 @@ export function OnboardingWizard() {
   }, [visible, closeFloatings])
 
   const finish = (target: 'home' | 'course') => {
+    recordFirstActivation('onboarding_step', { step: 'complete', surface: target })
     markDismissed()
     setDismissed(true)
     closeWizard()
@@ -103,15 +97,18 @@ export function OnboardingWizard() {
     }
   }
 
-  if (!visible) {
+  if (!visible || identityPending) {
     return null
   }
 
-  const steps: WizardStep[] = STEP_KEYS.map((key, index) => ({
-    id: key,
-    icon: STEP_ICONS[index],
-    subtitle: t(`onboarding.steps.${key}`),
-    title: t(`onboarding.${key}Title`),
+  const visibleSteps = STEPS.filter(
+    (step) => step.key !== 'workingDir' || isDesktop
+  )
+  const steps: WizardStep[] = visibleSteps.map((step) => ({
+    id: step.key,
+    icon: step.icon,
+    subtitle: t(`onboarding.steps.${step.key}`),
+    title: t(`onboarding.${step.key}Title`),
   }))
 
   return (
@@ -133,11 +130,15 @@ export function OnboardingWizard() {
         if (ctx.id === 'welcome') {
           return (
             <div className="space-y-3">
-              <p className="text-muted-foreground text-sm">{t('onboarding.welcomeBody')}</p>
+              <p className="text-muted-foreground text-sm">
+                {t(isDesktop ? 'onboarding.welcomeBody' : 'onboarding.welcomeBodyServer')}
+              </p>
               <LanguagePicker className="max-w-xs" />
               <ul className="space-y-2">
                 {[
-                  { icon: FolderCog, label: t('onboarding.welcomeDir') },
+                  ...(isDesktop
+                    ? [{ icon: FolderCog, label: t('onboarding.welcomeDir') }]
+                    : []),
                   { icon: Bot, label: t('onboarding.welcomeAi') },
                   { icon: BookOpen, label: t('onboarding.welcomeCourse') },
                   { icon: FolderUp, label: t('onboarding.welcomeFiles') },

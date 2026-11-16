@@ -370,12 +370,14 @@ export function TasksTab() {
   return (
     <div className="space-y-2">
       <p className="text-muted-foreground text-sm">{t('settings.tasksHint')}</p>
-      {costs.data && costs.data.total_usd > 0 ? (
+      {costs.data && costs.data.total_micros > 0 ? (
         <p className="text-muted-foreground text-xs">
-          {t('settings.costSummary', {
-            total: formatNumber(costs.data.total_usd, 2),
-            month: formatMonth(costs.data.month),
-          })}
+          <a className="underline underline-offset-2" href="/settings?tab=data">
+            {t('settings.costSummary', {
+              total: formatNumber(costs.data.total_micros / 1_000_000, 2),
+              month: formatMonth(costs.data.month),
+            })}
+          </a>
         </p>
       ) : null}
       {error ? <p className="text-danger text-xs">{error}</p> : null}
@@ -485,7 +487,7 @@ export function TasksTab() {
               {cost && cost.calls > 0 ? (
                 <p className="text-[11px] text-muted-foreground">
                   {t('settings.taskSpend', {
-                    cost: formatNumber(cost.cost_usd, 3),
+                    cost: formatNumber(cost.cost_micros / 1_000_000, 3),
                     calls: cost.calls,
                   })}
                 </p>

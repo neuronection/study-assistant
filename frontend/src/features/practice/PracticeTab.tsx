@@ -1,11 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ClipboardList, Dumbbell, FileUp, Layers, Sparkles, Download, Upload } from 'lucide-react'
+import {
+  ClipboardList,
+  Download,
+  Dumbbell,
+  FileText,
+  FileUp,
+  ImagePlus,
+  Layers,
+  Sparkles,
+  Upload,
+} from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { EntityItems, type EntityItemEntry } from '@/components/entity-list/EntityItems'
 import { EmptyState } from '@/components/ui/empty-state'
+import { OneTimeTip } from '@/components/OneTimeTip'
 import { TabActionBar } from '@/components/layout/TabActionBar'
 import { Button } from '@/components/ui/button'
 import { type ContextMenuItem } from '@/components/ui/ContextMenu'
@@ -16,6 +27,8 @@ import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { ViewToggle } from '@/components/ui/ViewToggle'
 import { useStoredView } from '@/lib/useStoredView'
 import { GenerateDialog as AIGenerateDialog } from '@/features/ai/GenerateDialog'
+import { DiagramLabelDialog } from './DiagramLabelDialog'
+import { PapersPanel } from '@/features/exam/PapersPanel'
 import { DrillsCard } from '@/features/exercises/DrillsCard'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
 import { FlashcardPrintSheet } from '@/features/practice/FlashcardPrintSheet'
@@ -40,7 +53,6 @@ import {
   quizExportUrl,
   renameExercise,
   renameQuiz,
-  reviewFlashcard,
   setQuizTimeLimit,
   similarExercise,
   type QuizActivity,
@@ -50,6 +62,7 @@ import { formatDate } from '@/lib/format'
 import { SegmentedControl } from '@/components/motion/SegmentedControl'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
 import { storageKeys } from '@/lib/constants'
+import { submitReview } from '@/lib/review-submit'
 
 function ScopeChip({
   nodeId,
@@ -90,7 +103,7 @@ type PracticeRow = EntityItemEntry & {
   exerciseId?: string
 }
 
-export type PracticeSegment = 'sets' | 'flashcards'
+export type PracticeSegment = 'sets' | 'flashcards' | 'papers'
 
 export function PracticeTab({
   courseId,
@@ -121,6 +134,7 @@ export function PracticeTab({
   >(null)
   const [timing, setTiming] = useState<{ id: string; limit: number | null } | null>(null)
   const [showCardsGenerate, setShowCardsGenerate] = useState(false)
+  const [diagramOpen, setDiagramOpen] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const [confirm, confirmElement] = useConfirm()
@@ -145,7 +159,7 @@ export function PracticeTab({
 
   const reviewCard = useMutation({
     mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
-      reviewFlashcard(cardId, rating),
+      submitReview(cardId, rating),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ['cards-due'] })
       await queryClient.invalidateQueries({ queryKey: ['cards'] })
@@ -513,14 +527,17 @@ export function PracticeTab({
 
   const selectedCount = selectedQuizIds.length + selectedExerciseIds.length
   const isCards = segment === 'flashcards'
+  const isPapers = segment === 'papers'
 
   const segments: { key: PracticeSegment; label: string; icon: typeof ClipboardList }[] = [
     { key: 'sets', label: t('practice.segmentSets'), icon: Dumbbell },
     { key: 'flashcards', label: t('practice.segmentFlashcards'), icon: Layers },
+    { key: 'papers', label: t('practice.segmentPapers'), icon: FileText },
   ]
 
   return (
     <div className="space-y-6">
+      <OneTimeTip id="practice-segments">{t('tips.practice')}</OneTimeTip>
       <input
         ref={fileInput}
         type="file"
@@ -557,7 +574,7 @@ export function PracticeTab({
             },
           ]}
         />
-      ) : (
+      ) : isPapers ? null : (
         <TabActionBar
           actions={[
             {
@@ -635,6 +652,8 @@ export function PracticeTab({
             <p className="text-muted-foreground py-4 text-center text-sm">{t('cards.queueEmpty')}</p>
           ) : null}
         </div>
+      ) : isPapers ? (
+        <PapersPanel courseId={courseId} nodeId={currentId} />
       ) : (
         <>
           <div className="space-y-2">
@@ -643,7 +662,18 @@ export function PracticeTab({
                 <ClipboardList className="size-4" aria-hidden />
                 {t('practice.title')}
               </h2>
-              <ViewToggle view={view} onChange={setView} />
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDiagramOpen(true)}
+                  title={t('exercises.diagramTitle')}
+                >
+                  <ImagePlus className="size-3.5" aria-hidden />
+                  {t('exercises.diagramAction')}
+                </Button>
+                <ViewToggle view={view} onChange={setView} />
+              </div>
             </div>
             {quizzes.data && exercises.data && items.length === 0 ? (
               <EmptyState title={t('practice.emptyList')} />
@@ -757,6 +787,14 @@ export function PracticeTab({
           rootNodeId={rootId}
           onClose={() => setShowCardsGenerate(false)}
           onSuccess={() => setShowCardsGenerate(false)}
+        />
+      ) : null}
+      {diagramOpen ? (
+        <DiagramLabelDialog
+          courseId={courseId}
+          nodeId={currentId}
+          onClose={() => setDiagramOpen(false)}
+          onCreated={() => void queryClient.invalidateQueries({ queryKey: ['exercises'] })}
         />
       ) : null}
       {confirmElement}

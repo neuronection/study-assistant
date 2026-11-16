@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { AuthGate } from '@/components/ui/auth-gate'
 import { DemoBanner } from '@/components/layout/DemoBanner'
 import { UNAUTHENTICATED_EVENT } from '@/lib/api/client'
+import { clearPreScopeFirstEventKeys } from '@/lib/activation-events'
+import { purgeLastSessionScope } from '@/lib/audio-offline'
 import { bootSession } from '@/lib/auth-session'
 
 import { LoginOverlay } from './LoginOverlay'
@@ -21,8 +23,13 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const recheck = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
-    window.addEventListener(UNAUTHENTICATED_EVENT, recheck)
-    return () => window.removeEventListener(UNAUTHENTICATED_EVENT, recheck)
+    const onSessionLoss = () => {
+      void purgeLastSessionScope()
+      clearPreScopeFirstEventKeys()
+      recheck()
+    }
+    window.addEventListener(UNAUTHENTICATED_EVENT, onSessionLoss)
+    return () => window.removeEventListener(UNAUTHENTICATED_EVENT, onSessionLoss)
   }, [recheck])
 
   return (

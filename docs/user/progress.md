@@ -159,3 +159,23 @@ AI-graded badge. After a few rounds of drilling a weak area, Today may suggest
 it is a different skill from computing answers, and your diagnostics track it
 as such (an "explanation" sample on the concept, separate from procedural
 accuracy).
+
+
+## Retention and workload
+
+**Scores → Retention** shows your true recall from review history (overall and
+for young vs mature cards), the retention target from Study pace, lapse counts,
+and a 30-day workload chart with new-card availability and the peak day. With
+no reviews yet it says so instead of showing a zero.
+
+
+## Plan my week
+
+**Plan my week** on Home builds a draft across every course: due-card blocks,
+weak-concept practice and untouched topics, ordered by exam proximity and
+fitted to your daily capacity. Manual plan items stay put; grey **fixed**
+rows show them. Generated blocks show an evidence line and their minutes.
+**Add to plan** replaces the previous generated blocks for that week — manual
+items are never touched. **Capacity** edits each weekday's minutes, toggles a
+light week and lists blackout dates; overflow is reported instead of silently
+dropped.

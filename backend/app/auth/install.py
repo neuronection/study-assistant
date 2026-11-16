@@ -46,6 +46,12 @@ logger = logging.getLogger(__name__)
 
 def _settings_knob(settings: Settings, name: str) -> object | None:
     """§16 knob map getter (ADR-0028): env name → Settings field."""
+    if name == "SA_COOKIE_SECURE":
+        # Plan 64 §1.6: the kit receives the *derived* value (explicit
+        # `SA_COOKIE_SECURE` wins inside the derivation; otherwise the
+        # public scheme via `SA_PUBLIC_URL` / `SA_TLS`). Never None, so
+        # the family default can never silently re-apply.
+        return settings.effective_cookie_secure
     return getattr(settings, name.removeprefix("SA_").lower(), None)
 
 

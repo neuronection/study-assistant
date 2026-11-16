@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
@@ -24,6 +24,7 @@ from ..scheduling import fsrs
 from ..services.knowledge.context import ContextError, ContextParams, ContextResolver
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study import fsrs_settings
 from ..services.study.cards import (
     card_parts,
     card_source,
@@ -68,6 +69,7 @@ class CardOut(BaseModel):
 
 class ReviewIn(BaseModel):
     rating: int = Field(ge=1, le=4)
+    reviewed_at: datetime | None = None
 
 
 class ReviewOut(BaseModel):
@@ -303,6 +305,13 @@ def review_card(
     profile = ensure_default_profile(session)
     card = _load_card(session, card_id, profile.id)
     now = utcnow()
+    if body.reviewed_at is not None:
+        reviewed_at = _aware(body.reviewed_at)
+        if reviewed_at is None or reviewed_at > now + timedelta(minutes=5):
+            raise HTTPException(status_code=422, detail="reviewed_at is in the future")
+        if reviewed_at < now - timedelta(days=30):
+            raise HTTPException(status_code=422, detail="reviewed_at is too far in the past")
+        now = reviewed_at
     state = session.scalars(select(FsrsState).where(FsrsState.card_id == card.id)).first()
     fsrs_card = fsrs.FsrsCard(
         stability=state.stability if state else None,
@@ -311,7 +320,9 @@ def review_card(
         lapses=state.lapses if state else 0,
         last_review_at=_aware(state.last_review_at) if state else None,
     )
-    outcome = fsrs.review(fsrs_card, body.rating, now)
+    fsrs_values = fsrs_settings.resolve(session, profile.id, card.course_id)
+    params = fsrs_values.params()
+    outcome = fsrs.review(fsrs_card, body.rating, now, params=params)
     if state is None:
         state = FsrsState(card_id=card.id, due_at=now)
         session.add(state)
@@ -321,7 +332,7 @@ def review_card(
     state.reps = (state.reps or 0) + 1
     if body.rating == fsrs.RATING_AGAIN:
         state.lapses = (state.lapses or 0) + 1
-    state.due_at = fsrs.due_date(now, outcome.interval_days)
+    state.due_at = fsrs.due_date(now, outcome.interval_days, params)
     state.last_review_at = now
     elapsed = (
         0.0
@@ -334,6 +345,7 @@ def review_card(
             rating=body.rating,
             interval_days=float(outcome.interval_days),
             elapsed_days=elapsed,
+            reviewed_at=now,
         )
     )
     session.commit()

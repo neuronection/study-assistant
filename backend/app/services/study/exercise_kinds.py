@@ -42,6 +42,9 @@ KINDS: dict[ExerciseKind, ExerciseKindDef] = {
     ExerciseKind.CORRECT_SOLUTION: ExerciseKindDef(
         ExerciseKind.CORRECT_SOLUTION, ENGINE_RUBRIC, "math"
     ),
+    ExerciseKind.DIAGRAM_LABEL: ExerciseKindDef(
+        ExerciseKind.DIAGRAM_LABEL, ENGINE_STRUCT, "diagram_label"
+    ),
 }
 
 STRUCTURAL_KINDS: tuple[ExerciseKind, ...] = (
@@ -49,6 +52,7 @@ STRUCTURAL_KINDS: tuple[ExerciseKind, ...] = (
     ExerciseKind.ORDERING,
     ExerciseKind.CATEGORIZE,
     ExerciseKind.FILL_BLANK,
+    ExerciseKind.DIAGRAM_LABEL,
 )
 RUBRIC_KINDS: tuple[ExerciseKind, ...] = (
     ExerciseKind.EXPLAIN,

@@ -51,7 +51,14 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@neuronection/assistant-ui'],
+    include: [
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+      'tiptap-markdown',
+      'use-sync-external-store',
+      'use-sync-external-store/shim/index.js',
+      'use-sync-external-store/shim/with-selector.js',
+    ],
   },
   build: {
     rolldownOptions: {

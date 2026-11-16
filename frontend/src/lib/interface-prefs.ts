@@ -7,6 +7,7 @@ export interface InterfacePrefs {
   paletteRecent: boolean
   courseJumpBackIn: boolean
   courseCardMeta: boolean
+  autoSpeak: boolean
 }
 
 export type InterfacePrefKey = keyof InterfacePrefs
@@ -16,6 +17,7 @@ const DEFAULTS: InterfacePrefs = {
   paletteRecent: true,
   courseJumpBackIn: true,
   courseCardMeta: true,
+  autoSpeak: false,
 }
 
 function readPrefs(): InterfacePrefs {

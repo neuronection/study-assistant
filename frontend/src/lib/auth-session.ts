@@ -1,5 +1,7 @@
 import type { PublicUser } from './api/admin'
 import { UNAUTHENTICATED_EVENT, apiFetch, tryRefreshSession } from './api/client'
+import { clearPreScopeFirstEventKeys } from './activation-events'
+import { purgeLastSessionScope } from './audio-offline'
 
 let currentUser: PublicUser | null = null
 
@@ -62,6 +64,8 @@ export async function logoutSession(): Promise<void> {
   } catch {
     // unreachable server — the local session is dead regardless
   }
+  await purgeLastSessionScope()
+  clearPreScopeFirstEventKeys()
   currentUser = null
   window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT))
 }

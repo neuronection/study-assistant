@@ -46,6 +46,8 @@ class JobType(StrVocab):
     GENESIS = "genesis"
     URL_IMPORT = "url_import"
     COMPOSE = "compose"
+    ARTIFACT_RENDER = "artifact_render"
+    LECTURE_TRANSCRIBE = "lecture_transcribe"
     # Family retrieval-operations contract (plan 51 Q0): the names are the
     # exact `retrieval_ops.VECTOR_JOB_TYPES` tokens, uppercase by contract.
     VECTOR_REINDEX = "VECTOR_REINDEX"
@@ -83,6 +85,7 @@ class ExerciseKind(StrVocab):
     EXPLAIN = "explain"
     ERROR_SPOT = "error_spot"
     CORRECT_SOLUTION = "correct_solution"
+    DIAGRAM_LABEL = "diagram_label"
 
 
 class FlashcardKind(StrVocab):
@@ -216,6 +219,42 @@ class MaterialStatus(StrVocab):
     MISSING = "missing"
 
 
+class CaptureKind(StrVocab):
+    UPLOAD = "upload"
+    CAMERA = "camera"
+    CLIPBOARD = "clipboard"
+    DROP = "drop"
+    SHARE = "share"
+    CLIPPER = "clipper"
+
+
+class CaptureStatus(StrVocab):
+    STAGED = "staged"
+    COMMITTED = "committed"
+    DISCARDED = "discarded"
+    EXPIRED = "expired"
+
+
+class AnchorKind(StrVocab):
+    TEXT_RANGE = "text_range"
+    PDF_QUAD = "pdf_quad"
+    IMAGE_REGION = "image_region"
+    TIME_RANGE = "time_range"
+    TRANSCRIPT_SPAN = "transcript_span"
+    CARD_REF = "card_ref"
+
+
+class AnchorSource(StrVocab):
+    USER = "user"
+    AI = "ai"
+    IMPORT = "import"
+
+
+class CaptureScope(StrVocab):
+    STAGE = "capture:stage"
+    CLIP = "capture:clip"
+
+
 class ExtractionMode(StrVocab):
     AUTO = "auto"
     TEXT = "text"
@@ -236,6 +275,134 @@ def applicable_extraction_modes(kind: MaterialKind) -> tuple[ExtractionMode, ...
 class AttemptMode(StrVocab):
     PRACTICE = "practice"
     EXAM = "exam"
+
+
+class ActivationEvent(StrVocab):
+    ONBOARDING_STEP = "onboarding_step"
+    FIRST_FILE_INGESTED = "first_file_ingested"
+    FIRST_REVIEW = "first_review"
+    FIRST_QUIZ = "first_quiz"
+    FIRST_AI_CALL = "first_ai_call"
+    FIRST_CAPTURE = "first_capture"
+    UPDATE_INSTALLED = "update_installed"
+    HIGHLIGHT_TO_CARD = "highlight_to_card"
+    BRIEF_PLAYED_50PCT = "brief_played_50pct"
+    SOLVE_COMPLETED = "solve_completed"
+    PAPER_SAT = "paper_sat"
+    DEVICE_LINKED = "device_linked"
+    FEATURE_OPENED = "feature_opened"
+    TIP_DISMISSED = "tip_dismissed"
+
+
+class ActivationStep(StrVocab):
+    COMPLETE = "complete"
+    MATERIALS = "materials"
+    REVIEW = "review"
+    EXAM = "exam"
+    PRACTICE = "practice"
+    PROVIDER = "provider"
+    LIBRARY_SPLIT_VIEW = "library-split-view"
+    REVIEW_BUTTONS = "review-buttons"
+    PRACTICE_SEGMENTS = "practice-segments"
+
+
+class ActivationSurface(StrVocab):
+    HOME = "home"
+    COURSE = "course"
+    REVIEW = "review"
+    QUIZ = "quiz"
+    QUICK_CAPTURE = "quick_capture"
+    PROBLEM_DESK = "problem_desk"
+    LECTURE_MOMENT = "lecture_moment"
+    LECTURE_MOMENT_BATCH = "lecture_moment_batch"
+    HOME_COACH = "home_coach"
+    ONE_TIME_TIP = "one_time_tip"
+
+
+class LectureStatus(StrVocab):
+    RECORDING = "recording"
+    PAUSED = "paused"
+    UPLOADING = "uploading"
+    TRANSCRIBING = "transcribing"
+    READY = "ready"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class LectureRetention(StrVocab):
+    AUDIO_AND_TEXT = "audio_and_text"
+    TEXT_ONLY = "text_only"
+
+
+class MediaSegmentSource(StrVocab):
+    STT = "stt"
+    IMPORT = "import"
+    MANUAL = "manual"
+
+
+class ArtifactKind(StrVocab):
+    AUDIO_BRIEF = "audio_brief"
+    SLIDE_DECK = "slide_deck"
+    HANDOUT = "handout"
+    INFOGRAPHIC = "infographic"
+    EXAM_PAPER = "exam_paper"
+
+
+class ArtifactStatus(StrVocab):
+    PENDING = "pending"
+    RENDERING = "rendering"
+    READY = "ready"
+    FAILED = "failed"
+    STALE = "stale"
+
+
+class StudioArtifactKind(StrVocab):
+    SLIDE_DECK = "slide_deck"
+    HANDOUT = "handout"
+
+
+class SolveInputKind(StrVocab):
+    TYPED = "typed"
+    PASTED = "pasted"
+    PHOTO = "photo"
+    HANDWRITTEN = "handwritten"
+
+
+class SolveIntent(StrVocab):
+    SIMPLIFY = "simplify"
+    EVALUATE = "evaluate"
+    SOLVE = "solve"
+    DIFFERENTIATE = "differentiate"
+    INTEGRATE = "integrate"
+    LIMIT = "limit"
+    FACTOR = "factor"
+    EXPAND = "expand"
+    GRAPH = "graph"
+    UNSUPPORTED = "unsupported"
+
+
+class PaperSource(StrVocab):
+    BANK = "bank"
+    DOCUMENT = "document"
+
+
+class ReviewSource(StrVocab):
+    REVIEW = "review"
+    CRAM_PREVIEW = "cram_preview"
+    EXTERNAL = "external"
+    BACKFILL = "backfill"
+
+
+class ReviewOrder(StrVocab):
+    DUE = "due"
+    OLDEST = "oldest"
+    MIXED = "mixed"
+
+
+class StudyLeechAction(StrVocab):
+    TAG = "tag"
+    SUSPEND = "suspend"
+    NONE = "none"
 
 
 class StudySessionKind(StrVocab):
@@ -320,6 +487,7 @@ class ProvenanceKind(StrVocab):
     DERIVED = "derived"
     CONVERTED = "converted"
     TRANSCRIBED = "transcribed"
+    ARTIFACT = "artifact"
 
 
 class ConceptRelation(StrVocab):
@@ -400,6 +568,7 @@ PLAN_ITEM_KINDS: tuple[str, ...] = tuple(kind.value for kind in PlanItemKind)
 class PlanItemOrigin(StrVocab):
     MANUAL = "manual"
     DRAFT = "draft"
+    GENERATED = "generated"
     CALENDAR = "calendar"
 
 
@@ -471,3 +640,21 @@ class WsTopic:
     @staticmethod
     def inbox() -> str:
         return "inbox"
+
+
+class UsageSource(StrVocab):
+    """How the token counts on one AI call were obtained."""
+
+    PROVIDER = "provider"
+    ESTIMATED = "estimated"
+    PARTIAL = "partial"
+    UNKNOWN = "unknown"
+
+
+class PriceSource(StrVocab):
+    """Where the recorded cost came from (plan 58)."""
+
+    USER = "user"
+    BUILTIN = "builtin"
+    LOCAL = "local"
+    UNKNOWN = "unknown"
