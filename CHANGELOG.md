@@ -82,6 +82,16 @@ Release history from before the public launch lives in the
   pre-scope global audio-cache purge (`purgeLegacyAudioCache` and its
   localStorage key) is deleted. New installs carry no migration state.
 
+## [0.13.1] - 2026-11-18
+
+### Fixed
+- **Corrected the source-free deploy bundle.** The v0.13.0
+  `study-compose-v0.13.0.tar.gz` omitted `docker/init-db.sh`; the bundle
+  builder now includes it. The bundle also pins the compose base images
+  (pgvector `0.8.7-pg16`, nginx `1.31.8-alpine`) and widens the DB
+  healthcheck start period. No application behavior change — the app image
+  is unchanged apart from the version metadata.
+
 ## [0.13.0] - 2026-11-13
 
 ### Changed

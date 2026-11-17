@@ -8,8 +8,8 @@ the dated changelog, incident post-mortems) lives in
 [CHANGELOG.md](https://github.com/neuronection/study-assistant/blob/main/CHANGELOG.md)
 remains the CI-enforced release log.
 
-**Current phase: public beta** (v0.13.0; prepared and tagged locally — published
-stable remains v0.12.1 until the push/CI gate).
+**Current phase: public beta** (v0.13.1; prepared and tagged locally — published
+stable remains v0.13.0 until the push/CI gate).
 
 **Next rounds (planned 2026-10-21; plans live in the family plan index):**
 81 schema baseline & hardening — COMPLETE 2026-10-21 · 82 no-legacy code &
