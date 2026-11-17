@@ -23,7 +23,9 @@ x-logging: &default-logging
 
 services:
   db:
-    image: pgvector/pgvector:pg16 # pgvector provisioned; embeddings migrations need it
+    # Pinned precise tag (was floating :pg16) — release bundles must resolve
+    # the same base image for the life of the release.
+    image: pgvector/pgvector:0.8.7-pg16 # pgvector provisioned; embeddings migrations need it
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${SA_DB_NAME:-neuronection_study}
@@ -174,7 +176,8 @@ services:
     # Scheduled instance backups (database dump + data volume) written to the
     # ./backups bind mount (= docker/backups/). Enable with --profile backup.
     # Host-side one-shots incl. manifests: scripts/backup.sh + scripts/restore.sh.
-    image: pgvector/pgvector:pg16 # pg_dump from the same image as the server
+    # Same pinned pgvector image as the db service (pg_dump must match server).
+    image: pgvector/pgvector:0.8.7-pg16
     profiles: ["backup"]
     restart: unless-stopped
     depends_on:
