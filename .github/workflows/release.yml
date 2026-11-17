@@ -14,6 +14,45 @@ permissions:
   packages: write
 
 jobs:
+  ci-gate:
+    # Same-SHA CI gate (mirrors career-assistant's release workflow): the
+    # bundle may only ship for a commit whose CI run passed. Release-day CI
+    # (SQLite/backend pytest + Playwright e2e) regularly takes ~30 minutes,
+    # so this waits on a 50-minute deadline with a 60-minute job timeout —
+    # a slow run must never fail the release spuriously.
+    name: CI gate (same SHA)
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require a successful CI run for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          deadline=$(( $(date +%s) + 50 * 60 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            run="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&per_page=1")"
+            status="$(jq -r '.workflow_runs[0].status // ""' <<<"$run")"
+            conclusion="$(jq -r '.workflow_runs[0].conclusion // ""' <<<"$run")"
+            if [ "$conclusion" = "success" ]; then
+              echo "CI passed for $SHA"
+              exit 0
+            fi
+            if [ -n "$conclusion" ]; then
+              echo "CI concluded '$conclusion' for $SHA — refusing to publish" >&2
+              exit 1
+            fi
+            echo "waiting for CI on $SHA (status: ${status:-not started})"
+            sleep 30
+          done
+          echo "no completed CI run for $SHA within 50 minutes — push main and let CI finish first" >&2
+          exit 1
+
   test:
     runs-on: ubuntu-latest
     services:
@@ -270,6 +309,10 @@ jobs:
     name: Docker image (GHCR)
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    # Expose the pushed multi-arch image digest for the deploy-bundle job
+    # (and the release manifest): steps.build.outputs.digest = sha256:…
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     env:
       DOCKER_BUILD_RECORD_UPLOAD: false
     steps:
@@ -288,6 +331,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
       - uses: docker/build-push-action@v6
+        id: build
         with:
           context: .
           file: docker/Dockerfile
@@ -296,6 +340,40 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-bundle:
+    # Source-free compose/nginx/backup bundle for self-hosted operators,
+    # pinned to the exact GHCR digest built above (cloud-deploy artifact
+    # shape: study-compose-v<version>.tar.gz + manifest.json + SHA256SUMS).
+    # Uploads to the same GitHub release as the desktop assets; this job
+    # finishes long before the desktop `release` job, and a second
+    # action-gh-release call on an existing tag updates it in place.
+    name: Deploy bundle (compose)
+    needs: [ci-gate, docker]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build deployment bundle
+        run: |
+          repo="$(printf '%s' "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          scripts/build-deploy-bundle.sh \
+            --version "${GITHUB_REF_NAME}" \
+            --image "ghcr.io/${repo}@${{ needs.docker.outputs.digest }}" \
+            --out-dir dist
+      - name: Verify bundle checksums
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/study-compose-*.tar.gz
+            dist/manifest.json
+            dist/SHA256SUMS
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   release:
     needs: [linux, windows]
