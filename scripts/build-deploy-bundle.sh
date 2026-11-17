@@ -48,9 +48,13 @@ case "$VERSION" in
   *) echo "--version must look like vX.Y.Z (got: ${VERSION:-<none>})" >&2; exit 2 ;;
 esac
 case "$IMAGE" in
-  *@sha256:*) ;;
-  *) echo "--image must be registry/repo@sha256:<digest>" >&2; exit 2 ;;
+  *@sha256:[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
+  *) echo "--image must be registry/repo@sha256:<64-hex digest> (got: ${IMAGE:-<none>})" >&2; exit 2 ;;
 esac
+if ! printf '%s' "$IMAGE" | grep -Eq '^[^@[:space:]]+@sha256:[0-9a-f]{64}$'; then
+  echo "--image must be registry/repo@sha256:<64-hex digest> (got: ${IMAGE:-<none>})" >&2
+  exit 2
+fi
 [ -d "$ROOT/docker" ] || { echo "not a study checkout (missing docker/): $ROOT" >&2; exit 1; }
 
 STAGE="$(mktemp -d)"
