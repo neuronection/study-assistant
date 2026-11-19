@@ -492,7 +492,7 @@
               "id": "deployment",
               "file": "dev/deployment.md",
               "title": "Deployment",
-              "description": "The standalone Docker stack, nginx and TLS, the data volume, upgrades and backups."
+              "description": "The release-bundle installer (one-line self-host), the standalone Docker stack, nginx and TLS, the data volume, updates and backups."
             },
             {
               "id": "tls-and-secure-context",

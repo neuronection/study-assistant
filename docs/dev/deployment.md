@@ -3,9 +3,91 @@
 Study Assistant ships two ways: as a **desktop app** (pywebview over the built
 SPA, covered in [desktop-packaging.md](desktop-packaging.md)) and as a
 **self-hosted web service** served from one Docker stack (T1 on-prem / cloud
-VM; the deployment contract). This page covers the web deployment: the standalone compose
-stack, nginx and TLS, the data volume, environment variables, upgrades and
-backups. The Docker file map is also summarized in `docker/README.md`.
+VM; the deployment contract). This page covers the web deployment: the
+release-bundle installer, the standalone compose stack, nginx and TLS, the
+data volume, environment variables, upgrades and backups. The Docker file map
+is also summarized in `docker/README.md`.
+
+## Server install from a release bundle
+
+The supported server path — no source checkout, no build toolchain on the
+host. Every GitHub release attaches a **source-free bundle**:
+`study-compose-vX.Y.Z.tar.gz` + `manifest.json` (image pinned by digest) +
+`SHA256SUMS`. The bundle carries `docker/` (compose files, nginx configs, env
+example, entrypoint, `init-db.sh`, backup sidecar) +
+`scripts/{install,update,backup,restore,lib-docker}.sh` + `installer.json`
+(the product config). No source tree, no `.env`, no secrets.
+
+Prerequisites: a Linux host (Ubuntu 22.04/24.04 reference) with **Docker +
+Docker Compose v2**, ≥ 4 GB RAM, ~5 GB free disk, a non-root user in the
+`docker` group. The installer never runs as root, never installs packages,
+never overwrites an existing env file.
+
+One-liner (the bootstrap resolves the latest release, verifies the bundle
+SHA-256, extracts and hands off to the audited in-bundle installer):
+
+```bash
+curl -fsSL https://neuronection.com/install/study.sh | bash
+# cautious form: download it, read it, then run it
+curl -fsSL https://neuronection.com/install/study.sh -o study-bootstrap.sh
+less study-bootstrap.sh
+bash study-bootstrap.sh --dir ~/study-assistant
+```
+
+Bootstrap flags: `--dir DIR`, `--ref vX.Y.Z` (pin an exact release),
+`--dry-run` (resolve + verify + print the hand-off, write nothing), `--offline
+study-compose-vX.Y.Z.tar.gz` (already-downloaded bundle, no network
+download), and `--` to forward installer flags — e.g.
+`-- --http-port 8091`. The one-liner URL 302-redirects to the GitHub
+release asset (trust anchor = the release, not the website); until that
+route is published, use the asset from the release page.
+
+Manual, without the bootstrap:
+
+```bash
+# from the release: study-compose-vX.Y.Z.tar.gz + manifest.json + SHA256SUMS
+sha256sum -c SHA256SUMS
+mkdir -p ~/study-assistant
+tar -xzf study-compose-vX.Y.Z.tar.gz -C ~/study-assistant
+cp manifest.json ~/study-assistant/          # installer pins the image digest from it
+cd ~/study-assistant
+bash scripts/install.sh
+```
+
+What `scripts/install.sh` does (see [docker/README.md](../../docker/README.md)
+for the full flag table): generates the env file from the example with the
+five per-instance secrets (`SA_DB_OWNER_PASSWORD`, `SA_DB_PASSWORD`,
+`SA_SESSION_KEY`, `SA_REFRESH_KEY`, `SA_DATA_KEY` — `umask 077`, never
+printed, never overwritten on a re-run) → pins `STUDY_IMAGE` from the release
+manifest (the bootstrap forwards `--image app=<digest>`; priority: `--image
+[KEY=]REF` > `--image-tag` > `$STUDY_IMAGE` > manifest > existing env) →
+sets `HTTP_PORT` → pre-flights published ports → pulls → `up -d --no-build`
+→ waits for `/api/v1/health` → prints the URL and the first-admin note. Exit
+codes: `0` ok · `1` usage/prereq · `2` image pull · `3` compose config/start
+or health · `4` port conflict.
+
+Port plan: the bundle publishes one host port (`HTTP_PORT`, default 80).
+Multiple Neuronection stacks on one host get distinct ports
+(`--http-port 8090/8091/8092` for health/study/career).
+
+### Updating a bundle install
+
+1. Read the release notes; take a backup (`scripts/backup.sh` — off-host
+   targets via `SA_BACKUP_RCLONE_REMOTE` / `SA_BACKUP_S3_URI` /
+   `SA_BACKUP_AZURE_URL`, encryption via `SA_BACKUP_AGE_RECIPIENT`).
+2. Download the new release's bundle + `manifest.json` + `SHA256SUMS`.
+3. Extract over the install directory — the env file is not in the bundle,
+   so secrets and settings survive; copy the new `manifest.json` in.
+4. `bash scripts/update.sh` — bumps `STUDY_IMAGE` to the new manifest
+   digest, pulls, `up -d --no-build`, waits for `/api/v1/health`. No git,
+   no rebuild: the previous image pin is kept (a comment in the env file +
+   the printed rollback command) and no destructive data operation ever
+   runs.
+
+Rollback: `bash scripts/update.sh --image <previous pin>` (recorded in the
+env file), and restore the pre-upgrade dump with `scripts/restore.sh` if
+the release migrated the schema — pre-1.0 there is no downgrade path, so
+keep the previous bundle and a backup before every update.
 
 ## The standalone stack
 
@@ -57,11 +139,14 @@ deployment checklist and provider examples.
 
 | Script | Purpose |
 |---|---|
-| `scripts/run-docker.sh` | First-time deploy: build, `up -d`, wait for healthy |
-| `scripts/update-docker.sh` | Refresh an existing install: best-effort `git pull` → rebuild (or pull `STUDY_IMAGE`) → `up -d` → health-wait. `--no-pull` / `--no-wait` |
-| `scripts/lib-docker.sh` | Shared helpers sourced by the two scripts above |
+| `scripts/install.sh` | Release-bundle installer (see *Server install from a release bundle*): env + secrets + pin + port pre-flight + `up -d` + health-wait |
+| `scripts/update.sh` | Release-bundle updater: bump the `STUDY_IMAGE` pin (previous pin kept), pull, `up -d --no-build`, health-wait |
+| `scripts/run-docker.sh` | Source checkouts, first-time deploy: build, `up -d`, wait for healthy |
+| `scripts/update-docker.sh` | Source checkouts, refresh an existing install: best-effort `git pull` → rebuild (or pull `STUDY_IMAGE`) → `up -d` → health-wait. `--no-pull` / `--no-wait` |
+| `scripts/lib-docker.sh` | Shared helpers sourced by the scripts above |
 
-Both scripts are idempotent and never touch the `data` volume.
+All of them are idempotent and never touch the `data` volume except the
+explicit `install.sh --reset`.
 
 ## Databases
 
@@ -174,11 +259,14 @@ provider deployment closes it.
 
 The compose files set `SA_DEBUG=0`, `SA_PORT=8000`, `SA_HOST=0.0.0.0`,
 `SA_DATA_DIR=/data`, `SA_SPA_DIST=/app/frontend/dist`, the `SA_DATABASE_URL`
-of the `db` service and the two the credential policy secrets (`SA_DB_OWNER_PASSWORD`,
-`SA_DB_PASSWORD`) via a `docker/.env` with `:?` guards. Configuration is via
+of the `db` service and the five guarded secrets (`SA_DB_OWNER_PASSWORD`,
+`SA_DB_PASSWORD`, `SA_SESSION_KEY`, `SA_REFRESH_KEY`, `SA_DATA_KEY`) via a
+`docker/.env` with `:?` guards. Configuration is via
 `SA_*` env vars (see `backend/app/core/config.py`); **there are no AI secrets in
 the environment** — API keys are entered in the app and stored in the OS keyring
-of the host running the backend. A root `.env` is honored but not required.
+of the host running the backend. A root `.env` is honored but not required
+(`scripts/install.sh` prefers `docker/.env` and falls back to a root `.env`
+from a source-checkout install).
 
 ## TLS
 
@@ -235,13 +323,20 @@ In-app restore (upload or stored-by-name) is available from Settings → Data.
 ### Off-host upload + run ledger (the backup policy)
 
 A T1 backup must leave the host. `scripts/backup.sh` uploads the finished
-archive to every configured target (rclone / aws s3 / azcopy):
+archive to every configured target (rclone / aws s3 / azcopy) and — when the
+destination is shared — encrypts it first:
 
 ```bash
 SA_BACKUP_RCLONE_REMOTE=myremote:study-backups   # rclone copy
 SA_BACKUP_S3_URI=s3://my-bucket/study            # aws s3 cp
 SA_BACKUP_AZURE_URL=https://acct.blob.core.windows.net/cont/study?<sas>  # azcopy copy
+SA_BACKUP_AGE_RECIPIENT=age1...                  # age-encrypt before upload
 ```
+
+`SA_BACKUP_AGE_RECIPIENT` (family alias `BACKUP_AGE_RECIPIENT`) seals the
+archive with your age public key — only the `.age` file leaves the host, and
+`scripts/restore.sh` decrypts it with the operator's age identity; keep the
+private key offline, never on the server.
 
 Every run appends one JSONL row to `backups/backup_runs.jsonl`
 (`run_at`, `archive`, `bytes`, `sha256`, `uploaded_to`, `status`):

@@ -1,0 +1,23 @@
+{
+  "product": "study",
+  "title": "Study Assistant",
+  "repo": "neuronection/study-assistant",
+  "repoDir": "study-assistant",
+  "targetPath": "scripts/bootstrap.sh",
+  "phase": "P3",
+  "bundlePrefix": "study-compose",
+  "bootstrapAsset": "study-bootstrap",
+  "envPrefix": "STUDY",
+  "imageEnv": "STUDY_IMAGE",
+  "imageKeys": ["app"],
+  "defaultDirName": "study-assistant",
+  "defaultPort": 80,
+  "healthPath": "/api/v1/health",
+  "readyPath": null,
+  "setupMode": "first user = admin",
+  "minRamGb": 4,
+  "docsUrl": "https://neuronection.com/docs/study",
+  "installUrl": "https://neuronection.com/install/study.sh",
+  "contractVersion": "1",
+  "installFlags": ["no-pull", "no-wait", "auto-ports", "no-ports", "http-port", "env-only", "reset", "yes", "image-tag"]
+}

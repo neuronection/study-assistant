@@ -21,11 +21,13 @@ For development on the host see `docs/` and `scripts/run-dev.sh`.
 | `init-db.sh` | First-boot Postgres bootstrap: family roles (distinct passwords, the credential policy) + optional `neuronection_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
 | `nginx.conf` | HTTP-only reverse proxy incl. the `/ws` WebSocket endpoint (loopback / VPN). |
 | `nginx-TLS.conf` | TLS-terminating variant (certbot webroot ACME + HSTS). |
-| `.env.production.example` | Template for `docker/.env` (the two required secrets: `SA_DB_OWNER_PASSWORD` + `SA_DB_PASSWORD`, the credential policy). |
+| `.env.production.example` | Template for `docker/.env` (the five guarded secrets: `SA_DB_OWNER_PASSWORD` + `SA_DB_PASSWORD`, the credential policy, plus the `SA_SESSION_KEY` / `SA_REFRESH_KEY` / `SA_DATA_KEY` key family — identity-auth §8). |
 
-Ops scripts (repo `scripts/`): `run-docker.sh` (first deploy), `update-docker.sh`
-(refresh), `lib-docker.sh` (shared helpers), `backup.sh` / `restore.sh`
-(instance backup + restore, see the restore drill below).
+Ops scripts (repo `scripts/`): `install.sh` / `update.sh` (release-bundle
+installer/updater — see below), `run-docker.sh` (first deploy from a source
+checkout), `update-docker.sh` (source-checkout refresh), `lib-docker.sh`
+(shared helpers), `backup.sh` / `restore.sh` (instance backup + restore, see
+the restore drill below).
 
 ## Cloud object storage
 
@@ -140,21 +142,24 @@ SA_DB_PASSWORD=study_dev_pw docker compose -f docker/docker-compose.dev-db.yml u
 ## Self-hosting (standalone flavor)
 
 ```bash
-cp docker/.env.production.example docker/.env   # set SA_DB_OWNER_PASSWORD + SA_DB_PASSWORD
+cp docker/.env.production.example docker/.env   # set the five secrets (or run scripts/install.sh)
 docker compose -f docker/docker-compose.standalone.yml up -d --build
 # → http://localhost
 ```
 
 - Stack: PostgreSQL 16 + app image (API + SPA same-origin) + nginx; the app
   entrypoint runs migrations automatically on every start.
-- Required secrets `SA_DB_OWNER_PASSWORD` and `SA_DB_PASSWORD` (URL-safe
-  characters only) are `:?`-guarded — `up` fails loud and early without both.
+- Required secrets `SA_DB_OWNER_PASSWORD`, `SA_DB_PASSWORD` (URL-safe
+  characters only) and the `SA_SESSION_KEY` / `SA_REFRESH_KEY` / `SA_DATA_KEY`
+  key family are `:?`-guarded — `up` fails loud and early without all five.
+  `scripts/install.sh` generates them when it writes `docker/.env`.
 - Optional scheduled backups (DB dump + data volume to `docker/backups/`):
   add `--profile backup` (`BACKUP_INTERVAL_HOURS` / `BACKUP_KEEP`).
 - Deploy a pre-built image instead of building:
   `STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag> docker compose ... up -d`
   (images are published by the release workflow on tags).
-- First deploy / refresh: `scripts/run-docker.sh` / `scripts/update-docker.sh`.
+- First deploy / refresh from a source checkout:
+  `scripts/run-docker.sh` / `scripts/update-docker.sh`.
 - **Build requirement:** building the image (as opposed to deploying a
   pre-built `STUDY_IMAGE`) needs network access to GitHub — the root
   `pyproject.toml`/`uv.lock` pin the family **auth-kit** as a git-SHA
@@ -164,6 +169,105 @@ docker compose -f docker/docker-compose.standalone.yml up -d --build
 Persistent state: `db_data` volume (PostgreSQL) and `data` volume
 (`SA_DATA_DIR=/data`: blobs, cache, thumbnails, import-inbox, in-app
 backups). Desktop SQLite conventions (`study.sqlite3`) do not apply here.
+
+## Self-hosting from a release bundle (source-free)
+
+Every GitHub release attaches a **source-free compose bundle**:
+`study-compose-vX.Y.Z.tar.gz` + `manifest.json` + `SHA256SUMS`. The bundle
+carries `docker/` (compose files, nginx configs, env example, entrypoint,
+`init-db.sh` — study's first-boot role bootstrap, backup sidecar) +
+`scripts/{install,update,backup,restore,lib-docker}.sh` + `installer.json`
+(the product config the self-host installer reads). No source tree, no
+`.env`, no secrets; the app image is pinned by digest in `manifest.json`
+and written to `STUDY_IMAGE` at install time.
+
+One-line install (the bootstrap resolves the release, verifies the bundle
+SHA-256, extracts and hands off to `scripts/install.sh`):
+
+```bash
+curl -fsSL https://neuronection.com/install/study.sh | bash
+```
+
+The cautious form — download it, read it, then run it:
+
+```bash
+curl -fsSL https://neuronection.com/install/study.sh -o study-bootstrap.sh
+less study-bootstrap.sh
+bash study-bootstrap.sh --dir ~/study-assistant
+```
+
+Bootstrap flags: `--dir DIR` (default `~/study-assistant`), `--ref vX.Y.Z`
+(exact release instead of latest), `--dry-run` (resolve + verify + print the
+hand-off, write nothing), `--offline study-compose-vX.Y.Z.tar.gz` (install
+from an already-downloaded bundle, no GitHub download), `-- --http-port 8091`
+(forward flags to the installer). The one-liner URL 302-redirects to the
+GitHub release asset — the version-free `study-bootstrap.sh` alias of
+`study-bootstrap-vX.Y.Z.sh` — so the script never comes from the website
+itself. Until that route is published, run the same asset straight from the
+release page.
+
+Manual (no bootstrap — two commands, fully auditable):
+
+```bash
+# from the release assets: study-compose-vX.Y.Z.tar.gz + manifest.json + SHA256SUMS
+sha256sum -c SHA256SUMS                                   # verify BEFORE extracting
+mkdir -p ~/study-assistant
+tar -xzf study-compose-vX.Y.Z.tar.gz -C ~/study-assistant
+cp manifest.json ~/study-assistant/                       # the installer pins the image digest from it
+cd ~/study-assistant
+bash scripts/install.sh                                   # .env + pin + ports + up + health-wait
+```
+
+`scripts/install.sh` implements the family installer contract: refuses
+root, never overwrites an existing env file (study's `docker/.env` → root
+`.env` fallback is honored — a source-checkout install keeps working),
+generates the five missing secrets (`umask 077`, values never printed),
+pins `STUDY_IMAGE` from `manifest.json` (priority: `--image` > `--image-tag`
+> `$STUDY_IMAGE` > manifest > existing env), sets `HTTP_PORT`, pre-flights
+every published port from `docker compose config` (naming the `.env` knob),
+pulls, `up -d --no-build`, waits for `/api/v1/health`, prints the URL +
+first-admin note + backup/update/rollback hints. Idempotent — a re-run keeps
+the env file, refreshes images and re-runs `up -d --no-build`.
+
+| Flag | Meaning |
+|---|---|
+| `--http-port PORT` | publish nginx on PORT (persisted as `HTTP_PORT` in the env file) |
+| `--image-tag TAG` | pin images to a published release tag (`X.Y.Z` or `vX.Y.Z`) |
+| `--image [KEY=]REF` | pin an explicit image ref (`--image app=ghcr.io/…@sha256:…`) — the KEY=REF form is what the bootstrap forwards; a bare REF overrides the primary image |
+| `--env-only` | write the env file only, start nothing |
+| `--no-pull` | reuse local images (offline hosts) |
+| `--no-wait` | skip the `/api/v1/health` wait |
+| `--auto-ports` | move busy ports to free ones in the env file |
+| `--no-ports` | skip the port pre-flight |
+| `--reset [--yes]` | delete the stack's data volumes (listed first), then reinstall |
+| `--allow-root` | CI/disposable containers only (refused by default) |
+| `-h`, `--help` | the readable help block |
+
+Exit codes: `0` ok · `1` usage/prerequisite · `2` image verify/pull ·
+`3` compose start or health-wait · `4` port conflict.
+
+**Updates** — download the new release's bundle, extract it over the same
+directory (the env file is not in the bundle, so your secrets survive),
+copy the new `manifest.json` in, then:
+
+```bash
+bash scripts/update.sh     # bump the pin from the new manifest, pull, up -d --no-build, wait
+```
+
+The previous `STUDY_IMAGE` pin is kept (a `# previous STUDY_IMAGE` comment
+in the env file + the printed rollback command). No git, no rebuild, no
+destructive data operations: take a backup first (`scripts/backup.sh`), and
+roll back with the previous pin + the pre-upgrade dump if `/api/v1/health`
+fails — pre-1.0 schema migrations have no downgrade path. The
+source-checkout equivalent remains `scripts/update-docker.sh` (git pull +
+rebuild).
+
+**Port plan.** The standalone stack publishes one host port (`HTTP_PORT`,
+default 80). Running more than one Neuronection stack on the same host?
+Give each a distinct port with `--http-port` (the family convention:
+`8090` health · `8091` study · `8092` career) and keep the bundled nginx
+HTTP-only behind your own TLS/VPN hop (`SA_PUBLIC_URL`/`SA_TLS` control the
+cookie `Secure` derivation).
 
 ## TLS
 
@@ -237,7 +341,11 @@ Every `scripts/backup.sh` run appends a JSONL row to
 `backups/backup_runs.jsonl` (`run_at`, `archive`, `bytes`, `sha256`,
 `uploaded_to`, `status`) — the the backup policy run ledger. With an off-host target
 set (`SA_BACKUP_RCLONE_REMOTE` / `SA_BACKUP_S3_URI` / `SA_BACKUP_AZURE_URL`)
-the archive uploads and the row records it; `local-only` rows on a T1
+the archive uploads and the row records it; setting
+`SA_BACKUP_AGE_RECIPIENT` (family alias `BACKUP_AGE_RECIPIENT`)
+age-encrypts the archive first — only the `.age` file leaves the host and
+`scripts/restore.sh` decrypts it with the operator's age identity (keep the
+private key offline, never on this server). `local-only` rows on a T1
 deployment are a DR gap. Alert when the newest row is older than 2× your
 `BACKUP_INTERVAL_HOURS` — that means the backup service stopped.
 
