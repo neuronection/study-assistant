@@ -307,6 +307,10 @@ jobs:
 
   docker:
     name: Docker image (GHCR)
+    # Same-SHA CI gate before any publish: the image the manifest pins must
+    # come from a commit whose CI passed (career gates this the same way;
+    # study previously pushed images ungated).
+    needs: ci-gate
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     # Expose the pushed multi-arch image digest for the deploy-bundle job
@@ -342,12 +346,16 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-bundle:
-    # Source-free compose/nginx/backup bundle for self-hosted operators,
-    # pinned to the exact GHCR digest built above (cloud-deploy artifact
-    # shape: study-compose-v<version>.tar.gz + manifest.json + SHA256SUMS).
-    # Uploads to the same GitHub release as the desktop assets; this job
-    # finishes long before the desktop `release` job, and a second
-    # action-gh-release call on an existing tag updates it in place.
+    # Source-free compose/nginx/installer bundle for self-hosted operators,
+    # pinned to the exact GHCR digest built above (the installer-contract
+    # artifact shape: study-compose-v<version>.tar.gz + manifest.json (v2)
+    # + SHA256SUMS, and the bootstrap assets when generated). Uploads to
+    # the same GitHub release as the desktop assets — with make_latest:
+    # false (the latest-alias race, plan 69 §8): the release must not
+    # become `latest` — the alias behind
+    # neuronection.com/install/study.sh — until every asset is attached.
+    # The final `release` job (which needs this one) is the single
+    # latest-marker.
     name: Deploy bundle (compose)
     needs: [ci-gate, docker]
     if: startsWith(github.ref, 'refs/tags/')
@@ -364,19 +372,50 @@ jobs:
             --version "${GITHUB_REF_NAME}" \
             --image "ghcr.io/${repo}@${{ needs.docker.outputs.digest }}" \
             --out-dir dist
+      # Attach the one-line bootstrap when it exists. scripts/bootstrap.sh
+      # is GENERATED from the family installer contract's template — never
+      # hand-written or invented here. Until the sync generates it, this
+      # step is a deliberate no-op and the release simply has no bootstrap
+      # asset yet; the bundle + manifest are still complete.
+      - name: Stage bootstrap assets (when generated)
+        run: |
+          if [ -f scripts/bootstrap.sh ]; then
+            cp scripts/bootstrap.sh "dist/study-bootstrap-${GITHUB_REF_NAME}.sh"
+            cp scripts/bootstrap.sh dist/study-bootstrap.sh
+            (
+              cd dist
+              sha256sum "study-bootstrap-${GITHUB_REF_NAME}.sh" study-bootstrap.sh >> SHA256SUMS
+            )
+          else
+            echo "scripts/bootstrap.sh not generated yet — skipping bootstrap assets."
+          fi
       - name: Verify bundle checksums
         working-directory: dist
         run: sha256sum -c SHA256SUMS
+      # Attach the bundle/bootstrap assets WITHOUT marking the release
+      # latest: `releases/latest/download/study-bootstrap.sh` must never
+      # resolve to a release whose assets are still uploading (the final
+      # `release` job is the one that takes the latest alias).
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/study-compose-*.tar.gz
             dist/manifest.json
             dist/SHA256SUMS
+            dist/study-bootstrap-v*.sh
+            dist/study-bootstrap.sh
           prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: false
 
   release:
-    needs: [linux, windows]
+    # The single latest-marker (the latest-alias race, plan 69 §8): this
+    # job runs only after the desktop builds AND the deploy-bundle job
+    # has attached the compose/bootstrap assets, so the moment the
+    # release becomes `latest` — the alias behind
+    # neuronection.com/install/study.sh — every asset (bundle, manifest,
+    # SHA256SUMS, both bootstraps, desktop files) is already
+    # downloadable. Prereleases never take the alias.
+    needs: [linux, windows, deploy-bundle]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -407,3 +446,7 @@ jobs:
           files: release/*
           body_path: release-notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}
+          # Stable releases take the `latest` alias only here, once every
+          # asset is attached; prereleases never do (same shape as the
+          # prerelease expression above).
+          make_latest: ${{ !contains(github.ref_name, '-') }}

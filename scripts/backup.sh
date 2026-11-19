@@ -15,6 +15,11 @@
 #   SA_BACKUP_RCLONE_REMOTE   rclone remote, e.g. "myremote:study-backups"
 #   SA_BACKUP_S3_URI          S3 prefix,        e.g. "s3://bucket/study" (aws cli)
 #   SA_BACKUP_AZURE_URL       azcopy target,    e.g. "https://acct.blob.core.windows.net/cont/study?<sas>"
+# Optional age encryption (the family backup rule: encrypt whenever the
+# destination is shared; the age PRIVATE key stays offline, never on this
+# host — restore with scripts/restore.sh, which decrypts .age archives):
+#   SA_BACKUP_AGE_RECIPIENT   age public key (study's name for it)
+#   BACKUP_AGE_RECIPIENT      family alias — either name works
 # A run with no target is recorded in the ledger as "local-only" — on a T1
 # deployment that is a DR gap, not a success.
 set -euo pipefail
@@ -68,8 +73,25 @@ EOF
 ARCHIVE="$OUT_DIR/study-assistant-$STAMP.tar.gz"
 ARCHIVE_NAME="$(basename "$ARCHIVE")"
 tar czf "$ARCHIVE" -C "$WORK" .
-SHA="$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
-BYTES="$(stat -c%s "$ARCHIVE")"
+
+# --- optional age encryption (the family backup rule: encrypt when the
+# destination is shared; the private key must never travel with the
+# archive). SA_BACKUP_AGE_RECIPIENT is study's name, BACKUP_AGE_RECIPIENT
+# the family alias — either works. The plaintext archive stays local (it is
+# the restore source); only the .age file leaves the host.
+UPLOAD_PATH="$ARCHIVE"
+UPLOAD_NAME="$ARCHIVE_NAME"
+AGE_RECIPIENT="${SA_BACKUP_AGE_RECIPIENT:-${BACKUP_AGE_RECIPIENT:-}}"
+if [[ -n "$AGE_RECIPIENT" ]]; then
+  echo "==> Encrypting archive (age)"
+  command -v age >/dev/null 2>&1 \
+    || { echo "age is not installed (an age recipient is set)" >&2; exit 1; }
+  UPLOAD_PATH="$ARCHIVE.age"
+  UPLOAD_NAME="${ARCHIVE_NAME}.age"
+  age -r "$AGE_RECIPIENT" -o "$UPLOAD_PATH" "$ARCHIVE"
+fi
+SHA="$(sha256sum "$UPLOAD_PATH" | cut -d' ' -f1)"
+BYTES="$(stat -c%s "$UPLOAD_PATH")"
 
 # --- off-host upload (ADR-0063) -------------------------------------------
 # Every configured target gets the archive; a failed upload is loud (the
@@ -78,19 +100,19 @@ STATUS="local-only"
 declare -a UPLOADED=()
 if [[ -n "${SA_BACKUP_RCLONE_REMOTE:-}" ]]; then
   echo "==> Uploading to rclone remote '$SA_BACKUP_RCLONE_REMOTE'"
-  rclone copy "$ARCHIVE" "$SA_BACKUP_RCLONE_REMOTE/" \
+  rclone copy "$UPLOAD_PATH" "$SA_BACKUP_RCLONE_REMOTE/" \
     && UPLOADED+=("rclone:$SA_BACKUP_RCLONE_REMOTE") \
     || { STATUS="upload-failed"; echo "    rclone upload FAILED (archive kept locally)" >&2; }
 fi
 if [[ -n "${SA_BACKUP_S3_URI:-}" ]]; then
   echo "==> Uploading to S3 '$SA_BACKUP_S3_URI'"
-  aws s3 cp "$ARCHIVE" "$SA_BACKUP_S3_URI/$ARCHIVE_NAME" \
+  aws s3 cp "$UPLOAD_PATH" "$SA_BACKUP_S3_URI/$UPLOAD_NAME" \
     && UPLOADED+=("$SA_BACKUP_S3_URI") \
     || { STATUS="upload-failed"; echo "    aws s3 upload FAILED (archive kept locally)" >&2; }
 fi
 if [[ -n "${SA_BACKUP_AZURE_URL:-}" ]]; then
   echo "==> Uploading with azcopy"
-  azcopy copy "$ARCHIVE" "$SA_BACKUP_AZURE_URL/$ARCHIVE_NAME" \
+  azcopy copy "$UPLOAD_PATH" "$SA_BACKUP_AZURE_URL/$UPLOAD_NAME" \
     && UPLOADED+=("azcopy:$SA_BACKUP_AZURE_URL") \
     || { STATUS="upload-failed"; echo "    azcopy upload FAILED (archive kept locally)" >&2; }
 fi
@@ -114,12 +136,12 @@ for target in "${UPLOADED[@]:-}"; do
 done
 UPLOADED_JSON+="]"
 printf '{"run_at":"%s","archive":"%s","bytes":%s,"sha256":"%s","uploaded_to":%s,"status":"%s"}\n' \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ARCHIVE_NAME" "$BYTES" "$SHA" \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$UPLOAD_NAME" "$BYTES" "$SHA" \
   "$UPLOADED_JSON" "$STATUS" >> "$LEDGER"
 
-echo "==> Done: $ARCHIVE"
+echo "==> Done: $UPLOAD_PATH"
 echo "    Ledger row appended: $LEDGER"
-echo "    Restore with: scripts/restore.sh $ARCHIVE --yes"
+echo "    Restore with: scripts/restore.sh $UPLOAD_PATH --yes"
 echo "    Retention is manual: keep at least the last N archives off-machine."
 if [[ "$STATUS" == "upload-failed" ]]; then
   echo "==> One or more off-host uploads FAILED — see above (ADR-0063)." >&2

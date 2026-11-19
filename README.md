@@ -229,7 +229,33 @@ All installers and older versions: [Releases](https://github.com/neuronection/st
 
 ### Run as a web service (Docker)
 
-Self-host the web app on a server with the family-standard standalone stack
+Self-host the web app on a server. Two supported paths:
+
+**Server operators (recommended):** the **source-free release bundle** — one
+line, images pinned by digest, no source and no build toolchain on the host:
+
+```bash
+curl -fsSL https://neuronection.com/install/study.sh | bash
+```
+
+The cautious form — download it, read it, then run it:
+
+```bash
+curl -fsSL https://neuronection.com/install/study.sh -o study-bootstrap.sh
+less study-bootstrap.sh
+bash study-bootstrap.sh --dir ~/study-assistant
+```
+
+The bootstrap resolves the latest release, verifies the bundle SHA-256,
+extracts and hands off to the audited in-bundle installer
+(`scripts/install.sh`), which generates the secrets, pins the image,
+pre-flights ports, starts the stack and waits for `/api/v1/health`. Updates
+are one command (`scripts/update.sh` in the new bundle — the previous image
+pin is kept for rollback). Details: [docker/README.md](docker/README.md) →
+"Self-hosting from a release bundle" and
+[docs/dev/deployment.md](docs/dev/deployment.md).
+
+**Developers / source checkouts:** the family-standard standalone stack
 (db + app + nginx + backup; PostgreSQL 16 — desktop installs
 keep SQLite):
 

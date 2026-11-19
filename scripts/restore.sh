@@ -3,6 +3,11 @@
 # Usage: scripts/restore.sh <archive.tar.gz> [--yes]
 #        FORCE=1 scripts/restore.sh <archive.tar.gz>
 #
+# Encrypted archives (<archive>.tar.gz.age, written when an age recipient
+# is configured) are decrypted first with the local age identity
+# (AGE_IDENTITY / ~/.config/age/keys.txt) — the private key lives with the
+# operator, never on the server that produced the backup.
+#
 # WARNING: replaces the current database contents and the data volume.
 # Nothing is touched without the explicit --yes flag (or FORCE=1).
 set -euo pipefail
@@ -62,6 +67,21 @@ fi
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+
+# Decrypt an age-encrypted archive first (scripts/backup.sh writes
+# <archive>.tar.gz.age when SA_BACKUP_AGE_RECIPIENT / BACKUP_AGE_RECIPIENT
+# is set). The identity stays with the operator — never on this host.
+case "$ARCHIVE" in
+  *.age)
+    command -v age >/dev/null 2>&1 \
+      || { echo "age is not installed — needed to decrypt $ARCHIVE" >&2; exit 1; }
+    PLAINTEXT="$WORK/$(basename "${ARCHIVE%.age}")"
+    echo "==> Decrypting $ARCHIVE (age)"
+    age -d -o "$PLAINTEXT" "$ARCHIVE"
+    ARCHIVE="$PLAINTEXT"
+    ;;
+esac
+
 tar xzf "$ARCHIVE" -C "$WORK"
 
 echo "==> Restoring database '$DB_NAME' (drops existing rows)"

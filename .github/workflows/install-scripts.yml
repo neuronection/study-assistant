@@ -1,0 +1,77 @@
+name: Installer scripts
+
+# G3 (plan 69 §6) — the one-line install path has no other test: a broken
+# installer is invisible to pytest/vitest and only fails on a user's fresh
+# host. scripts/install.selftest.sh runs the REAL install.sh / update.sh /
+# build-deploy-bundle.sh against a fake `docker` and a fake `curl` (no
+# daemon, no images, no network) plus a real bound socket for the
+# port-conflict cases — 125 assertions, all offline. G2 rides along:
+# bash -n + shellcheck on every script the bundle ships or that builds it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - installer.json
+      - scripts/install.sh
+      - scripts/update.sh
+      - scripts/bootstrap.sh
+      - scripts/lib-docker.sh
+      - scripts/install.selftest.sh
+      - scripts/build-deploy-bundle.sh
+      - docker/**
+      - .github/workflows/install-scripts.yml
+  pull_request:
+    paths:
+      - installer.json
+      - scripts/install.sh
+      - scripts/update.sh
+      - scripts/bootstrap.sh
+      - scripts/lib-docker.sh
+      - scripts/install.selftest.sh
+      - scripts/build-deploy-bundle.sh
+      - docker/**
+      - .github/workflows/install-scripts.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: Installer contract wall (G3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The installer surface: the scripts the bundle ships (or that
+      # build it) — G2's bash -n + shellcheck set. lib-docker.sh is
+      # sourced by install.sh/update.sh and is exercised end-to-end by
+      # the selftest; the docker/ helpers ship inside the bundle.
+      INSTALLER_SCRIPTS: >-
+        scripts/install.sh
+        scripts/update.sh
+        scripts/bootstrap.sh
+        scripts/build-deploy-bundle.sh
+        scripts/lib-docker.sh
+        scripts/install.selftest.sh
+      BUNDLE_DOCKER_SCRIPTS: >-
+        docker/entrypoint.sh
+        docker/init-db.sh
+        docker/backup-sidecar.sh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax (bash -n)
+        run: |
+          set -euo pipefail
+          for f in $INSTALLER_SCRIPTS $BUNDLE_DOCKER_SCRIPTS; do
+            bash -n "$f"
+          done
+      - name: Shellcheck
+        run: |
+          set -euo pipefail
+          # shellcheck is preinstalled on ubuntu-latest runners.
+          for f in $INSTALLER_SCRIPTS $BUNDLE_DOCKER_SCRIPTS; do
+            shellcheck -S warning "$f"
+          done
+      - name: Installer self-test (fake docker, no daemon)
+        run: bash scripts/install.selftest.sh
