@@ -11,6 +11,21 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-20
+
+### Added
+- **Self-host installer and source-free release bundle (plan 69).** A fresh
+  Docker host can install Study Assistant from the published release with
+  `scripts/install.sh` or the generated one-line `scripts/bootstrap.sh`.
+  `installer.json` is the product contract; the bundle carries
+  `manifest.json` and `SHA256SUMS`, and `scripts/update.sh` provides the
+  idempotent upgrade path. Install flags include `--no-pull`, `--no-wait`,
+  `--auto-ports`, `--no-ports`, `--http-port`, `--env-only`, `--reset`,
+  `--yes` and `--image-tag`. Release CI now publishes
+  `study-compose-v0.14.0.tar.gz`, `study-bootstrap.sh` and
+  `study-bootstrap-v0.14.0.sh`; `install-scripts.yml` and
+  `release-smoke.yml` exercise the installer and the published assets.
+
 ### Changed
 - **Deployment conformance (plan 64 W1-C: ADR-0062 v7 §3-§5, ADR-0063,
   ADR-0064).** Two DB roles, two credentials: the owner DSN
