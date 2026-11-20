@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-20
+
+### Fixed (installer)
+- **Fresh installs generate a usable Fernet data key.** `SA_DATA_KEY` was
+  generated with `secrets.token_urlsafe(32)` — 43 characters with the base64
+  padding stripped — and the backend refused to boot with
+  `SA_DATA_KEY must be usable Fernet material`. The installer now uses a
+  dedicated stdlib Fernet generator (32 random bytes, urlsafe base64 with
+  padding). An existing install with the invalid key should replace just that
+  line in `docker/.env` before first boot; do not delete the env file, because
+  the database roles are already initialized with its passwords.
+
 ## [0.14.1] - 2026-11-20
 
 ### Fixed (installer)
