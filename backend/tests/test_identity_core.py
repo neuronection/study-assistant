@@ -36,7 +36,9 @@ def test_register_login_refresh_me_over_study_adapters(raw_client: TestClient) -
     me = raw_client.get("/api/v1/auth/me")
     assert me.status_code == 200
     assert me.json()["id"] == created.json()["id"]
-    kit_cfg = raw_client.app.state.auth.config
+    # TestClient.app is untyped on the anonymous alias; the app carries
+    # the kit config whose cookie prefix names the CSRF echo cookie.
+    kit_cfg = raw_client.app.state.auth.config  # type: ignore[attr-defined]
     rotated = raw_client.post("/api/v1/auth/refresh", headers=csrf_headers(raw_client, kit_cfg))
     assert rotated.status_code == 200
     out = raw_client.post("/api/v1/auth/logout", headers=csrf_headers(raw_client, kit_cfg))
