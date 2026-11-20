@@ -11,6 +11,22 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-20
+
+### Fixed (installer)
+- **One-line installs survive GitHub's release asset redirect.** GitHub now
+  serves `/releases/download/...` assets from
+  `release-assets.githubusercontent.com`; the bootstrap host allowlist only
+  accepted `github.com` and `objects.githubusercontent.com`, so a fresh
+  install aborted before extracting anything. The allowlist now includes the
+  new host, and the release bootstrap is rebuilt from this commit.
+
+### Fixed (release tooling)
+- **The OpenAPI schema version is propagated with the app version.** A patch
+  or minor bump no longer leaves `frontend/openapi.json` one release behind
+  and trips the CI drift guard; the schema's `info.version` now updates in
+  the same release commit.
+
 ## [0.14.0] - 2026-11-20
 
 ### Added
