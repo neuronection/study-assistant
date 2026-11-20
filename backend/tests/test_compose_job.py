@@ -158,10 +158,11 @@ def test_single_job_get_returns_status_and_404(
 def test_cancel_endpoint_cancels_queued_compose(
     client: tuple[TestClient, ScriptedGateway, FastAPI],
 ) -> None:
-    test_client, _gateway, _app = client
+    test_client, _gateway, app = client
     with test_client:
         course_id = make_course(test_client)
         add_material(test_client, "src.txt", "chain rule source", course_id)
+        app.state.jobs.stop()
         queued = test_client.post(
             "/api/v1/materials/compose/async",
             json={
