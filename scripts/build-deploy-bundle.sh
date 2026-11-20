@@ -96,7 +96,7 @@ done
 }
 # Bundle-owned installer surface: the installer and updater run from the
 # extracted bundle; backup/restore/lib-docker stay for the host.
-for file in install.sh update.sh backup.sh restore.sh lib-docker.sh; do
+for file in install.sh update.sh backup.sh restore.sh uninstall.sh lib-docker.sh; do
   if [ -f "$ROOT/scripts/$file" ]; then
     cp "$ROOT/scripts/$file" "$STAGE/scripts/"
   else

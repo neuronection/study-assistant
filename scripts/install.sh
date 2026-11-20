@@ -11,8 +11,10 @@
 #   rollback hints.
 #
 # Usage (from the extracted bundle root):
-#   bash scripts/install.sh                            # install + start
+#   bash scripts/install.sh                            # install + start (port 8091 — the family default; 8090=health, 8092=career)
 #   bash scripts/install.sh --http-port 8091           # publish nginx on 8091
+#   bash scripts/install.sh --public-url https://study.example.com    # public URL (SA_PUBLIC_URL) — pins Secure cookies, CORS/OAuth
+#   bash scripts/install.sh --bind 127.0.0.1           # publish on loopback only (behind your own reverse proxy)
 #   bash scripts/install.sh --image app=ghcr.io/…@sha256:…   # pin-passing form (what the bootstrap forwards)
 #   bash scripts/install.sh --image-tag 0.13.1         # pin a published release tag
 #   bash scripts/install.sh --env-only                 # write the env file only
@@ -56,7 +58,7 @@ source "$SCRIPT_DIR/lib-docker.sh"
 
 # ── flags ───────────────────────────────────────────────────────────────────
 ENV_ONLY=0 NO_PULL=0 NO_WAIT=0 AUTO_PORTS=0 NO_PORTS=0 RESET=0 RESET_YES=0
-IMAGE_TAG_ARG="" HTTP_PORT_ARG="" ALLOW_ROOT="${ALLOW_ROOT:-}"
+IMAGE_TAG_ARG="" HTTP_PORT_ARG="" PUBLIC_URL_ARG="" BIND_ARG="" ALLOW_ROOT="${ALLOW_ROOT:-}"
 IMAGE_ARGS=()   # --image values ([KEY=]REF), resolved after the config load
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -75,6 +77,12 @@ while [ "$#" -gt 0 ]; do
         --image-tag)
             [ "$#" -ge 2 ] || die "--image-tag needs a value"
             IMAGE_TAG_ARG="$2"; shift ;;
+        --public-url)
+            [ "$#" -ge 2 ] || die "--public-url needs a value"
+            PUBLIC_URL_ARG="$2"; shift ;;
+        --bind)
+            [ "$#" -ge 2 ] || die "--bind needs an IP address"
+            BIND_ARG="$2"; shift ;;
         --http-port)
             [ "$#" -ge 2 ] || die "--http-port needs a value"
             case "$2" in ''|*[!0-9]*) die "--http-port needs a numeric PORT (got: $2)" ;; esac
@@ -136,7 +144,7 @@ if [ -z "$IMAGE_KEYS" ]; then
     IMAGE_KEYS="app"
 fi
 DEFAULT_PORT="$(json_field installer.json defaultPort)"
-case "$DEFAULT_PORT" in ''|*[!0-9]*) DEFAULT_PORT=80 ;; esac
+case "$DEFAULT_PORT" in ''|*[!0-9]*) DEFAULT_PORT=8091 ;; esac
 MIN_RAM_GB="$(json_field installer.json minRamGb)"
 case "$MIN_RAM_GB" in ''|*[!0-9]*) MIN_RAM_GB=4 ;; esac
 # The setup hint derives from setupMode (the schema's closed vocabulary).
@@ -284,6 +292,21 @@ HTTP_PORT="${HTTP_PORT_ARG:-${STUDY_HTTP_PORT:-$(env_value HTTP_PORT '')}}"
 case "$HTTP_PORT" in ''|*[!0-9]*) die "HTTP_PORT must be numeric (got: $HTTP_PORT)" ;; esac
 HEALTH_URL="http://127.0.0.1:${HTTP_PORT}${HEALTH_PATH}"
 
+# ── bind address (optional; default 0.0.0.0, loopback behind your proxy) ───
+HTTP_BIND="${BIND_ARG:-${STUDY_HTTP_BIND:-$(env_value HTTP_BIND '')}}"
+[ -n "$HTTP_BIND" ] || HTTP_BIND="0.0.0.0"
+[ "$HTTP_BIND" = "localhost" ] && HTTP_BIND="127.0.0.1"   # compose needs an IP literal
+case "$HTTP_BIND" in
+    *[!0-9.]*) die "--bind must be an IP address like 127.0.0.1 (got: $HTTP_BIND)" ;;
+esac
+IFS='.' read -r B1 B2 B3 B4 <<BIND_EOF
+$HTTP_BIND
+BIND_EOF
+for B in "$B1" "$B2" "$B3" "$B4"; do
+    case "$B" in ''|*[!0-9]*) die "--bind must be an IPv4 address like 127.0.0.1 (got: $HTTP_BIND)" ;; esac
+    [ "$B" -le 255 ] || die "--bind octet out of range in ${HTTP_BIND}"
+done
+
 # ── env file (never overwrite an existing one) ───────────────────────────────
 gen_secret() { # [BYTES] → urlsafe random token (32 bytes default)
     local BYTES="${1:-32}"
@@ -335,9 +358,38 @@ if [ -n "$IMAGE_PIN" ] && [ "$IMAGE_PIN" != "$(env_value "$IMAGE_ENV" '')" ]; th
     set_env_value "$IMAGE_ENV" "$IMAGE_PIN"
     echo -e "${GREEN}Pinned ${IMAGE_ENV}=${IMAGE_PIN} (saved in ${ENV_FILE}).${NC}"
 fi
+# Update-path guard: an install made before the 8091 default must not
+# silently move ports on a re-run. If the env file predates persisted
+# ports (no HTTP_PORT in it) and nothing was passed explicitly, keep the
+# historical 80 and say so loudly.
+if [ "$ENV_WAS_FRESH" -eq 0 ] && [ -z "$HTTP_PORT_ARG" ] && [ -z "${STUDY_HTTP_PORT:-}" ] \
+   && [ -z "$(env_value HTTP_PORT '')" ] && [ "$HTTP_PORT" != "80" ]; then
+    echo -e "${YELLOW}This install predates persisted ports: keeping HTTP_PORT=80 (the old default) — set --http-port 8091 to move it.${NC}"
+    HTTP_PORT=80
+fi
 if [ "$HTTP_PORT" != "$(env_value HTTP_PORT '')" ]; then
     set_env_value HTTP_PORT "$HTTP_PORT"
     echo -e "${GREEN}Set HTTP_PORT=${HTTP_PORT} (saved in ${ENV_FILE}).${NC}"
+fi
+# Persist the bind only when explicitly chosen (flag or env): a re-run
+# with no input must stay a byte-for-byte no-op on the env file.
+if [ -n "$BIND_ARG" ] || [ -n "${STUDY_HTTP_BIND:-}" ]; then
+    if [ "$HTTP_BIND" != "$(env_value HTTP_BIND '')" ]; then
+        set_env_value HTTP_BIND "$HTTP_BIND"
+        echo -e "${GREEN}Set HTTP_BIND=${HTTP_BIND} (saved in ${ENV_FILE}).${NC}"
+    fi
+fi
+# Explicit public URL: persist SA_PUBLIC_URL (drives Secure cookies,
+# CORS and OAuth redirects; http:// keeps LAN logins working).
+if [ -n "$PUBLIC_URL_ARG" ]; then
+    case "$PUBLIC_URL_ARG" in
+        *://*) PUBLIC_URL_ARG="${PUBLIC_URL_ARG%/}" ;;
+        *)      PUBLIC_URL_ARG="http://${PUBLIC_URL_ARG%/}" ;;
+    esac
+    if [ "$PUBLIC_URL_ARG" != "$(env_value SA_PUBLIC_URL '')" ]; then
+        set_env_value SA_PUBLIC_URL "$PUBLIC_URL_ARG"
+        echo -e "${GREEN}Set SA_PUBLIC_URL=${PUBLIC_URL_ARG} (saved in ${ENV_FILE}).${NC}"
+    fi
 fi
 # The port may have moved in the pre-flight below; keep the health URL honest.
 HEALTH_URL="http://127.0.0.1:$(env_value HTTP_PORT "$HTTP_PORT")${HEALTH_PATH}"
@@ -498,7 +550,13 @@ echo -e "${GREEN}======================================================${NC}"
 echo "  Install:  ${INSTALL_DIR}"
 [ -n "$MANIFEST_VERSION" ] && echo "  Version:  ${MANIFEST_VERSION}"
 echo "  Image:    ${SHORT_PIN:-unpinned}"
-echo "  URL:      http://${HOST_HINT}:${HTTP_PORT}   (or http://<your-host>:${HTTP_PORT})"
+PUBLIC_URL="$(env_value SA_PUBLIC_URL '')"
+if [ -n "$PUBLIC_URL" ]; then
+    echo "  URL:      ${PUBLIC_URL}   (SA_PUBLIC_URL — the address cookies/CORS accept)"
+else
+    echo "  URL:      http://${HOST_HINT}:${HTTP_PORT}   (or http://<your-host>:${HTTP_PORT})"
+fi
+echo "  Bind:     ${HTTP_BIND}:${HTTP_PORT} → container :80"
 echo "  Health:   ${HEALTH_URL}"
 # readyPath null = /ready not shipped at this release — no line, no probe.
 [ -n "$READY_PATH" ] && echo "  Ready:    http://127.0.0.1:${HTTP_PORT}${READY_PATH}"

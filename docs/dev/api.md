@@ -2,7 +2,7 @@
 
 The backend exposes one versioned JSON API under `/api/v1`, plus a WebSocket at
 `/ws`. **Every request is authenticated** (identity-auth, §4): browser
-sessions ride the §10 cookie triple (`nx_access` / `nx_refresh` / `nx_csrf`)
+sessions ride the §10 cookie triple, per-app prefixed (`sa_access` / `sa_refresh` / `sa_csrf`)
 with double-submit CSRF; non-browser clients may use
 `Authorization: Bearer <session token>`. Unauthenticated calls ⇒ 401. The
 identity surface itself is the family §12 API (`/api/v1/auth/*`,

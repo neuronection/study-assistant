@@ -265,7 +265,7 @@ def mint_session(app: FastAPI, email: str = "session@study.local") -> tuple[str,
     )
     csrf = secrets.token_urlsafe(32)
     access_name = cookie_names(kit.config).access
-    return f"{access_name}={token}; nx_csrf={csrf}", csrf, profile_id
+    return f"{access_name}={token}; {cookie_names(kit.config).csrf}={csrf}", csrf, profile_id
 
 
 class AuthedTestClient(TestClient):

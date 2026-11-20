@@ -173,7 +173,7 @@ async function rawFetch(url: string, init: RequestInit): Promise<Response> {
   if (shellToken !== null && !headers.has('X-Shell-Token')) {
     headers.set('X-Shell-Token', shellToken)
   }
-  const csrf = cookieValue('nx_csrf')
+  const csrf = cookieValue('sa_csrf')
   if (csrf !== null && !headers.has('X-CSRF-Token')) {
     headers.set('X-CSRF-Token', csrf)
   }

@@ -203,7 +203,7 @@ required = ["product", "title", "repo", "repoDir", "targetPath", "phase",
             "bundlePrefix", "bootstrapAsset", "envPrefix", "imageEnv",
             "imageKeys", "defaultDirName", "defaultPort", "healthPath",
             "readyPath", "setupMode", "minRamGb", "docsUrl", "installUrl",
-            "contractVersion", "installFlags"]
+            "contractVersion", "installFlags", "cookiePrefix"]
 cfg = json.load(open(sys.argv[1]))
 missing = [k for k in required if k not in cfg]
 extra = [k for k in cfg if k not in required]
@@ -220,16 +220,17 @@ assert cfg["imageEnv"] == "STUDY_IMAGE"
 assert cfg["imageKeys"] == ["app"], cfg["imageKeys"]
 assert cfg["readyPath"] is None, "study ships no /ready yet (its T1 conformance adds it)"
 assert cfg["setupMode"] == "first user = admin", cfg["setupMode"]
-assert cfg["defaultPort"] == 80, cfg["defaultPort"]
+assert cfg["defaultPort"] == 8091, cfg["defaultPort"]  # family default (8090/8091/8092)
 assert cfg["healthPath"] == "/api/v1/health", "study's health endpoint is /api/v1/health"
 assert cfg["docsUrl"] == "https://neuronection.com/docs/study", cfg["docsUrl"]
 assert cfg["installUrl"] == "https://neuronection.com/install/study.sh", cfg["installUrl"]
 assert cfg["contractVersion"] == "1"
 flags = set(cfg["installFlags"])
-need = {"no-pull", "no-wait", "auto-ports", "no-ports", "http-port",
+need = {"no-pull", "no-wait", "auto-ports", "no-ports", "http-port", "public-url", "bind",
         "env-only", "reset", "yes", "image-tag"}
 assert need <= flags, "installFlags missing: %s" % (need - flags)
-assert "no-token" not in flags, "no-token is health-only"
+assert "no-token" not in flags
+assert cfg["cookiePrefix"] == "sa_", cfg["cookiePrefix"]
 print("installer.json schema shape OK")
 PY
 }
@@ -585,7 +586,7 @@ for f in docker-compose.prod.yml docker-compose.standalone.yml docker-compose.cl
     nginx.conf nginx-TLS.conf entrypoint.sh init-db.sh backup-sidecar.sh README.md .env.production.example; do
     cp "$CORE/docker/$f" "$BB/docker/$f"
 done
-for f in install.sh update.sh backup.sh restore.sh lib-docker.sh build-deploy-bundle.sh; do
+for f in install.sh update.sh backup.sh restore.sh uninstall.sh lib-docker.sh build-deploy-bundle.sh; do
     cp "$CORE/scripts/$f" "$BB/scripts/$f"
 done
 cp "$CORE/installer.json" "$BB/installer.json"

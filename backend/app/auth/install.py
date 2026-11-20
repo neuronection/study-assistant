@@ -123,6 +123,10 @@ def install_identity(application: FastAPI, settings: Settings, session_factory: 
     auth_config = AuthConfig.from_env(
         "SA",
         iss="study",
+        # Per-app cookie names (kit 0.7): cookies are scoped by hostname —
+        # ports are ignored — so co-located family apps need distinct names
+        # to stop shadowing each other's sessions/CSRF jars. Code constant.
+        cookie_prefix="sa_",
         # §16 knobs routed through Settings (ADR-0028): the `.env` file
         # and the process environment both reach the kit config (OS env
         # wins per key) — the kit's own `os.environ` read is the fallback.

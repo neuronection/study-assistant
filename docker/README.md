@@ -301,7 +301,7 @@ scripts/run-docker.sh
 curl -s -X POST http://localhost/api/v1/auth/register \
   -H 'Content-Type: application/json' -c /tmp/drill-jar \
   -d '{"email":"drill@example.com","password":"correct-horse-battery"}'   # → 201
-CSRF="$(awk '$6=="nx_csrf" {print $7}' /tmp/drill-jar)"
+CSRF="$(awk '$6=="sa_csrf" {print $7}' /tmp/drill-jar)"
 PROFILE="$(curl -s -b /tmp/drill-jar http://localhost/api/v1/profiles \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["id"])')"
 curl -s -X POST http://localhost/api/v1/courses -b /tmp/drill-jar \
