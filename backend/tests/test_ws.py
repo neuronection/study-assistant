@@ -44,7 +44,8 @@ def _mint(app: Any, email: str, is_admin: bool = False) -> tuple[str, str, str]:
         auth_mode=AuthMode.PASSWORD,
     )
     csrf = secrets.token_urlsafe(32)
-    return f"{cookie_names(kit.config).access}={token}; nx_csrf={csrf}", csrf, profile_id
+    names = cookie_names(kit.config)
+    return f"{names.access}={token}; {names.csrf}={csrf}", csrf, profile_id
 
 
 def test_ws_ping_pong(client: TestClient) -> None:

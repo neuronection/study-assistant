@@ -96,18 +96,18 @@ def test_refresh_replay_revokes_family_and_bumps_ver(raw_client: TestClient) -> 
     first = raw_client.cookies.get(refresh)
     assert first
 
-    csrf = raw_client.cookies.get("nx_csrf")
+    csrf = raw_client.cookies.get("sa_csrf")
     assert csrf
     rotated = raw_client.post("/api/v1/auth/refresh", headers={"X-CSRF-Token": csrf})
     assert rotated.status_code == 200, rotated.text
 
     # Replay the rotated-out refresh token (double-submit stays consistent
     # with the post-rotation jar so only the stale jti can fail this).
-    csrf = raw_client.cookies.get("nx_csrf")
+    csrf = raw_client.cookies.get("sa_csrf")
     assert csrf
     replay = raw_client.post(
         "/api/v1/auth/refresh",
-        headers={"Cookie": f"{refresh}={first}; nx_csrf={csrf}", "X-CSRF-Token": csrf},
+        headers={"Cookie": f"{refresh}={first}; sa_csrf={csrf}", "X-CSRF-Token": csrf},
     )
     assert replay.status_code == 423
 
@@ -148,10 +148,10 @@ def test_session_cookie_flags_are_exact(raw_client: TestClient) -> None:
     )
     assert created.status_code == 201
     lines = created.headers.get_list("set-cookie")
-    assert_cookie_flags(lines, "nx_access", http_only=True, secure=False, path="/")
-    assert_cookie_flags(lines, "nx_refresh", http_only=True, secure=False, path="/api/v1/auth")
-    assert_cookie_flags(lines, "nx_csrf", http_only=False, secure=False, path="/")
-    same_site = next(line for line in lines if line.startswith("nx_access="))
+    assert_cookie_flags(lines, "sa_access", http_only=True, secure=False, path="/")
+    assert_cookie_flags(lines, "sa_refresh", http_only=True, secure=False, path="/api/v1/auth")
+    assert_cookie_flags(lines, "sa_csrf", http_only=False, secure=False, path="/")
+    same_site = next(line for line in lines if line.startswith("sa_access="))
     assert "samesite=lax" in same_site.lower()
 
 

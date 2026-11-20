@@ -11,7 +11,7 @@
   "imageEnv": "STUDY_IMAGE",
   "imageKeys": ["app"],
   "defaultDirName": "study-assistant",
-  "defaultPort": 80,
+  "defaultPort": 8091,
   "healthPath": "/api/v1/health",
   "readyPath": null,
   "setupMode": "first user = admin",
@@ -19,5 +19,6 @@
   "docsUrl": "https://neuronection.com/docs/study",
   "installUrl": "https://neuronection.com/install/study.sh",
   "contractVersion": "1",
-  "installFlags": ["no-pull", "no-wait", "auto-ports", "no-ports", "http-port", "env-only", "reset", "yes", "image-tag"]
+  "installFlags": ["no-pull", "no-wait", "auto-ports", "no-ports", "http-port", "public-url", "bind", "env-only", "reset", "yes", "image-tag"],
+  "cookiePrefix": "sa_"
 }

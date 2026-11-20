@@ -43,9 +43,9 @@ SESSION_KEYS = {"id", "client_label", "created_at", "expires_at", "revoked_at", 
 
 def echo(client: TestClient) -> dict[str, str]:
     """CSRF double-submit echo (§10) for either client flavour: jar
-    clients expose the `nx_csrf` cookie, minted sessions travel as a
+    clients expose the `sa_csrf` cookie, minted sessions travel as a
     default `X-CSRF-Token` header."""
-    jar_token = client.cookies.get("nx_csrf")
+    jar_token = client.cookies.get("sa_csrf")
     if jar_token:
         return {"X-CSRF-Token": jar_token}
     return {"X-CSRF-Token": str(client.headers.get("X-CSRF-Token"))}
@@ -281,7 +281,7 @@ def test_me_sessions_list_revoke_other_and_current(client: TestClient) -> None:
         headers=echo(first),
     )
     assert revoked_current.status_code == 204
-    assert first.cookies.get("nx_access") is None
+    assert first.cookies.get("sa_access") is None
     assert first.get("/api/v1/auth/me").status_code == 401
 
 
@@ -375,7 +375,7 @@ def test_delete_me_cascades_profiles_and_content(client: TestClient) -> None:
         headers=echo(deleter),
     )
     assert deleted.status_code == 204
-    assert deleter.cookies.get("nx_access") is None
+    assert deleter.cookies.get("sa_access") is None
     with factory() as session:
         assert session.get(User, goner_id) is None
         assert session.scalars(select(Profile).where(Profile.user_id == goner_id)).all() == []

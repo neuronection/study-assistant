@@ -152,7 +152,7 @@ export default async function setup() {
     }
     return parsed
   })
-  const csrfToken = cookies.find((c) => c.name === 'nx_csrf')?.value ?? ''
+  const csrfToken = cookies.find((c) => c.name === 'sa_csrf')?.value ?? ''
   const serviceCookie = cookies.map((c) => `${c.name}=${c.value}`).join('; ')
   // Profile binding (S5): API calls must name the profile — resolve the
   // auto-provisioned Default profile of the service account.

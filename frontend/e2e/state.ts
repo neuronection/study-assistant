@@ -15,7 +15,7 @@ interface RunState {
   mockBaseUrl: string
   /** Cookie header for the e2e service session (bootstrapped in global-setup). */
   serviceCookie: string
-  /** Double-submit CSRF token (the nx_csrf cookie value). */
+  /** Double-submit CSRF token (the sa_csrf cookie value). */
   csrfToken: string
   /** Default profile of the service account (S5: X-Profile-Id required). */
   profileId: string
