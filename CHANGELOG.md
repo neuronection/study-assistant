@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-11-20
+
 ### Changed
 
 - **Per-app cookie names (auth-kit 0.7):** session cookies are now
