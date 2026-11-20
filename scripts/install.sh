@@ -290,12 +290,19 @@ gen_secret() { # [BYTES] → urlsafe random token (32 bytes default)
     if command -v python3 &>/dev/null; then
         python3 -c 'import secrets, sys; print(secrets.token_urlsafe(int(sys.argv[1])))' "$BYTES"
     elif command -v base64 &>/dev/null; then
-        # 32 bytes → 44-char urlsafe base64 (the app normalizes padding for
-        # the data key; the session/refresh keys take any strong string).
+        # 32 bytes → 44-char urlsafe base64. The session/refresh keys take
+        # any strong string; the data key uses gen_fernet_key below.
         head -c "$BYTES" /dev/urandom | base64 | tr '+/' '-_'
     else
         die "Cannot generate secrets: python3 (or coreutils base64) is required."
     fi
+}
+
+# A Fernet key (the SA_DATA_KEY shape): 32 random bytes, urlsafe base64 with
+# padding — exactly what cryptography.fernet.Fernet.generate_key() produces,
+# from the stdlib alone.
+gen_fernet_key() {
+    python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'
 }
 
 ENV_WAS_FRESH=0
@@ -311,7 +318,7 @@ else
     # without them): the key family + the two split DB credentials.
     set_env_value SA_SESSION_KEY "$(gen_secret 32)"
     set_env_value SA_REFRESH_KEY "$(gen_secret 32)"
-    set_env_value SA_DATA_KEY "$(gen_secret 32)"
+    set_env_value SA_DATA_KEY "$(gen_fernet_key)"
     OWNER_PW="$(gen_secret 24)"
     APP_PW="$(gen_secret 24)"
     # Distinct owner/app passwords (the credential split).
