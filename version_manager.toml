@@ -15,6 +15,15 @@ file = "frontend/package.json"
 type = "json"
 field = "version"
 
+# The exported OpenAPI schema embeds the app version (info.version); keep it
+# in lockstep with the backend so the CI drift guard never needs a manual
+# regenerate/amend step just for the version.
+[[propagate]]
+name = "OpenAPI schema version"
+file = "frontend/openapi.json"
+type = "regex"
+pattern = '"title": "Study Assistant",\s*"version": "(?P<version>[^"]+)"'
+
 # STATUS is the single source of truth for the current phase and version.
 # ADR-206: the header is auto-derived here so it can never go stale again.
 [[propagate]]
@@ -24,10 +33,9 @@ type = "regex"
 pattern = '\*\*Current phase: [^\n]*\*\* \(v(?P<version>[^;)]+)'
 
 # CHANGELOG rides the release commit (docs and code change together).
-# The exported OpenAPI schema embeds the app version (info.version), so the
-# regenerated schema is staged with the release commit too (release flow:
-# bump → regenerate → amend → release; local commit + tag by
-# default, --push only when explicitly asked).
+# The OpenAPI schema version is propagated above; any other regenerated
+# schema changes still ride the release commit.
+# Local commit + tag by default, --push only when explicitly asked.
 
 [release]
 tag_prefix = "v"
