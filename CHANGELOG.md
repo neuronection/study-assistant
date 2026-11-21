@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "Dictation unavailable" notice no longer squeezes the chat
+  composer.** It renders as a full-width, dismissible strip above the input
+  row instead of a prose row inside the toolbar; the input keeps a minimum
+  width at narrow panel sizes. The notice stays dismissed per profile until
+  speech-to-text is configured again.
+
 ## [0.14.3] - 2026-11-20
 
 ### Changed

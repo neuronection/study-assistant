@@ -126,9 +126,10 @@ library `ShortcutList` and a `CommandList` feature map (`tabBehavior="focus"`;
 `components/layout/CommandPalette.tsx` wraps the library `CommandPalette`
 while the app keeps the catalog, async `?`-prefixed content search
 (`filter: 'none'`), recents/course-tree ordering and action execution. The
-chat composer renders the library `DictationUnavailable` when no
-speech-to-text assignment exists, with the task-resolution predicate and
-settings action app-side. Shims: `command-list`, `command-palette`,
+chat composer renders the library `DictationUnavailable` as a full-width,
+dismissible notice above the input row when no speech-to-text assignment
+exists, with the task-resolution predicate, per-profile dismissal and
+settings action app-side. Never place it in `toolbarEnd`. Shims: `command-list`, `command-palette`,
 `shortcut-list`; the `dictation` shim also exports `DictationUnavailable`.
 
 ## Feature layout

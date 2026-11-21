@@ -2808,6 +2808,7 @@
     "failed": "Transkription fehlgeschlagen",
     "failedHint": "Transkription fehlgeschlagen: {{detail}}",
     "dismissError": "Schließen",
+    "dismiss": "Ausblenden",
     "unavailable": "Diktat nicht verfügbar",
     "assignModel": "Sprach-zu-Text-Modell zuweisen"
   },

@@ -50,6 +50,8 @@ meter appears while you speak; **Cancel** (✕) discards the recording without
 transcribing. Transcription uses the speech-to-text model assigned to the
 *Transcribe* task (Settings → AI → Tasks) — the same model the note editor's
 dictation uses — and your browser will ask for microphone permission once.
+If no speech-to-text model is assigned, the composer shows a dismissible
+notice above the input with a link to the task settings instead of the mic.
 
 ## Grounded answers with citations
 

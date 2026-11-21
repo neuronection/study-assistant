@@ -2830,6 +2830,7 @@
     "failed": "Transcription failed",
     "failedHint": "Transcription failed: {{detail}}",
     "dismissError": "Dismiss",
+    "dismiss": "Dismiss",
     "unavailable": "Dictation unavailable",
     "assignModel": "Assign a speech-to-text model"
   },

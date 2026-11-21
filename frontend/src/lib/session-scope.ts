@@ -3,6 +3,8 @@ import type { PublicUser } from './api/admin'
 const LOCAL_SCOPE = 'local'
 
 let lastResolvedScope: string | null = null
+let currentScope: string | null = null
+const scopeListeners = new Set<() => void>()
 
 /** One identity for every profile-scoped browser store: the signed-in
  * user plus the active profile. `null` means "not resolved yet" — stores
@@ -17,11 +19,35 @@ export function resolveSessionScope(
   return `u:${user.id}:p:${profileId}`
 }
 
+/** Reactive source for components that need the CURRENT resolved scope
+ * (the shell resolves it after boot). `null` until resolved. */
+export function getCurrentSessionScope(): string | null {
+  return currentScope
+}
+
+export function subscribeSessionScope(listener: () => void): () => void {
+  scopeListeners.add(listener)
+  return () => {
+    scopeListeners.delete(listener)
+  }
+}
+
+function setCurrentSessionScope(scope: string | null): void {
+  if (currentScope === scope) {
+    return
+  }
+  currentScope = scope
+  for (const listener of scopeListeners) {
+    listener()
+  }
+}
+
 /** Kept for session-loss cleanup: logout/401 paths run after the shell has
  * already cleared the user, so they need the scope the browser last used. */
 export function rememberSessionScope(scope: string | null): void {
   if (scope !== null) {
     lastResolvedScope = scope
+    setCurrentSessionScope(scope)
   }
 }
 
@@ -32,6 +58,7 @@ export function getLastSessionScope(): string | null {
 export function forgetSessionScope(scope?: string | null): void {
   if (scope === undefined || scope === null || lastResolvedScope === scope) {
     lastResolvedScope = null
+    setCurrentSessionScope(null)
   }
 }
 
@@ -44,4 +71,5 @@ export function scopeStorageKey(scope: string | null): string {
 
 export function resetSessionScopeForTests(): void {
   lastResolvedScope = null
+  setCurrentSessionScope(null)
 }

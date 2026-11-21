@@ -23,6 +23,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -53,6 +54,7 @@ import { StudyChatSessionList } from '@/features/chat/StudyChatSessionList'
 import { toolCardProps } from '@/features/chat/tools/registry'
 import { useReasoningOpen } from '@/features/chat/useReasoningOpen'
 import { useStudyChatContext } from '@/features/chat/useStudyChat'
+import { getCurrentSessionScope, subscribeSessionScope } from '@/lib/session-scope'
 import { ChatTranscript } from '@/components/ui/chat-transcript'
 import { toChatMessageView } from '@/features/chat/chatMessages'
 import { TranscriptMessage } from '@/features/chat/TranscriptMessage'
@@ -455,6 +457,42 @@ export function StudyChatPanel({
     sttTask.model_id !== null ||
     sttTask.fallback_model_id !== null ||
     sttTask.default_model_label !== null
+  const sessionScope = useSyncExternalStore(
+    subscribeSessionScope,
+    getCurrentSessionScope,
+    () => null,
+  )
+  const noticeKey =
+    sessionScope === null
+      ? null
+      : `sa:chat:dictation-dismissed:${sessionScope}`
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
+  useEffect(() => {
+    if (typeof localStorage === 'undefined' || noticeKey === null) {
+      setNoticeDismissed(false)
+      return
+    }
+    setNoticeDismissed(localStorage.getItem(noticeKey) === '1')
+  }, [noticeKey])
+  useEffect(() => {
+    if (
+      typeof localStorage === 'undefined' ||
+      noticeKey === null ||
+      tasks.data === undefined ||
+      !sttAssigned
+    ) {
+      return
+    }
+    localStorage.removeItem(noticeKey)
+    setNoticeDismissed(false)
+  }, [tasks.data, sttAssigned, noticeKey])
+  const dismissNotice = () => {
+    if (typeof localStorage !== 'undefined' && noticeKey !== null) {
+      localStorage.setItem(noticeKey, '1')
+    }
+    setNoticeDismissed(true)
+  }
+  const noticeVisible = tasks.data !== undefined && !sttAssigned && !noticeDismissed
 
   const activeTitle = activeSession === null
     ? t('chat.newSession')
@@ -886,18 +924,7 @@ export function StudyChatPanel({
             </Popover>
           }
           toolbarEnd={
-            tasks.data !== undefined && !sttAssigned ? (
-              <DictationUnavailable
-                label={t('dictation.unavailable')}
-                detail={t('dictation.unassigned')}
-                action={{
-                  label: t('dictation.assignModel'),
-                  onClick: () => {
-                    void navigate({ to: '/settings', search: { tab: 'ai', section: 'tasks' } })
-                  },
-                }}
-              />
-            ) : (
+            tasks.data !== undefined && !sttAssigned ? undefined : (
               <DictationButton
                 status={dictation.status}
                 onStart={() => {
@@ -928,26 +955,48 @@ export function StudyChatPanel({
             ) : undefined
           }
           suggestions={
-            dictation.status !== 'idle' || dictation.error !== null ? (
-              <DictationStrip
-                status={dictation.status}
-                seconds={dictation.seconds}
-                levelRef={dictation.levelRef}
-                error={dictation.error}
-                labels={{
-                  stop: t('dictation.stop'),
-                  cancel: t('dictation.cancel'),
-                  recording: t('dictation.recording'),
-                  transcribing: t('dictation.transcribing'),
-                  unsupported: t('dictation.unsupported'),
-                  denied: t('dictation.denied'),
-                  unassigned: t('dictation.unassigned'),
-                  failed: t('dictation.failedHint', { detail: '{detail}' }),
-                }}
-                onStop={() => void dictation.stop()}
-                onCancel={dictation.cancel}
-                onDismissError={dictation.dismissError}
-              />
+            noticeVisible ||
+            dictation.status !== 'idle' ||
+            dictation.error !== null ? (
+              <>
+                {noticeVisible ? (
+                  <div className="w-full">
+                    <DictationUnavailable
+                      label={t('dictation.unavailable')}
+                      detail={t('dictation.unassigned')}
+                      action={{
+                        label: t('dictation.assignModel'),
+                        onClick: () => {
+                          void navigate({ to: '/settings', search: { tab: 'ai', section: 'tasks' } })
+                        },
+                      }}
+                      onDismiss={dismissNotice}
+                      dismissLabel={t('dictation.dismiss')}
+                    />
+                  </div>
+                ) : null}
+                {dictation.status !== 'idle' || dictation.error !== null ? (
+                  <DictationStrip
+                    status={dictation.status}
+                    seconds={dictation.seconds}
+                    levelRef={dictation.levelRef}
+                    error={dictation.error}
+                    labels={{
+                      stop: t('dictation.stop'),
+                      cancel: t('dictation.cancel'),
+                      recording: t('dictation.recording'),
+                      transcribing: t('dictation.transcribing'),
+                      unsupported: t('dictation.unsupported'),
+                      denied: t('dictation.denied'),
+                      unassigned: t('dictation.unassigned'),
+                      failed: t('dictation.failedHint', { detail: '{detail}' }),
+                    }}
+                    onStop={() => void dictation.stop()}
+                    onCancel={dictation.cancel}
+                    onDismissError={dictation.dismissError}
+                  />
+                ) : null}
+              </>
             ) : undefined
           }
           />
