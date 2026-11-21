@@ -64,10 +64,16 @@ function SuccessDefaults({
   providerId,
   providerName,
   result,
+  onContinueToTasks,
+  onOpenModels,
+  onClose,
 }: {
   providerId: string
   providerName: string
   result: ProviderSetupResult
+  onContinueToTasks?: () => void
+  onOpenModels?: () => void
+  onClose?: () => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -152,6 +158,15 @@ function SuccessDefaults({
           },
         ]
       : []),
+    ...(hasCap('embeddings') || result.assigned_embeddings_model
+      ? [
+          {
+            requires: 'embeddings',
+            label: t('settings.setup.slot.embeddings'),
+            assigned: result.assigned_embeddings_model ?? null,
+          },
+        ]
+      : []),
   ]
   const decisionRows =
     decisionModels.length > 0
@@ -164,13 +179,50 @@ function SuccessDefaults({
         ]
       : []
 
+  const finishActions = (
+    <div className="flex flex-wrap justify-end gap-2 pt-1">
+      {onClose ? (
+        <Button size="sm" variant="outline" onClick={onClose}>
+          {t('common.close')}
+        </Button>
+      ) : null}
+      <Button size="sm" disabled={!onContinueToTasks} onClick={onContinueToTasks}>
+        {t('settings.setup.continueToTasks')}
+      </Button>
+    </div>
+  )
+
+  if (models.isLoading) return null
+
   if (providerModels.length === 0) {
-    return <p className="text-muted-foreground text-xs">{t('settings.setup.noDefaults')}</p>
+    return (
+      <div
+        className="space-y-2 rounded-md border border-warning/40 bg-warning/10 p-3"
+        data-testid="setup-assign-models"
+      >
+        <h3 className="text-sm font-semibold">{t('settings.setup.assignModelsTitle')}</h3>
+        <p className="text-xs text-muted-foreground">{t('settings.setup.assignModelsHint')}</p>
+        {onOpenModels ? (
+          <Button size="sm" variant="outline" onClick={onOpenModels}>
+            {t('settings.setup.openModels')}
+          </Button>
+        ) : null}
+        <p className="text-xs text-muted-foreground">{t('settings.setup.advancedHandoff')}</p>
+        {finishActions}
+      </div>
+    )
   }
+
+  const hasDefault =
+    rows.some((row) => Boolean(slotValue(row.requires, row.assigned ?? null))) ||
+    decisionRows.some((row) => Boolean(slotValue(row.requires, row.assigned ?? null)))
 
   return (
     <div className="border-border space-y-2 rounded-md border p-3">
       <h3 className="text-sm font-semibold">{t('settings.defaultModelsTitle')}</h3>
+      {!hasDefault ? (
+        <p className="text-warning text-xs">{t('settings.setup.assignModelsHint')}</p>
+      ) : null}
       {rows.map((row) => (
         <ModelPicker
           key={row.requires}
@@ -198,6 +250,8 @@ function SuccessDefaults({
         />
       ))}
       {error ? <p className="text-danger text-xs">{error}</p> : null}
+      <p className="text-xs text-muted-foreground">{t('settings.setup.advancedHandoff')}</p>
+      {finishActions}
     </div>
   )
 }
@@ -205,9 +259,15 @@ function SuccessDefaults({
 function SuccessPanel({
   result,
   presetName,
+  onContinueToTasks,
+  onOpenModels,
+  onClose,
 }: {
   result: ProviderSetupResult
   presetName: string
+  onContinueToTasks?: () => void
+  onOpenModels?: () => void
+  onClose?: () => void
 }) {
   const { t } = useTranslation()
   return (
@@ -226,12 +286,23 @@ function SuccessPanel({
         providerId={result.provider.id}
         providerName={result.provider.name}
         result={result}
+        onContinueToTasks={onContinueToTasks}
+        onOpenModels={onOpenModels}
+        onClose={onClose}
       />
     </div>
   )
 }
 
-export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
+export function ProviderSetupModal({
+  onClose,
+  onContinueToTasks,
+  onOpenModels,
+}: {
+  onClose: () => void
+  onContinueToTasks?: () => void
+  onOpenModels?: () => void
+}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   useCloseFloatings()
@@ -416,6 +487,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
           steps={[
             { id: 'connect', label: t('settings.setup.step.connect') },
             { id: 'defaults', label: t('settings.setup.step.defaults') },
+            { id: 'tasks', label: t('settings.setup.step.tasks') },
           ]}
           current={1}
           label={t('settings.setup.step.progress')}
@@ -490,19 +562,45 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
         description={t('settings.setup.hint')}
         onClose={onClose}
       >
+        <SetupSteps
+          steps={[
+            { id: 'connect', label: t('settings.setup.step.connect') },
+            { id: 'defaults', label: t('settings.setup.step.defaults') },
+            { id: 'tasks', label: t('settings.setup.step.tasks') },
+          ]}
+          current={2}
+          label={t('settings.setup.step.progress')}
+        />
         {result && outcome?.mode === 'preset' ? (
-          <SuccessPanel result={result} presetName={resultName} />
+          <SuccessPanel
+            result={result}
+            presetName={resultName}
+            onContinueToTasks={onContinueToTasks}
+            onOpenModels={onOpenModels}
+            onClose={onClose}
+          />
         ) : (
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <Check className="text-success size-4" aria-hidden />
-            {t('settings.setup.done', { name: resultName })}
-          </p>
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Check className="text-success size-4" aria-hidden />
+              {t('settings.setup.done', { name: resultName })}
+            </p>
+            <p className="text-xs text-muted-foreground">{t('settings.setup.assignModelsHint')}</p>
+            <div className="flex flex-wrap justify-end gap-2">
+              {onOpenModels ? (
+                <Button size="sm" variant="outline" onClick={onOpenModels}>
+                  {t('settings.setup.openModels')}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="outline" onClick={onClose}>
+                {t('common.close')}
+              </Button>
+              <Button size="sm" disabled={!onContinueToTasks} onClick={onContinueToTasks}>
+                {t('settings.setup.continueToTasks')}
+              </Button>
+            </div>
+          </div>
         )}
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={onClose}>
-            {t('common.close')}
-          </Button>
-        </div>
       </ModalShell>
     )
   }

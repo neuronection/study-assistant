@@ -31,10 +31,13 @@ Where you connect AI providers. **Add provider** opens a guided setup:
   Mistral, DeepSeek, Ollama) or **Custom** for any OpenAI-compatible endpoint.
 - Paste the API key — it goes straight into your **operating system's
   keyring**, never the database or a file. **Set up automatically** validates
-  the key against the provider's real catalog, saves a curated model set and
-  assigns default chat/vision/speech-to-text models without overwriting
-  anything you already set. A rejected or wrong-vendor key stores nothing and
-  tells you why.
+  the key against the provider's real catalog, then asks you to choose
+  **defaults** (the curated models and the chat/vision/speech-to-text/
+  embeddings/decision slots they fill) without overwriting anything you
+  already set. Finish with **Continue to task assignments**, which opens the
+  Tasks section for the same scope. If no default could be set, the step asks
+  for a chat model and can be finished later. A rejected or wrong-vendor key
+  stores nothing and tells you why.
 - Providers added from a preset keep a **Set up automatically** button so you
   can re-run setup later with the stored key.
 - Existing providers can be renamed or re-keyed from their edit button.
@@ -56,8 +59,10 @@ button removes it.
 
 Set one **default model per capability** (text, vision, embeddings,
 speech-to-text, text-to-speech) at the top; every task without a custom model
-inherits its capability default. To pin a model to a single task, pick it in
-that task's dropdown (it becomes an override). Notes:
+inherits its capability default. Per-task overrides — specialist tasks and the
+decision kinds — live under **Advanced — per-task overrides**, collapsed by
+default; open it only when a task must use a different model than its
+default. Notes:
 
 - **OCR** and **notes OCR** require a vision-capable model — the dropdown only
   offers those.

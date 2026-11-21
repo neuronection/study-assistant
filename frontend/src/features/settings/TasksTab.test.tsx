@@ -148,6 +148,11 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     renderTab()
 
     expect(await screen.findByText('Default models')).toBeInTheDocument()
+    // ADR-0070: per-task overrides start collapsed behind Advanced.
+    const advanced = screen.getByTestId('task-overrides-advanced') as HTMLDetailsElement
+    expect(advanced.open).toBe(false)
+    fireEvent.click(screen.getByText('Advanced — per-task overrides'))
+    expect(advanced.open).toBe(true)
     expect(screen.getByText('Decision')).toBeInTheDocument()
     expect(screen.getByText('Decision kinds')).toBeInTheDocument()
     expect(screen.getByText(/decision models run in the cloud/i)).toBeInTheDocument()

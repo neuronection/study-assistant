@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+
+- **AI setup now ends on task assignments.** The provider wizard asks for
+  the provider, then the defaults, then — only if no default could be set —
+  for models, and its primary action opens Settings → AI → Tasks. Per-task
+  overrides (decision kinds and specialist tasks) are a collapsed
+  **Advanced** disclosure under the visible default models.
+
 ### Fixed
 
 - **The "Dictation unavailable" notice no longer squeezes the chat
