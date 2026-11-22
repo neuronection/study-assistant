@@ -1,6 +1,5 @@
 # Backup, restore & migration — Study Assistant (self-host)
 
-Conforms to the family template (`dev/templates/docs/backup-migration.md`).
 Cross-VM mechanics live in the canonical runbook:
 [`neuronection/self-host` → docs/migration.md](https://github.com/neuronection/self-host/blob/main/docs/migration.md).
 (The desktop app's data-folder backup is a different story — see
