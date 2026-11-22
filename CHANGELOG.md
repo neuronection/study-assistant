@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.15.0] - 2026-11-22
+
 ### Changed
 
 - **AI setup now ends on task assignments.** The provider wizard asks for
