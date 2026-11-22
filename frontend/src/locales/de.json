@@ -1513,7 +1513,8 @@
       "slot": {
         "chat": "Text",
         "vision": "Vision",
-        "stt": "Transkription"
+        "stt": "Transkription",
+        "embeddings": "Embeddings"
       },
       "errors": {
         "invalid_key": "Der API-Schlüssel wurde abgelehnt — prüfe ihn und versuche es erneut.",

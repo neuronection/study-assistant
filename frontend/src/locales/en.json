@@ -1551,7 +1551,8 @@
       "slot": {
         "chat": "Text",
         "vision": "Vision",
-        "stt": "Transcription"
+        "stt": "Transcription",
+        "embeddings": "Embeddings"
       },
       "errors": {
         "invalid_key": "The API key was rejected — check it and try again.",
