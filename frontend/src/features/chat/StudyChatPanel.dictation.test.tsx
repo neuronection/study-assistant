@@ -12,6 +12,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { StudyChatPanel } from './StudyChatPanel'
 import { StudyChatProvider } from './useStudyChat'
 import type { ChatSession } from '@/lib/api'
+import { rememberSessionScope, resetSessionScopeForTests } from '@/lib/session-scope'
 import {
   installDictationMediaStub,
 } from '@/test/dictationMedia'
@@ -129,9 +130,14 @@ function sttTask(overrides: Record<string, unknown> = {}) {
   }
 }
 
+const SCOPE_A = 'u:user-1:p:profile-a'
+const SCOPE_B = 'u:user-1:p:profile-b'
+
 afterEach(() => {
   vi.unstubAllGlobals()
   transcribeMock.mockReset()
+  resetSessionScopeForTests()
+  localStorage.clear()
 })
 
 describe('StudyChatPanel dictation', () => {
@@ -160,6 +166,62 @@ describe('StudyChatPanel dictation', () => {
       screen.getByRole('button', { name: 'Assign a speech-to-text model' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Dictate' })).not.toBeInTheDocument()
+  })
+
+  test('the unavailable notice sits above the input row, not in a toolbar slot', async () => {
+    renderPanel([sttTask()])
+    const notice = await screen.findByRole('note')
+    expect(notice.closest('[data-as="chat-composer-row"]')).toBeNull()
+    expect(notice.closest('[data-as="chat-composer"]')).not.toBeNull()
+  })
+
+  test('dismisses the notice per profile and keeps the mic absent', async () => {
+    rememberSessionScope(SCOPE_A)
+    renderPanel([sttTask()])
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dictate' })).not.toBeInTheDocument()
+    expect(
+      localStorage.getItem(`sa:chat:dictation-dismissed:${SCOPE_A}`),
+    ).toBe('1')
+  })
+
+  test('keeps dismissals isolated between profiles', async () => {
+    rememberSessionScope(SCOPE_A)
+    renderPanel([sttTask()])
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }))
+    expect(
+      localStorage.getItem(`sa:chat:dictation-dismissed:${SCOPE_A}`),
+    ).toBe('1')
+
+    rememberSessionScope(SCOPE_B)
+    expect(await screen.findByRole('note')).toBeInTheDocument()
+    expect(
+      localStorage.getItem(`sa:chat:dictation-dismissed:${SCOPE_B}`),
+    ).toBeNull()
+  })
+
+  test('does not persist a dismissal before the profile scope resolves', async () => {
+    resetSessionScopeForTests()
+    renderPanel([sttTask()])
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }))
+    expect(
+      Object.keys(localStorage).some((key) =>
+        key.startsWith('sa:chat:dictation-dismissed:'),
+      ),
+    ).toBe(false)
+  })
+
+  test('clears a stored dismissal once speech-to-text is configured', async () => {
+    rememberSessionScope(SCOPE_A)
+    localStorage.setItem(`sa:chat:dictation-dismissed:${SCOPE_A}`, '1')
+    renderPanel([sttTask({ model_id: 'whisper-1', model_label: 'Whisper' })])
+    await waitFor(() =>
+      expect(
+        localStorage.getItem(`sa:chat:dictation-dismissed:${SCOPE_A}`),
+      ).toBeNull(),
+    )
+    expect(await screen.findByRole('button', { name: 'Dictate' })).toBeInTheDocument()
   })
 
   test('the unavailable settings action opens the task assignment settings', async () => {

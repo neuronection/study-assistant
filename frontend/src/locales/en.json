@@ -1534,7 +1534,8 @@
       "step": {
         "progress": "Setup progress",
         "connect": "Connect provider",
-        "defaults": "Choose defaults"
+        "defaults": "Choose defaults",
+        "tasks": "Task assignments"
       },
       "hint": "Pick a provider, paste its API key, and defaults are set up automatically.",
       "cloud": "Cloud",
@@ -1546,12 +1547,12 @@
       "connect": "Connect",
       "done": "{{name}} connected.",
       "modelsPersisted": "{{count}} curated models saved.",
-      "noDefaults": "No default models were bound — pick them under Settings → AI → Tasks.",
       "curatedMissed": "None of the curated models matched the provider's catalog — the full list was saved instead.",
       "slot": {
         "chat": "Text",
         "vision": "Vision",
-        "stt": "Transcription"
+        "stt": "Transcription",
+        "embeddings": "Embeddings"
       },
       "errors": {
         "invalid_key": "The API key was rejected — check it and try again.",
@@ -1597,7 +1598,12 @@
       "chipVision": "Vision",
       "chipStt": "Speech-to-text",
       "chipDecision": "Decision",
-      "chipLocal": "Local"
+      "chipLocal": "Local",
+      "continueToTasks": "Continue to task assignments",
+      "assignModelsTitle": "Assign models",
+      "assignModelsHint": "No default model is set yet. Choose at least a chat model, or add models first — you can finish this later.",
+      "openModels": "Open models",
+      "advancedHandoff": "Per-task overrides live under Advanced on the task page."
     },
     "account": {
       "title": "Account",
@@ -2000,7 +2006,10 @@
       "megabytes": "{{value}} MB",
       "seconds": "{{value}} s",
       "readOnly": "Read-only. A backend switch runs migrate-objects; it is never a save button."
-    }
+    },
+    "advancedTitle": "Advanced — per-task overrides",
+    "advancedHint": "Only change these when a task must use a different model than its default.",
+    "advancedCount": "{{count}} active"
   },
   "blocks": {
     "unsupported": "Unsupported block",
@@ -2830,6 +2839,7 @@
     "failed": "Transcription failed",
     "failedHint": "Transcription failed: {{detail}}",
     "dismissError": "Dismiss",
+    "dismiss": "Dismiss",
     "unavailable": "Dictation unavailable",
     "assignModel": "Assign a speech-to-text model"
   },

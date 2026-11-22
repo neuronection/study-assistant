@@ -1056,3 +1056,15 @@ summaries, notes, concepts, ancestor hints, numbered excerpts), so external
 agents see the same inspectable context as the app. Errors are surfaced as
 resource errors (unknown node/scope, bad query length); no write tools exist by
 construction.
+
+## Setup workflow and advanced overrides
+
+`ProviderSetupModal` is ordered connect → choose defaults → task
+assignments. The connect step binds nothing; the review step selects curated
+models and fills capability defaults (text, vision, stt, embeddings,
+decision default only — no per-kind binding). When no model/default is
+available the finish panel asks for a chat model and links to **Models**;
+`Continue to task assignments` closes the modal and opens
+`?tab=ai&section=tasks`. The Tasks surface keeps **Default models** visible
+and places decision kinds plus specialist task overrides under a collapsed
+**Advanced** disclosure.

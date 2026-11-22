@@ -1496,7 +1496,8 @@
       "step": {
         "progress": "Einrichtungsfortschritt",
         "connect": "Anbieter verbinden",
-        "defaults": "Standards wählen"
+        "defaults": "Standards wählen",
+        "tasks": "Aufgabenzuweisungen"
       },
       "hint": "Anbieter wählen, API-Schlüssel einfügen — die Standardmodelle werden automatisch gesetzt.",
       "cloud": "Cloud",
@@ -1508,12 +1509,12 @@
       "connect": "Verbinden",
       "done": "{{name}} verbunden.",
       "modelsPersisted": "{{count}} kuratierte Modelle gespeichert.",
-      "noDefaults": "Keine Standardmodelle gebunden — wähle sie unter Einstellungen → KI → Aufgaben.",
       "curatedMissed": "Keine der kuratierten Modelle passte zum Katalog des Anbieters — stattdessen wurde die vollständige Liste gespeichert.",
       "slot": {
         "chat": "Text",
         "vision": "Vision",
-        "stt": "Transkription"
+        "stt": "Transkription",
+        "embeddings": "Embeddings"
       },
       "errors": {
         "invalid_key": "Der API-Schlüssel wurde abgelehnt — prüfe ihn und versuche es erneut.",
@@ -1559,7 +1560,12 @@
       "chipVision": "Vision",
       "chipStt": "Sprache-zu-Text",
       "chipDecision": "Entscheidung",
-      "chipLocal": "Lokal"
+      "chipLocal": "Lokal",
+      "continueToTasks": "Weiter zu den Aufgabenzuweisungen",
+      "assignModelsTitle": "Modelle zuweisen",
+      "assignModelsHint": "Es ist noch kein Standardmodell festgelegt. Wählen Sie mindestens ein Chat-Modell oder fügen Sie zuerst Modelle hinzu — Sie können dies später abschließen.",
+      "openModels": "Modelle öffnen",
+      "advancedHandoff": "Überschreibungen pro Aufgabe finden Sie unter „Erweitert“ auf der Aufgabenseite."
     },
     "account": {
       "title": "Account",
@@ -1962,7 +1968,10 @@
       "megabytes": "{{value}} MB",
       "seconds": "{{value}} s",
       "readOnly": "Schreibgeschützt. Ein Backend-Wechsel läuft über migrate-objects; er ist nie ein Speichern-Knopf."
-    }
+    },
+    "advancedTitle": "Erweitert — Überschreibungen pro Aufgabe",
+    "advancedHint": "Nur ändern, wenn eine Aufgabe ein anderes Modell als ihr Standardmodell verwenden muss.",
+    "advancedCount": "{{count}} aktiv"
   },
   "genesis": {
     "title": "Kurs erstellen",
@@ -2808,6 +2817,7 @@
     "failed": "Transkription fehlgeschlagen",
     "failedHint": "Transkription fehlgeschlagen: {{detail}}",
     "dismissError": "Schließen",
+    "dismiss": "Ausblenden",
     "unavailable": "Diktat nicht verfügbar",
     "assignModel": "Sprach-zu-Text-Modell zuweisen"
   },

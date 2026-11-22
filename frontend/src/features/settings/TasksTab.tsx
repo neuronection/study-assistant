@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AudioLines,
+  ChevronDown,
   Database,
   FileText,
   Eye,
@@ -366,6 +367,9 @@ export function TasksTab() {
   }
 
   const decisionDefaultEmpty = decisionDefaultEntry?.model_id == null
+  const overrideCount =
+    (tasks.data ?? []).filter((task) => task.model_id != null).length +
+    DECISION_SLOTS.filter((slot) => defaultByCap.get(slot)?.model_id != null).length
 
   return (
     <div className="space-y-2">
@@ -428,6 +432,23 @@ export function TasksTab() {
           )
         }}
       />
+      {/* ADR-0070: per-task overrides (decision kinds + specialist tasks) are
+          advanced, collapsed by default in every scope. */}
+      <details
+        className="group rounded-[var(--as-radius-lg)] border border-[var(--as-border)] bg-[var(--as-surface-raised)]"
+        data-testid="task-overrides-advanced"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2">
+          <span className="text-sm font-semibold text-[var(--as-fg)]">
+            {t('settings.advancedTitle')}
+          </span>
+          <span className="flex items-center gap-2 text-xs text-[var(--as-muted-fg)]">
+            {t('settings.advancedCount', { count: overrideCount })}
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+          </span>
+        </summary>
+        <div className="space-y-3 border-t border-[var(--as-border)] p-3">
+          <p className="text-xs text-[var(--as-muted-fg)]">{t('settings.advancedHint')}</p>
       <div className="flex flex-col gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--as-muted-fg)]">
@@ -496,6 +517,8 @@ export function TasksTab() {
           )
         }}
       />
+        </div>
+      </details>
     </div>
   )
 }

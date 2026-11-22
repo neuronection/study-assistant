@@ -117,19 +117,21 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
       : []),
   ]
 
+  const buildPayload = () => ({
+    api_key: null,
+    options: {
+      curated_ids: preset?.curated_models ? options.curatedIds : undefined,
+      bind_chat: options.bindChat,
+      bind_vision: options.bindVision,
+      bind_stt: options.bindStt,
+      bind_embeddings: true,
+      bind_decision: bindDecision,
+    },
+  })
+
   const apply = useMutation({
-    mutationFn: () =>
-      setupProviderPreset(presetKey, {
-        api_key: null,
-        options: {
-          curated_ids: preset?.curated_models ? options.curatedIds : undefined,
-          bind_chat: options.bindChat,
-          bind_vision: options.bindVision,
-          bind_stt: options.bindStt,
-          bind_embeddings: true,
-          bind_decision: bindDecision,
-        },
-      }),
+    mutationFn: (payload: ReturnType<typeof buildPayload>) =>
+      setupProviderPreset(presetKey, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['providers'] })
       await queryClient.invalidateQueries({ queryKey: ['models'] })
@@ -177,7 +179,7 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
             <Button
               size="sm"
               disabled={apply.isPending || presets.isPending}
-              onClick={() => apply.mutate()}
+              onClick={() => apply.mutate(buildPayload())}
             >
               {apply.isPending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
               {t('settings.setup.review.apply')}

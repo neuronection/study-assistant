@@ -21,7 +21,12 @@ import { ReRunSetupDialog } from './ReRunSetupDialog'
 import { useConfirm } from '@/lib/use-confirm'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
-export function ProvidersTab() {
+export function ProvidersTab({
+  onNavigate,
+}: {
+  /** Finish the setup wizard by switching the AI section in the same scope. */
+  onNavigate?: (section: 'models' | 'tasks') => void
+} = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const openWizard = useWizardStore((state) => state.openWizard)
@@ -199,7 +204,27 @@ export function ProvidersTab() {
           </div>
         </div>
       ) : null}
-      {setupOpen ? <ProviderSetupModal onClose={() => setSetupOpen(false)} /> : null}
+      {setupOpen ? (
+        <ProviderSetupModal
+          onClose={() => setSetupOpen(false)}
+          onContinueToTasks={
+            onNavigate
+              ? () => {
+                  setSetupOpen(false)
+                  onNavigate('tasks')
+                }
+              : undefined
+          }
+          onOpenModels={
+            onNavigate
+              ? () => {
+                  setSetupOpen(false)
+                  onNavigate('models')
+                }
+              : undefined
+          }
+        />
+      ) : null}
       {reSetupProvider ? (
         <ReRunSetupDialog provider={reSetupProvider} onClose={() => setReSetupProvider(null)} />
       ) : null}

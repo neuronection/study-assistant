@@ -186,7 +186,9 @@ export function SettingsPage() {
             />
           ) : null}
           {activeTab === 'general' ? <GeneralTab /> : null}
-          {activeTab === 'ai' && activeSection === 'providers' ? <ProvidersTab /> : null}
+          {activeTab === 'ai' && activeSection === 'providers' ? (
+            <ProvidersTab onNavigate={(section) => open('ai', section)} />
+          ) : null}
           {activeTab === 'ai' && activeSection === 'models' ? <ModelsTab /> : null}
           {activeTab === 'ai' && activeSection === 'tasks' ? <TasksTab /> : null}
           {activeTab === 'tools' && activeSection === 'web-search' ? (

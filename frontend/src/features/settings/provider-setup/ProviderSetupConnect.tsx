@@ -284,6 +284,7 @@ export function ProviderSetupConnect({
           steps={[
             { id: 'connect', label: t('settings.setup.step.connect') },
             { id: 'defaults', label: t('settings.setup.step.defaults') },
+            { id: 'tasks', label: t('settings.setup.step.tasks') },
           ]}
           current={0}
           label={t('settings.setup.step.progress')}
