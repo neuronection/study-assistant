@@ -2,7 +2,7 @@
   "version": 1,
   "project": "study",
   "title": "Study Assistant",
-  "description": "Local-first, AI-powered study workbench \u2014 ingest your material, structure it into courses, and learn it with quizzes, flashcards, exercises and a grounded tutor.",
+  "description": "Local-first, AI-powered study workbench — ingest your material, structure it into courses, and learn it with quizzes, flashcards, exercises and a grounded tutor.",
   "audiences": [
     {
       "id": "user",
@@ -18,7 +18,7 @@
               "id": "overview",
               "file": "user/README.md",
               "title": "User guide overview",
-              "description": "How to use Study Assistant \u2014 the guided tour and the full list of user guides."
+              "description": "How to use Study Assistant — the guided tour and the full list of user guides."
             },
             {
               "id": "getting-started",
@@ -27,16 +27,22 @@
               "description": "Launch modes, the first-run wizard, connecting an AI provider, and the study loop."
             },
             {
+              "id": "backup-and-migration",
+              "file": "user/backup-and-migration.md",
+              "title": "Backup, restore and migration",
+              "description": "Back up, restore and migrate a self-hosted instance — what a backup contains, restore order, and the cross-VM runbook."
+            },
+            {
               "id": "features",
               "file": "user/features.md",
               "title": "Feature catalog",
-              "description": "Everything Study Assistant ships, as built \u2014 ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
+              "description": "Everything Study Assistant ships, as built — ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
             },
             {
               "id": "visual-tour",
               "file": "SCREENSHOTS.md",
               "title": "Visual tour",
-              "description": "Screenshots of Study Assistant \u2014 the Today screen, courses, library, review, tutor chat and settings, generated from a seeded demo workspace."
+              "description": "Screenshots of Study Assistant — the Today screen, courses, library, review, tutor chat and settings, generated from a seeded demo workspace."
             }
           ]
         },
@@ -54,7 +60,7 @@
             {
               "id": "exploring",
               "file": "user/exploring.md",
-              "title": "Exploring topics \u2014 the Scratchpad",
+              "title": "Exploring topics — the Scratchpad",
               "description": "A private playground for capturing ideas and material before they become a course."
             },
             {
@@ -159,7 +165,7 @@
             {
               "id": "local-ai",
               "file": "user/local-ai.md",
-              "title": "Local AI \u2014 fully offline setup",
+              "title": "Local AI — fully offline setup",
               "description": "Run every AI feature against local models with no cloud calls."
             }
           ]
@@ -198,13 +204,13 @@
               "id": "add-a-search-provider",
               "file": "user/add-a-search-provider.md",
               "title": "Add a search provider",
-              "description": "The web search behind chat research and Discover \u2014 Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring, ordered fallback."
+              "description": "The web search behind chat research and Discover — Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring, ordered fallback."
             },
             {
               "id": "add-an-mcp-connector",
               "file": "user/add-an-mcp-connector.md",
               "title": "Add an MCP connector",
-              "description": "Register an external MCP server, refresh its tools, declare discovery or parser contracts \u2014 and the external-process disclosure explained."
+              "description": "Register an external MCP server, refresh its tools, declare discovery or parser contracts — and the external-process disclosure explained."
             },
             {
               "id": "manage-web-sources",
@@ -252,13 +258,13 @@
               "id": "extension-troubleshooting",
               "file": "user/extension-troubleshooting.md",
               "title": "Extension troubleshooting",
-              "description": "Fixes for the Tools tab surfaces \u2014 search providers, web sources, MCP connectors and discovery suggestions."
+              "description": "Fixes for the Tools tab surfaces — search providers, web sources, MCP connectors and discovery suggestions."
             },
             {
               "id": "troubleshooting",
               "file": "user/troubleshooting.md",
               "title": "Troubleshooting",
-              "description": "Common problems and fixes \u2014 AI setup, OCR, uploads, blank window, backups."
+              "description": "Common problems and fixes — AI setup, OCR, uploads, blank window, backups."
             }
           ]
         }
@@ -296,7 +302,7 @@
               "id": "history",
               "file": "dev/history.md",
               "title": "Project history (archive)",
-              "description": "Round as-builts, the dated changelog and incident post-mortems moved out of STATUS \u2014 how the app got here, including the invariants recorded in post-mortems."
+              "description": "Round as-builts, the dated changelog and incident post-mortems moved out of STATUS — how the app got here, including the invariants recorded in post-mortems."
             },
             {
               "id": "visual-tour",
@@ -400,7 +406,7 @@
               "id": "retrieval-ops",
               "file": "dev/retrieval-ops.md",
               "title": "Retrieval operations",
-              "description": "The vendored retrieval contract, VECTOR_* jobs over the legacy store, bounded telemetry and the admin read surface \u2014 plus the explicit gaps."
+              "description": "The vendored retrieval contract, VECTOR_* jobs over the legacy store, bounded telemetry and the admin read surface — plus the explicit gaps."
             },
             {
               "id": "migrations",
@@ -425,19 +431,19 @@
               "id": "sdk-overview",
               "file": "dev/sdk/overview.md",
               "title": "Extension SDK: overview",
-              "description": "What the extension surface is \u2014 connectors feeding discovery and import on a dual-mode desktop product \u2014 and when to build an extension."
+              "description": "What the extension surface is — connectors feeding discovery and import on a dual-mode desktop product — and when to build an extension."
             },
             {
               "id": "sdk-quickstart",
               "file": "dev/sdk/quickstart.md",
               "title": "Extension SDK: quickstart",
-              "description": "Register an MCP server modeled on the family template and watch DISCOVER use it \u2014 real transcript, CI-pinned pipeline."
+              "description": "Register an MCP server modeled on the family template and watch DISCOVER use it — real transcript, CI-pinned pipeline."
             },
             {
               "id": "sdk-core-concepts",
               "file": "dev/sdk/core-concepts.md",
               "title": "Extension SDK: core concepts",
-              "description": "Extension, instance, tool contract, provider, source, suggestion, consent \u2014 and the vendored-contract discipline."
+              "description": "Extension, instance, tool contract, provider, source, suggestion, consent — and the vendored-contract discipline."
             },
             {
               "id": "sdk-installation",
@@ -479,7 +485,7 @@
               "id": "sdk-troubleshooting",
               "file": "dev/sdk/troubleshooting-and-faq.md",
               "title": "Extension SDK: developer diagnostics & FAQ",
-              "description": "Every wall-tested failure mode decoded \u2014 spawn errors, contract violations, provider taxonomy \u2014 plus the FAQ."
+              "description": "Every wall-tested failure mode decoded — spawn errors, contract violations, provider taxonomy — plus the FAQ."
             }
           ]
         },

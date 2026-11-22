@@ -346,7 +346,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-bundle:
-    # Source-free compose/nginx/installer bundle for self-hosted operators,
+    # Source-free compose/nginx/installer bundle for self-host operators,
     # pinned to the exact GHCR digest built above (the installer-contract
     # artifact shape: study-compose-v<version>.tar.gz + manifest.json (v2)
     # + SHA256SUMS, and the bootstrap assets when generated). Uploads to
