@@ -11,6 +11,7 @@ import {
 import type { Block, WidgetBlock } from '@/components/blocks/types'
 import { MarkdownSurface } from '@/components/ui/chat-markdown'
 import { ChatMessage } from '@/components/ui/chat-message'
+import { AssistantAvatar } from '@/features/chat/AssistantAvatar'
 import { EntityMention } from '@/features/ai/EntityMention'
 import { ProposalCard, type GenerateRequest } from '@/features/ai/ProposalCard'
 import { ReadIndicator } from '@/features/ai/ContextPanel'
@@ -96,6 +97,7 @@ function Citations({ message }: { message: ChatMessageRow }) {
 export function TranscriptMessage({
   message,
   view,
+  groupPos,
   actionPending,
   onOpenGenerate,
   onEditResend,
@@ -105,6 +107,7 @@ export function TranscriptMessage({
 }: {
   message: ChatMessageRow
   view: ChatMessageView
+  groupPos?: 'single' | 'start' | 'mid' | 'end'
   actionPending?: boolean
   autoSpeak?: boolean
   onOpenGenerate?: (request: GenerateRequest) => void
@@ -155,6 +158,12 @@ export function TranscriptMessage({
   return (
     <ChatMessage
       role={view.role}
+      design="flat"
+      avatar={
+        !isUser && (groupPos === undefined || groupPos === 'single' || groupPos === 'start')
+          ? <AssistantAvatar />
+          : undefined
+      }
       status={turnFailed !== null ? 'error' : 'done'}
       content={turnFailed !== null ? null : <MessageContent message={message} />}
       meta={meta}

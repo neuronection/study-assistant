@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+
+- **Chat adopted the family Airy surfaces.** Assistant replies render as flat
+  prose beside a small identity orb, the transcript groups consecutive turns,
+  the empty state is the shared glowing welcome kit with suggestion cards, and
+  an unconfigured dictation model now shows a quiet muted mic whose popover
+  explains the setting instead of a persistent notice above the composer.
+
 ## [v0.15.0] - 2026-11-22
 
 ### Changed
