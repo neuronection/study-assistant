@@ -3056,6 +3056,12 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
 
 ## Changelog
 
+- 2026-11-23 — **chat: Airy surfaces adopted.** The transcript renders flat
+  assistant prose beside a group-start identity orb with consecutive-turn
+  grouping; the empty state uses the shared `ChatWelcome` + suggestion cards;
+  and an unconfigured speech-to-text model now shows a muted mic whose popover
+  explains the assignment instead of a persistent composer notice. The
+  per-profile dismissal storage for that notice is gone.
 - 2026-10-22 — **plan 84: structure, test gates & eval corpus (ADR-208/209/210).**
   `NodeWorkspace` (3,395 lines) is now a tab host: per-tab components live in
   `features/courses/workspace/` and the shell keeps routing/query wiring

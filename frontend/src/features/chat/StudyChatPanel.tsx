@@ -23,7 +23,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -36,9 +35,10 @@ import {
 import { ChatComposer } from '@/components/ui/chat-composer'
 import { ChatPanel as ChatPanelHost } from '@/components/ui/chat-panel'
 import { Button } from '@/components/ui/button'
-import { Popover } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverRoot, PopoverTrigger } from '@/components/ui/popover'
 import { ChatReasoning } from '@/components/ui/chat-reasoning'
 import { ChatSuggestionCard } from '@/components/ui/chat-suggestion-card'
+import { ChatWelcome } from '@/components/ui/chat-welcome'
 import { ChatToolCard } from '@/components/ui/chat-tool-card'
 import { ChatTurnStatus } from '@/components/ui/chat-turn-status'
 import { MarkdownSurface } from '@/components/ui/chat-markdown'
@@ -49,12 +49,12 @@ import { GenerateDialog } from '@/features/ai/GenerateDialog'
 import { type GenerateRequest } from '@/features/ai/ProposalCard'
 import { AttachMenu, CHAT_UPLOADS_FOLDER, ATTACH_KIND_ICONS, type PendingAttachment } from '@/features/chat/AttachMenu'
 import { BranchTreeButton } from '@/features/chat/BranchTreeButton'
+import { AssistantAvatar } from '@/features/chat/AssistantAvatar'
 import { DrawingDialog, EquationDialog, ScreenshotDialog } from '@/features/chat/ComposerExtras'
 import { StudyChatSessionList } from '@/features/chat/StudyChatSessionList'
 import { toolCardProps } from '@/features/chat/tools/registry'
 import { useReasoningOpen } from '@/features/chat/useReasoningOpen'
 import { useStudyChatContext } from '@/features/chat/useStudyChat'
-import { getCurrentSessionScope, subscribeSessionScope } from '@/lib/session-scope'
 import { ChatTranscript } from '@/components/ui/chat-transcript'
 import { toChatMessageView } from '@/features/chat/chatMessages'
 import { TranscriptMessage } from '@/features/chat/TranscriptMessage'
@@ -457,42 +457,6 @@ export function StudyChatPanel({
     sttTask.model_id !== null ||
     sttTask.fallback_model_id !== null ||
     sttTask.default_model_label !== null
-  const sessionScope = useSyncExternalStore(
-    subscribeSessionScope,
-    getCurrentSessionScope,
-    () => null,
-  )
-  const noticeKey =
-    sessionScope === null
-      ? null
-      : `sa:chat:dictation-dismissed:${sessionScope}`
-  const [noticeDismissed, setNoticeDismissed] = useState(false)
-  useEffect(() => {
-    if (typeof localStorage === 'undefined' || noticeKey === null) {
-      setNoticeDismissed(false)
-      return
-    }
-    setNoticeDismissed(localStorage.getItem(noticeKey) === '1')
-  }, [noticeKey])
-  useEffect(() => {
-    if (
-      typeof localStorage === 'undefined' ||
-      noticeKey === null ||
-      tasks.data === undefined ||
-      !sttAssigned
-    ) {
-      return
-    }
-    localStorage.removeItem(noticeKey)
-    setNoticeDismissed(false)
-  }, [tasks.data, sttAssigned, noticeKey])
-  const dismissNotice = () => {
-    if (typeof localStorage !== 'undefined' && noticeKey !== null) {
-      localStorage.setItem(noticeKey, '1')
-    }
-    setNoticeDismissed(true)
-  }
-  const noticeVisible = tasks.data !== undefined && !sttAssigned && !noticeDismissed
 
   const activeTitle = activeSession === null
     ? t('chat.newSession')
@@ -594,6 +558,8 @@ export function StudyChatPanel({
       <div className="flex w-full max-w-[92%] animate-in fade-in flex-col gap-1 duration-200 motion-reduce:animate-none">
         <ChatMessage
           role="assistant"
+          design="flat"
+          avatar={<AssistantAvatar />}
           status="error"
           content={null}
           error={{
@@ -754,7 +720,9 @@ export function StudyChatPanel({
         transcript={
         <ChatTranscript
           items={viewMessages}
-          renderItem={(view) => {
+          design="flat"
+          groupConsecutive
+          renderItem={(view, _index, groupPos) => {
             const message = rawMessages.get(view.id)
             if (message === undefined) {
               return null
@@ -763,6 +731,7 @@ export function StudyChatPanel({
               <TranscriptMessage
                 view={view}
                 message={message}
+                groupPos={groupPos}
                 onOpenGenerate={setGenerateRequest}
                 onEditResend={handleEditResend}
                 onRegenerate={handleRegenerate}
@@ -792,6 +761,8 @@ export function StudyChatPanel({
                   <div className="flex flex-col items-start">
                     <ChatMessage
                       role="assistant"
+                      design="flat"
+                      avatar={<AssistantAvatar />}
                       status="streaming"
                       content={
                         <>
@@ -841,26 +812,22 @@ export function StudyChatPanel({
             </>
           ) : undefined}
           emptyState={
-            <div className="flex animate-in fade-in flex-col items-center gap-3 pt-10 text-center duration-300 motion-reduce:animate-none">
-              <span className="bg-subtle flex size-10 items-center justify-center rounded-full">
-                <Bot className="text-muted-foreground size-5" aria-hidden />
-              </span>
-              <p className="text-muted-foreground max-w-[16rem] text-xs">
-                {t('chat.emptyHint')}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {suggestions.map((suggestion) => (
-                  <ChatSuggestionCard
-                    key={suggestion}
-                    type="button"
-                    icon={Sparkles}
-                    onClick={() => setDraft(suggestion)}
-                  >
-                    {suggestion}
-                  </ChatSuggestionCard>
-                ))}
-              </div>
-            </div>
+            <ChatWelcome
+              variant={variant === 'page' ? 'page' : 'sidebar'}
+              title={t('chat.welcomeTitle')}
+              subtitle={t('chat.emptyHint')}
+              icon={<Bot className="size-5 text-[var(--as-ai-fg)]" aria-hidden />}
+              suggestions={suggestions.map((suggestion) => (
+                <ChatSuggestionCard
+                  key={suggestion}
+                  type="button"
+                  icon={Sparkles}
+                  onClick={() => setDraft(suggestion)}
+                >
+                  {suggestion}
+                </ChatSuggestionCard>
+              ))}
+            />
           }
           labels={{
             log: t('chat.transcriptLog'),
@@ -924,7 +891,34 @@ export function StudyChatPanel({
             </Popover>
           }
           toolbarEnd={
-            tasks.data !== undefined && !sttAssigned ? undefined : (
+            tasks.data !== undefined && !sttAssigned ? (
+              <PopoverRoot>
+                <PopoverTrigger asChild>
+                  <DictationButton
+                    unavailable
+                    status={dictation.status}
+                    onStart={() => {
+                      window.speechSynthesis?.cancel()
+                      void dictation.start()
+                    }}
+                    label={t('dictation.start')}
+                    unavailableLabel={t('dictation.unavailable')}
+                  />
+                </PopoverTrigger>
+                <PopoverContent side="top" align="end" className="w-72 p-2">
+                  <DictationUnavailable
+                    label={t('dictation.unavailable')}
+                    detail={t('dictation.unassigned')}
+                    action={{
+                      label: t('dictation.assignModel'),
+                      onClick: () => {
+                        void navigate({ to: '/settings', search: { tab: 'ai', section: 'tasks' } })
+                      },
+                    }}
+                  />
+                </PopoverContent>
+              </PopoverRoot>
+            ) : (
               <DictationButton
                 status={dictation.status}
                 onStart={() => {
@@ -955,48 +949,26 @@ export function StudyChatPanel({
             ) : undefined
           }
           suggestions={
-            noticeVisible ||
-            dictation.status !== 'idle' ||
-            dictation.error !== null ? (
-              <>
-                {noticeVisible ? (
-                  <div className="w-full">
-                    <DictationUnavailable
-                      label={t('dictation.unavailable')}
-                      detail={t('dictation.unassigned')}
-                      action={{
-                        label: t('dictation.assignModel'),
-                        onClick: () => {
-                          void navigate({ to: '/settings', search: { tab: 'ai', section: 'tasks' } })
-                        },
-                      }}
-                      onDismiss={dismissNotice}
-                      dismissLabel={t('dictation.dismiss')}
-                    />
-                  </div>
-                ) : null}
-                {dictation.status !== 'idle' || dictation.error !== null ? (
-                  <DictationStrip
-                    status={dictation.status}
-                    seconds={dictation.seconds}
-                    levelRef={dictation.levelRef}
-                    error={dictation.error}
-                    labels={{
-                      stop: t('dictation.stop'),
-                      cancel: t('dictation.cancel'),
-                      recording: t('dictation.recording'),
-                      transcribing: t('dictation.transcribing'),
-                      unsupported: t('dictation.unsupported'),
-                      denied: t('dictation.denied'),
-                      unassigned: t('dictation.unassigned'),
-                      failed: t('dictation.failedHint', { detail: '{detail}' }),
-                    }}
-                    onStop={() => void dictation.stop()}
-                    onCancel={dictation.cancel}
-                    onDismissError={dictation.dismissError}
-                  />
-                ) : null}
-              </>
+            dictation.status !== 'idle' || dictation.error !== null ? (
+              <DictationStrip
+                status={dictation.status}
+                seconds={dictation.seconds}
+                levelRef={dictation.levelRef}
+                error={dictation.error}
+                labels={{
+                  stop: t('dictation.stop'),
+                  cancel: t('dictation.cancel'),
+                  recording: t('dictation.recording'),
+                  transcribing: t('dictation.transcribing'),
+                  unsupported: t('dictation.unsupported'),
+                  denied: t('dictation.denied'),
+                  unassigned: t('dictation.unassigned'),
+                  failed: t('dictation.failedHint', { detail: '{detail}' }),
+                }}
+                onStop={() => void dictation.stop()}
+                onCancel={dictation.cancel}
+                onDismissError={dictation.dismissError}
+              />
             ) : undefined
           }
           />

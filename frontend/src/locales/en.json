@@ -459,6 +459,7 @@
       "roundRepair": "Repair"
     },
     "emptyHint": "Ask anything about your course — use + to attach materials, notes, quizzes and more.",
+    "welcomeTitle": "How can I help with your studies?",
     "suggest1": "Explain the key idea of this topic",
     "suggest2": "Quiz me on what we discussed",
     "suggest3": "Where do I usually go wrong?",
