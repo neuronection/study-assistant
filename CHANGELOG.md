@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.16.0] - 2026-11-24
+
 ### Changed
 
 - **Chat adopted the family Airy surfaces.** Assistant replies render as flat
