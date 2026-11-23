@@ -59,7 +59,7 @@ jobs:
         docker/init-db.sh
         docker/backup-sidecar.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Shell syntax (bash -n)
         run: |
           set -euo pipefail
