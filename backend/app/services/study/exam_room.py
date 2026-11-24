@@ -158,6 +158,7 @@ def assemble_paper(
                 Activity.type == "quiz",
                 Question.parent_id.is_(None),
             )
+            .order_by(Question.created_at, Question.id)
         )
     )
     if not candidates:

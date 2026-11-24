@@ -13,7 +13,10 @@ def make_course(client: TestClient) -> str:
     return str(response.json()["id"])
 
 
-def make_bank(client: TestClient, course_id: str, count: int = 5) -> str:
+def make_bank(client: TestClient, course_id: str, count: int = 5, reverse: bool = False) -> str:
+    indexes = list(range(1, count + 1))
+    if reverse:
+        indexes.reverse()
     questions = [
         {
             "type": "text",
@@ -24,7 +27,7 @@ def make_bank(client: TestClient, course_id: str, count: int = 5) -> str:
             "difficulty": 2,
             "expected_time_sec": 60,
         }
-        for index in range(1, count + 1)
+        for index in indexes
     ]
     imported = client.post(
         "/api/v1/quiz/import",
@@ -33,6 +36,25 @@ def make_bank(client: TestClient, course_id: str, count: int = 5) -> str:
     )
     assert imported.status_code == 200, imported.text
     return str(imported.json()["activity"]["id"])
+
+
+def reverse_bank_created_at_order(client: TestClient, course_id: str) -> None:
+    settings = client.app.state.settings  # type: ignore[attr-defined]
+    engine = create_engine(f"sqlite:///{settings.db_path}")
+    with sessionmaker(bind=engine)() as session:
+        bank = list(
+            session.scalars(
+                select(Question)
+                .join(Activity, Activity.id == Question.activity_id)
+                .where(Activity.course_id == course_id)
+                .order_by(Question.created_at, Question.id)
+            )
+        )
+        stamps = [question.created_at for question in bank]
+        for question, stamp in zip(bank, reversed(stamps), strict=True):
+            question.created_at = stamp
+        session.commit()
+    engine.dispose()
 
 
 def paper_body(**overrides: Any) -> dict[str, Any]:
@@ -59,6 +81,10 @@ def activity_questions(client: TestClient, activity_id: str) -> list[dict[str, A
     response = client.get(f"/api/v1/quiz/activities/{activity_id}/questions")
     assert response.status_code == 200, response.text
     return cast(list[dict[str, Any]], response.json())
+
+
+def paper_stems(client: TestClient, activity_id: str) -> list[str]:
+    return [question["stem"][0]["md"] for question in activity_questions(client, activity_id)]
 
 
 def test_create_paper_snapshots_bank_questions(client: TestClient) -> None:
@@ -106,15 +132,31 @@ def test_assembly_is_deterministic_for_the_same_blueprint(client: TestClient) ->
         first = make_paper(client, course_id)
         second = make_paper(client, course_id)
 
-        def stems(activity_id: str) -> list[str]:
-            return [
-                question["stem"][0]["md"] for question in activity_questions(client, activity_id)
-            ]
+        assert paper_stems(client, first["activity_id"]) == paper_stems(
+            client, second["activity_id"]
+        )
 
-        assert stems(first["activity_id"]) == stems(second["activity_id"])
+        draws = {
+            tuple(paper_stems(client, make_paper(client, course_id, seed=seed)["activity_id"]))
+            for seed in range(1, 6)
+        }
+        assert len(draws) > 1
 
-        reshuffled = make_paper(client, course_id, title="Calculus mock", seed=123)
-        assert stems(reshuffled["activity_id"]) != stems(first["activity_id"])
+
+def test_seeded_assembly_ignores_physical_row_order(client: TestClient) -> None:
+    with client:
+        forward_course = make_course(client)
+        make_bank(client, forward_course)
+        reverse_course = make_course(client)
+        make_bank(client, reverse_course, reverse=True)
+        reverse_bank_created_at_order(client, reverse_course)
+
+        forward = make_paper(client, forward_course, seed=42)
+        reverse = make_paper(client, reverse_course, seed=42)
+
+        assert paper_stems(client, forward["activity_id"]) == paper_stems(
+            client, reverse["activity_id"]
+        )
 
 
 def test_invalid_blueprints_are_rejected_without_leaving_rows(
