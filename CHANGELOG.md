@@ -11,6 +11,17 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+
+- **Exam paper assembly now draws from a stable bank order.** The blueprint
+  query had no `ORDER BY`, so the seeded shuffle depended on whatever row order
+  the database returned (guaranteed on neither SQLite nor PostgreSQL after
+  maintenance). Papers are now assembled from the bank's `created_at` order —
+  the same order the question list, answer key, and course export already use —
+  so the same blueprint and seed reproduce the same paper. The determinism test
+  also stopped asserting that a custom seed always reorders the draw (with a
+  bank exactly the size of the paper that only holds ~99.2% of the time).
+
 ## [v0.16.0] - 2026-11-24
 
 ### Changed
