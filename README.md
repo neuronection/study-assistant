@@ -273,7 +273,7 @@ schema verified in CI.
 
 ### Run from source (developers)
 
-Prerequisites: **Python 3.12+** with [uv](https://docs.astral.sh/uv/), **Node 20+** with
+Prerequisites: **Python 3.12+** with [uv](https://docs.astral.sh/uv/), **Node 26+** with
 pnpm (`corepack enable pnpm`). On Linux the desktop shell additionally needs GTK build
 headers:
 

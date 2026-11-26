@@ -108,6 +108,10 @@ export default defineConfig({
       'e2e/**',
     ],
     environment: 'jsdom',
+    // Node 26 defines globalThis.localStorage (undefined without
+    // --localstorage-file), which shadows jsdom's; keep the storage globals off
+    // so window.localStorage is the jsdom one.
+    execArgv: ['--no-experimental-webstorage'],
     setupFiles: ['src/test/setup.ts'],
     server: {
       deps: {

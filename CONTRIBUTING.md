@@ -7,7 +7,7 @@ AI-powered study workbench: Python (FastAPI) backend + React SPA, desktop
 ## Setting up a development environment
 
 Prerequisites: **Python 3.12+** with [uv](https://docs.astral.sh/uv/),
-**Node 20+** with pnpm (`corepack enable pnpm`). On Linux, the desktop shell
+**Node 26+** with pnpm (`corepack enable pnpm`). On Linux, the desktop shell
 needs GTK build headers:
 
 ```bash
