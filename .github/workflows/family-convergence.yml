@@ -50,7 +50,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - name: Install GTK build dependencies
         # pygobject/pycairo build from source in uv sync (desktop shell deps);
         # the same headers the main backend job installs.

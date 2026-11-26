@@ -39,7 +39,7 @@ jobs:
             git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
               || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
           fi
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - name: Install GTK build dependencies
@@ -170,7 +170,7 @@ jobs:
             git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
               || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
           fi
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - name: Install GTK build dependencies
