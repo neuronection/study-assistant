@@ -10,7 +10,7 @@ every commit must pass. For what the code is made of, read
 ## Prerequisites
 
 - **Python 3.12+** with [uv](https://docs.astral.sh/uv/).
-- **Node 20+** with pnpm (`corepack enable pnpm`).
+- **Node 26+** with pnpm (`corepack enable pnpm`).
 - On Linux the desktop shell needs GTK/WebKit build headers:
 
 ```bash

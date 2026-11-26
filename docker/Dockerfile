@@ -11,7 +11,7 @@
 # The family auth-kit is a git-SHA dependency (root pyproject.toml/uv.lock);
 # uv clones it during sync, so the build stage installs git transiently.
 
-FROM node:24-alpine AS frontend-build
+FROM node:26-alpine AS frontend-build
 WORKDIR /build
 RUN npm install -g pnpm@11
 COPY pnpm-workspace.yaml pnpm-lock.yaml ./
