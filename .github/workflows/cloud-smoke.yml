@@ -56,7 +56,7 @@ jobs:
         run: |
           : "${AWS_ACCESS_KEY_ID:?secret AWS_ACCESS_KEY_ID is required}"
           : "${AWS_SECRET_ACCESS_KEY:?secret AWS_SECRET_ACCESS_KEY is required}"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - name: Install GTK build dependencies
@@ -86,7 +86,7 @@ jobs:
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: |
           : "${AZURE_STORAGE_CONNECTION_STRING:?secret AZURE_STORAGE_CONNECTION_STRING is required}"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - name: Install GTK build dependencies
